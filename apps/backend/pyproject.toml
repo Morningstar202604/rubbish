@@ -16,7 +16,7 @@ dependencies = [
     "alembic==1.18.5",
     "pydantic[email]==2.13.4",
     "pydantic-settings==2.14.2",
-    "PyJWT==2.13.0",
+    "PyJWT==2.15.0",
     "bcrypt==5.0.0",
     "structlog==26.1.0",
     "httpx==0.28.1",
@@ -30,6 +30,9 @@ dependencies = [
     "defusedxml==0.7.1",
     "prometheus-client==0.26.0",
     "cryptography==50.0.0",
+    # 传递依赖下限：uv.lock 里 botocore/requests 会带 urllib3，
+    # 2.7.x 有 3 条 PYSEC 通告（PYSEC-2026-4175/4176/4177），锁到 2.8+。
+    "urllib3>=2.8.0",
 ]
 
 [project.optional-dependencies]
