@@ -20,6 +20,9 @@ dependencies = [
     "bcrypt==5.0.0",
     "structlog==26.1.0",
     "httpx==0.28.1",
+    # 直接钉住 certifi：它由 httpx 传递引入，安全审计要求 >=2026.10.19
+    # （PYSEC-2026-4320）；显式声明避免下一次被动升级又落后一版。
+    "certifi==2026.10.19",
     "h2==4.4.1",
     "tenacity==9.1.4",
     "authlib==1.7.2",
