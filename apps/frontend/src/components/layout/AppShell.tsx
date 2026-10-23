@@ -14,10 +14,13 @@ import {
   Library,
   Lightbulb,
   Menu,
+  PenLine,
   Upload,
+  Scroll,
   ScrollText,
   Settings,
   ShieldCheck,
+  TrendingUp,
   Users,
   X,
 } from 'lucide-react'
@@ -44,6 +47,10 @@ import { CookieBanner } from '@/components/common/cookie-banner'
 
 const NAV: NavItem[] = [
   { to: '/dashboard', label: '概览', icon: Home, auth: true, group: '总览' },
+  { to: '/authors', label: '作者指南', icon: PenLine, group: '期刊' },
+  { to: '/policies', label: '政策规范', icon: Scroll, group: '期刊' },
+  { to: '/about', label: '关于本刊', icon: Building2, group: '期刊' },
+  { to: '/journal-metrics', label: '期刊指标', icon: TrendingUp, group: '期刊' },
   { to: '/catalog', label: '资源目录', icon: BookOpen, group: '内容' },
   { to: '/library', label: '阅读列表', icon: Library, auth: true, group: '内容' },
   { to: '/follows', label: '关注与订阅', icon: Heart, auth: true, group: '内容' },

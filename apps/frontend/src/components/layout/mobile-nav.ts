@@ -5,8 +5,11 @@ import {
   Gavel,
   Heart,
   Home,
+  Building2,
   KeyRound,
   Lightbulb,
+  PenLine,
+  Scroll,
   ScrollText,
   Settings,
   ShieldCheck,
@@ -43,6 +46,9 @@ export const MOBILE_TABS: MobileTab[] = [
 // "更多"底部抽屉的次级导航（按 isAdmin 过滤）。
 export const MOBILE_MORE: MobileMoreItem[] = [
   { to: '/dashboard', label: '概览', icon: Home },
+  { to: '/authors', label: '作者指南', icon: PenLine },
+  { to: '/policies', label: '政策规范', icon: Scroll },
+  { to: '/about', label: '关于本刊', icon: Building2 },
   { to: '/submissions', label: '我的提交', icon: ScrollText },
   { to: '/follows', label: '关注与订阅', icon: Heart },
   { to: '/recommendations', label: '推荐', icon: Lightbulb },

@@ -158,6 +158,8 @@ export interface ResourceBase {
   keywords?: string[] | null
   language: string
   publication_status: PublicationStatus
+  /** 荒诞指数：编辑部评定（0–10），未评定为 null */
+  absurdity_index?: number | null
 }
 
 export interface ResourceCreate extends ResourceBase {
@@ -171,7 +173,7 @@ export interface ResourceResponse extends ResourceBase {
   slug?: string | null
   created_at: string
   updated_at: string
-  /** Detail endpoint only: a downloadable manuscript exists. */
+  /** 是否有可下载的稿件文件（列表与详情都会返回） */
   has_file?: boolean
   /** R 指数互动指标（列表与详情都会返回） */
   reads?: number | null
@@ -179,6 +181,8 @@ export interface ResourceResponse extends ResourceBase {
   saves?: number | null
   r_index?: number | null
   quartile?: string | null
+  /** 荒诞指数：编辑部评定（0–10），未评定为 null */
+  absurdity_index?: number | null
 }
 
 export interface JournalMetrics {
@@ -195,7 +199,12 @@ export interface JournalMetrics {
   avg_review_days: number | null
   median_review_days: number | null
   open_access_rate: number | null
-  r_index_formula: string
+  /** R 因子：全刊 R 指数均值，本刊自设计的旗舰指标（口径不公开） */
+  r_factor: number | null
+  /** 无引文数据，自引率恒为 0 */
+  self_citation_rate: number
+  /** 荒诞指数中位数（尚无评定时为 null） */
+  absurdity_index_median: number | null
 }
 
 export interface ResourceListResponse {

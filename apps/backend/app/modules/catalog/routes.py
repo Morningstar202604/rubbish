@@ -9,6 +9,7 @@ on every query) AND by RLS in production.
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
@@ -52,7 +53,7 @@ MAX_PAGE_SIZE = 100
 
 
 async def _can_preview_unpublished(
-    db: AsyncSession, viewer: User | None, resource_id: int, tenant_id: int
+    db: AsyncSession, viewer: User | None, resource_id: int, tenant_id: UUID
 ) -> bool:
     """Whether ``viewer`` may see an unpublished (draft/in_review) record.
 
@@ -299,6 +300,25 @@ async def _with_engagement(db: AsyncSession, rows: Any) -> list[ResourceResponse
         response.saves = metrics.saves
         response.r_index = metrics.r_index
         response.quartile = metrics.quartile
+    if responses:
+        # 列表行的 has_file：与详情一致地按"挂了带文件稿件的 submission"
+        # 判定，一次 IN 查询整页取完（此前恒为 False，UI 无法提示可下载）。
+        from app.modules.submission.models import Submission
+
+        tenant_id = require_tenant_id()
+        with_file = set(
+            (
+                await db.execute(
+                    select(Submission.resource_id).where(
+                        Submission.tenant_id == tenant_id,
+                        Submission.resource_id.in_([r.id for r in responses]),
+                        Submission.file_path.is_not(None),
+                    )
+                )
+            ).scalars()
+        )
+        for response in responses:
+            response.has_file = response.id in with_file
     return responses
 
 

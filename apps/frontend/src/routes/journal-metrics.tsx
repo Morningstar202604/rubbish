@@ -1,17 +1,26 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { ArrowLeft } from 'lucide-react'
+import { motion } from 'motion/react'
+import { ArrowLeft, BookOpen, Download, Lock, Quote, Sparkles, TrendingUp } from 'lucide-react'
 import { useJournalMetrics } from '@/hooks/api/use-modules'
 import { PageHeader } from '@/components/common/page-header'
 import { ErrorState, Loading } from '@/components/common/state'
+import { Card, CardContent } from '@/components/ui/card'
 import { typeLabel } from '@/lib/resource-labels'
 
 export const Route = createFileRoute('/journal-metrics')({
   component: JournalMetricsPage,
 })
 
-// 公开指标页：把"我们算的是什么、怎么算、哪里不能比"一次说清楚。
-// 这一页的职责不是好看，是把每个数字的口径摆在读者面前——
-// 学术期刊的指标如果不交代来源，就只是营销话术。
+// 公开指标页（0.5.0 改版）：像正式期刊的指标页一样只呈现数值与含义；
+// 权重与计算口径属于编辑部内部口径，不进页面、不进 API。
+// 没有引文数据，所以诚实标注"不与 JCR 影响因子互比"。
+const rise = {
+  initial: { opacity: 0, y: 14 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: '-40px' },
+  transition: { duration: 0.45, ease: 'easeOut' as const },
+}
+
 function JournalMetricsPage() {
   const { data, isLoading, isError, refetch } = useJournalMetrics()
 
@@ -19,7 +28,7 @@ function JournalMetricsPage() {
     <div className="mx-auto max-w-4xl py-8">
       <Link
         to="/"
-        className="mb-4 inline-flex items-center text-sm text-muted-foreground hover:text-primary"
+        className="mb-4 inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-primary"
       >
         <ArrowLeft className="mr-1 h-4 w-4" />
         返回首页
@@ -27,7 +36,7 @@ function JournalMetricsPage() {
 
       <PageHeader
         title="期刊指标"
-        description="本页所有数字均由本站运行数据实时计算，公式公开，可自行复算。"
+        description="本页所有数字均由本站运行数据实时计算。指标体系为编辑部自设计，与任何外部评价体系互不隶属。"
       />
 
       {isLoading ? (
@@ -36,17 +45,48 @@ function JournalMetricsPage() {
         <ErrorState message="加载指标失败" onRetry={() => refetch()} />
       ) : (
         <div className="space-y-8">
-          <section>
-            <h2 className="text-lg font-medium">我们不做的事</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Rubbish 没有接入 Web of Science、Scopus 或 Crossref
-              的引用数据，因此**不发布影响因子（Impact Factor）**，也不使用 JCR
-              分区。任何把本刊指标与影响因子并列比较的说法都不成立。
-            </p>
-          </section>
+          {data.published_total > 0 && data.r_factor != null ? (
+            <motion.section {...rise}>
+              <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 via-transparent to-accent/10">
+                <CardContent className="flex flex-col items-center gap-2 py-10 text-center sm:flex-row sm:justify-between sm:text-left">
+                  <div>
+                    <p className="text-sm font-medium tracking-wide text-muted-foreground">
+                      R 因子（{new Date().getFullYear()}）
+                    </p>
+                    <p className="mt-1 font-serif text-5xl font-bold tabular-nums text-primary">
+                      {data.r_factor.toFixed(2)}
+                    </p>
+                    <p className="mt-2 max-w-md text-xs leading-relaxed text-muted-foreground">
+                      本刊旗舰指标，衡量全刊已发表内容的综合热度与编辑质量。口径与权重属编辑部内部标准。
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-6 text-center sm:text-right">
+                    <div>
+                      <p className="font-serif text-2xl font-semibold tabular-nums">
+                        {data.absurdity_index_median == null ? '—' : data.absurdity_index_median.toFixed(1)}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">荒诞指数中位数</p>
+                    </div>
+                    <div>
+                      <p className="font-serif text-2xl font-semibold tabular-nums">
+                        {data.self_citation_rate.toFixed(1)}%
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">自引率</p>
+                    </div>
+                    <div>
+                      <p className="font-serif text-2xl font-semibold tabular-nums">
+                        {data.published_total}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">已发表论文</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.section>
+          ) : null}
 
-          <section>
-            <h2 className="text-lg font-medium">我们公布什么</h2>
+          <motion.section {...rise}>
+            <h2 className="text-lg font-medium">指标一览</h2>
             <dl className="mt-3 grid gap-4 sm:grid-cols-2">
               {[
                 ['已发表记录', `${data.published_total} 篇`],
@@ -77,40 +117,62 @@ function JournalMetricsPage() {
               ].map(([label, value]) => (
                 <div key={label} className="flex justify-between border-b py-2 text-sm">
                   <dt className="text-muted-foreground">{label}</dt>
-                  <dd className="font-medium">{value}</dd>
+                  <dd className="font-medium tabular-nums">{value}</dd>
                 </div>
               ))}
             </dl>
-          </section>
+          </motion.section>
 
-          <section>
-            <h2 className="text-lg font-medium">R 指数</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              R 指数是本刊自建的注意力指标，只使用平台自己记录的三类事件：
-              阅读次数（每次打开详情或阅读器）、下载次数（公开文件端点成功返回）、
-              收藏次数（被加入任意阅读列表）。
-            </p>
-            <pre className="mt-3 overflow-x-auto rounded bg-muted px-4 py-3 font-mono text-xs leading-relaxed">
-              {data.r_index_formula}
-            </pre>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              每一项都除以<strong>同学科已发表记录的最大值</strong>，再按
-              0.5 / 0.3 / 0.2 加权，最后乘以 100。这样新刊不会因为绝对流量小
-              而全部接近 0，也避免跨学科直接比大小。
-            </p>
-          </section>
+          <motion.section {...rise}>
+            <h2 className="text-lg font-medium">指标体系说明</h2>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              {[
+                {
+                  icon: TrendingUp,
+                  title: 'R 因子',
+                  body: '本刊自设计的旗舰指标，综合读者注意力与编辑质量评定，取全刊均值。类似传统引文指标的门面数字，但口径由编辑部掌握，不对外公开。',
+                },
+                {
+                  icon: Sparkles,
+                  title: '荒诞指数',
+                  body: '编辑部对每篇内容离谱程度的评定（0–10）。本刊兼收正经与荒诞研究，指数只描述内容气质，与质量无关——正经论文可以很好，离谱论文也可以很好。',
+                },
+                {
+                  icon: Quote,
+                  title: '自引率 0.0%',
+                  body: '本刊没有引文系统，也不鼓励自引表演。该栏位诚实保留为 0，而不是编一个好看的小数字。',
+                },
+                {
+                  icon: BookOpen,
+                  title: '分区（R1–R4）',
+                  body: '同一学科内按 R 值四分位划分，前 25% 为 R1。学科样本不足 4 篇时不出分区，宁缺毋滥。',
+                },
+              ].map(({ icon: Icon, title, body }) => (
+                <Card key={title}>
+                  <CardContent className="p-4">
+                    <p className="flex items-center gap-2 text-sm font-medium">
+                      <Icon className="h-4 w-4 text-primary" />
+                      {title}
+                    </p>
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{body}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </motion.section>
 
-          <section>
-            <h2 className="text-lg font-medium">分区（R1–R4）</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              分区取同学科 R 指数的四分位：前 25% 为 R1，依次到 R4。
-              只有该学科已发表记录达到 4 篇时才生成分区；样本不足时显示
-              「样本不足」，不做补齐、插值或估算。分区衡量的是站内注意力，
-              不是学术质量，也不等同于任何外部评价体系的分区。
-            </p>
-          </section>
+          <motion.section {...rise}>
+            <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                关于口径：各指标的构成项与权重属编辑部内部标准，不对外公开、不接受复算请求。
+                本刊未接入 Web of Science、Scopus 或 Crossref 引文数据，因此
+                <strong>不发布影响因子，也不使用 JCR 分区</strong>；任何把本刊指标与外部影响因子并列比较的说法都不成立。
+              </p>
+            </div>
+          </motion.section>
 
-          <section>
+          <motion.section {...rise}>
             <h2 className="text-lg font-medium">按学科</h2>
             <ul className="mt-3 space-y-2 text-sm">
               {Object.entries(data.by_discipline).length === 0 ? (
@@ -129,9 +191,9 @@ function JournalMetricsPage() {
                 ))
               )}
             </ul>
-          </section>
+          </motion.section>
 
-          <section>
+          <motion.section {...rise}>
             <h2 className="text-lg font-medium">按类型</h2>
             <ul className="mt-3 space-y-2 text-sm">
               {Object.entries(data.by_type).length === 0 ? (
@@ -139,18 +201,21 @@ function JournalMetricsPage() {
               ) : (
                 Object.entries(data.by_type).map(([type, count]) => (
                   <li key={type} className="flex items-center justify-between border-b py-2">
-                    <span>{typeLabel(type)}</span>
+                    <span className="flex items-center gap-1.5">
+                      <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                      {typeLabel(type)}
+                    </span>
                     <span className="text-muted-foreground">{count} 篇</span>
                   </li>
                 ))
               )}
             </ul>
-          </section>
+          </motion.section>
 
-          <section className="border-t pt-6 text-xs leading-relaxed text-muted-foreground">
+          <motion.section {...rise} className="border-t pt-6 text-xs leading-relaxed text-muted-foreground">
             <p>
-              数据来源：本站 PostgreSQL 的 resources / reading_history /
-              reading_list_items / submissions 表，口径见上方公式；页面每次访问实时计算。
+              数据来源：本站数据库的 resources / reading_history /
+              reading_list_items / submissions 表；页面每次访问实时计算。
             </p>
             <p className="mt-2">
               机器可读版本：
@@ -158,7 +223,7 @@ function JournalMetricsPage() {
                 /api/catalog/journal-metrics
               </a>
             </p>
-          </section>
+          </motion.section>
         </div>
       )}
     </div>

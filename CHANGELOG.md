@@ -7,6 +7,44 @@
 `apps/backend/pyproject.toml`、`apps/frontend/package.json`、`apps/backend/app/__init__.py`
 四处完全一致，由 `scripts/check-version.sh` 守门。
 
+## [0.5.0] — 2026-10-24
+
+### Changed
+
+- **许可证更换**：AGPL-3.0-or-later → **PolyForm Noncommercial 1.0.0**。
+  定位调整：开源是让人学习与非商业复用，不是让人拿去做生意——商用、收费
+  服务、捆绑进收费产品一律不允许（`LICENSE` 全文 + `NOTICE.md` 说明）。
+  README 双语徽章、`pyproject.toml`、`package.json` 同步更新。
+- **指标体系改版（口径收紧）**：公开响应不再返回 `r_index_formula`（公式
+  与权重收归编辑部内部口径）；新增期刊级 **R 因子**（全刊 R 指数均值，
+  两位小数）、`self_citation_rate`（恒 0.0，诚实栏位）、
+  `absurdity_index_median`。`/journal-metrics` 页重做：旗舰数字卡 +
+  指标一览 + 口径保密声明，首页指标区同步去掉公式块。
+- 阅读器公开化：`/reader/{id}` 不再强制登录（已发表论文文件端点本就匿名
+  开放）；阅读进度同步按登录态降级，访客阅读不再被登录墙挡住。
+
+### Added
+
+- **荒诞指数**：`resources.absurdity_index`（迁移 006，0–10 编辑部评定，
+  可空）。公开响应暴露；admin PATCH 可改（越界 422）；目录表格/移动卡片/
+  首页卡片/详情页显示等级徽章（正经 / 轻诞 / 荒诞 / 离谱）；管理端
+  「编辑题录」对话框新增荒诞指数与刊出状态（draft/in_review 刊出）字段。
+- **内容页三件套**：`/authors`（作者指南：双轨收录、收录标准、发表要求
+  与"我们不要求"清单、格式模板下载、评审流程）、`/policies`（开放获取、
+  学术诚信、荒诞内容声明、社区规范、撤稿、隐私、评审保密）、`/about`
+  （定位、编委会、刊史、出版信息）。侧边栏与移动端"更多"新增「期刊」组。
+- 投稿模板：`public/templates/` 提供 Markdown 与 LaTeX 两套模板下载。
+- `help.html` 入库（`apps/frontend/public/`），开源部署开箱即用；页面头部
+  链接新内容页。首页 meta description/OG/JSON-LD（Periodical）补齐。
+- 目录列表 `has_file` 修复：此前恒为 false，现在列表行如实标注 PDF 可
+  下载（一次 IN 查询整页判定）；目录与首页卡片出现 PDF 标识。
+- 首页骨架屏加载态、返回顶部按钮；生成式封面组件（确定性渐变，零资源）。
+
+### Fixed
+
+- mypy：`_can_preview_unpublished` 的 `tenant_id` 参数标注 int → UUID
+  （0.4.0 引入的潜在类型错误，运行时行为不变）。
+
 ## [0.4.2] — 2026-10-24
 
 ### Changed

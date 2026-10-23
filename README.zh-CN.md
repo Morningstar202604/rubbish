@@ -10,7 +10,7 @@
 
 **🌐 [English](README.md) · [简体中文](README.zh-CN.md)**
 
-[![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg?style=flat-square)](LICENSE)
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm--Noncommercial--1.0.0-orange.svg?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12+-3776AB.svg?logo=python&logoColor=white&style=flat-square)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.139-009688.svg?logo=fastapi&logoColor=white&style=flat-square)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=white&style=flat-square)](https://react.dev/)
@@ -43,7 +43,8 @@
 | **作者** | 新建投稿（附 PDF）、多版本修订、跟踪审核状态（待审/大修/小修/录用/拒稿） |
 | **编辑** | 审稿人指派、裁决（含编辑备注）、稿件管理工作台 |
 | **审稿人** | 审稿报告、盲审（单盲/双盲）、决定建议 |
-| **读者** | 公开目录检索、**浏览器内在线阅读（pdf.js）**、跨设备阅读进度、关注作者、订阅通知 |
+| **读者** | 公开目录检索、**浏览器内在线阅读（pdf.js，无需登录墙）**、跨设备阅读进度、关注作者、订阅通知 |
+| **期刊运营** | 双轨收录（正经 + 荒诞研究）、编辑部自设计指标（R 因子、荒诞指数，口径不公开）、作者指南 / 政策规范 / 关于本刊页、投稿模板 |
 | **管理员** | 用户/卷/期/期刊管理、审计日志、批量导入（BibTeX / RIS / CSV / DOI / arXiv） |
 
 **安全默认开启**：WebAuthn 通行密钥 + TOTP 双因素、JWT 服务端吊销与密钥轮换、注册验证码、全操作审计日志、多租户隔离（PostgreSQL RLS）。
@@ -121,4 +122,4 @@ cd apps/frontend && E2E_SPAWN_SERVER=1 npx playwright test
 
 ## License
 
-[AGPL-3.0](LICENSE)
+代码以 [PolyForm Noncommercial 1.0.0](LICENSE) 发布：可自由使用、修改、再分发，但**仅限学习、研究与非商业用途**——不得商用、不得收费提供服务、不得捆绑进收费产品。论文与站点内容的著作权归作者所有。

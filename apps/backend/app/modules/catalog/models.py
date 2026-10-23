@@ -20,6 +20,7 @@ tenant's PostgreSQL database".
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     JSON,
@@ -27,6 +28,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -94,6 +96,9 @@ class Resource(Base, TenantScopedMixin):
     download_count: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
     )
+    # 荒诞指数：编辑部对单篇内容离谱程度的评定（0–10，一位小数）。
+    # 与 R 指数（读者注意力）相互独立；可空——正经论文可以不评定。
+    absurdity_index: Mapped[Decimal | None] = mapped_column(Numeric(4, 1), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False

@@ -548,7 +548,10 @@ async def test_journal_metrics_are_public_and_empty_safe(client: AsyncClient) ->
     assert body["acceptance_rate"] is None
     assert body["avg_review_days"] is None
     assert body["open_access_rate"] is None
-    assert "read_norm" in body["r_index_formula"]
+    # 0.5.0 起：口径不进公开响应，只给数值（R1 契约）。
+    assert "r_index_formula" not in body
+    assert body["r_factor"] is None
+    assert body["self_citation_rate"] == 0.0
 
 
 async def test_journal_metrics_counts_published_only(client: AsyncClient, admin_user: dict) -> None:

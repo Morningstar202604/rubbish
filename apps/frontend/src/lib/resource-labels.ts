@@ -70,3 +70,28 @@ export function recommendationReason(reason: string | null | undefined): string 
   if (reason.includes('no direct match')) return '相关领域新作'
   return reason
 }
+
+// ---------------------------------------------------------------------------
+// 荒诞指数（编辑部评定，0–10）：界面只呈现等级与数值，不呈现评定口径。
+// ---------------------------------------------------------------------------
+
+export interface AbsurdityLevel {
+  label: string
+  description: string
+  variant: 'default' | 'secondary' | 'destructive' | 'outline'
+}
+
+export function absurdityLevel(index: number | null | undefined): AbsurdityLevel | null {
+  if (index == null) return null
+  if (index < 2.5)
+    return { label: '正经', description: '严肃研究', variant: 'outline' }
+  if (index < 5)
+    return { label: '轻诞', description: '略带荒诞色彩', variant: 'secondary' }
+  if (index < 7.5)
+    return { label: '荒诞', description: '明显的荒诞研究', variant: 'default' }
+  return { label: '离谱', description: '编辑部认证的离谱研究', variant: 'destructive' }
+}
+
+export function absurdityLabel(index: number | null | undefined): string {
+  return absurdityLevel(index)?.label ?? '—'
+}

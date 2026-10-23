@@ -1,18 +1,20 @@
 import { useState } from 'react'
 import { createFileRoute, Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { Download, Plus, SlidersHorizontal } from 'lucide-react'
+import { Download, FileDown, Plus, SlidersHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/use-auth'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { exportResources, useResources } from '@/hooks/api/use-modules'
 import type { ResourceType } from '@/lib/types'
 import { extractError, formatAuthors } from '@/lib/utils'
+import { absurdityLevel, typeLabel } from '@/lib/resource-labels'
 import { PageHeader } from '@/components/common/page-header'
-import { EmptyState, ErrorState, Loading } from '@/components/common/state'
+import { EmptyState, ErrorState } from '@/components/common/state'
 import { Pagination } from '@/components/common/pagination'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { ResourceCard } from '@/components/mobile/ResourceCard'
 import {
@@ -173,7 +175,18 @@ function CatalogListPage() {
       )}
 
       {isLoading ? (
-        <Loading />
+        <div className="space-y-3" aria-hidden>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 rounded-lg border bg-card px-4 py-3">
+              <Skeleton className="h-4 w-4" />
+              <Skeleton className="h-4 flex-1" />
+              <Skeleton className="hidden h-4 w-32 sm:block" />
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="hidden h-4 w-24 md:block" />
+              <Skeleton className="h-5 w-14 rounded-full" />
+            </div>
+          ))}
+        </div>
       ) : isError ? (
         <ErrorState message="加载资源失败" onRetry={() => refetch()} />
       ) : !data || data.data.length === 0 ? (
@@ -242,7 +255,30 @@ function CatalogListPage() {
                         {r.discipline}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{r.type}</Badge>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant="secondary">{typeLabel(r.type)}</Badge>
+                          {(() => {
+                            const level = absurdityLevel(r.absurdity_index)
+                            return level ? (
+                              <Badge
+                                variant={level.variant}
+                                className="text-[10px]"
+                                title={`荒诞指数 ${r.absurdity_index} / 10 · ${level.description}`}
+                              >
+                                {level.label}
+                              </Badge>
+                            ) : null
+                          })()}
+                          {r.has_file ? (
+                            <span
+                              className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground"
+                              title="提供 PDF 全文"
+                            >
+                              <FileDown className="h-3 w-3" />
+                              PDF
+                            </span>
+                          ) : null}
+                        </div>
                       </TableCell>
                     </TableRow>
                   )

@@ -29,8 +29,9 @@ import {
 } from '@/hooks/api/use-modules'
 import type { ResourceUpdate } from '@/lib/types'
 import { extractError, formatDateTime, parseListField } from '@/lib/utils'
-import { languageLabel, statusLabel, typeLabel } from '@/lib/resource-labels'
+import { absurdityLevel, languageLabel, statusLabel, typeLabel } from '@/lib/resource-labels'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -125,8 +126,25 @@ function CatalogDetailPage() {
 
       <div className="mb-6 flex items-start justify-between gap-4">
         <div className="flex-1">
-          <div className="mb-2 flex items-center gap-2">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{typeLabel(data.type)}</Badge>
+            {(() => {
+              const level = absurdityLevel(data.absurdity_index)
+              return level ? (
+                <Badge
+                  variant={level.variant}
+                  title={`荒诞指数 ${data.absurdity_index} / 10 · ${level.description}`}
+                >
+                  {level.label} {data.absurdity_index?.toFixed(1)}
+                </Badge>
+              ) : null
+            })()}
+            {data.r_index != null && data.r_index > 0 ? (
+              <Badge variant="outline" className="tabular-nums">
+                R {data.r_index.toFixed(1)}
+                {data.quartile ? ` · ${data.quartile}` : ''}
+              </Badge>
+            ) : null}
             {data.publication_status !== 'published' && (
               <Badge variant="outline">{statusLabel(data.publication_status)}</Badge>
             )}
@@ -180,9 +198,17 @@ function CatalogDetailPage() {
               <MetaItem label="阅读次数" value={String(data.reads ?? 0)} />
               <MetaItem label="下载次数" value={String(data.downloads ?? 0)} />
               <MetaItem label="收藏次数" value={String(data.saves ?? 0)} />
+              <MetaItem
+                label="荒诞指数"
+                value={
+                  data.absurdity_index != null
+                    ? `${data.absurdity_index.toFixed(1)} / 10 · ${absurdityLevel(data.absurdity_index)?.description ?? ''}`
+                    : '未评定'
+                }
+              />
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                R 指数由本刊阅读、下载、收藏事件计算，按学科内最大值归一；
-                它衡量站内注意力，不等同于影响因子。
+                R 指数与荒诞指数均为本刊自设计指标：前者衡量站内注意力，
+                后者由编辑部评定内容气质；口径属编辑部内部标准，不等同于影响因子。
               </p>
             </CardContent>
           </Card>
@@ -421,6 +447,8 @@ interface EditFormState {
   abstract: string
   tags: string
   preview: string
+  absurdity_index: string
+  publication_status: 'published' | 'in_review' | 'draft'
 }
 
 function EditDialog({
@@ -439,6 +467,8 @@ function EditDialog({
     abstract: string
     tags: string[]
     preview: string
+    absurdity_index?: number | null
+    publication_status: 'published' | 'in_review' | 'draft'
   }
   onSubmit: (body: ResourceUpdate) => Promise<void>
 }) {
@@ -450,6 +480,9 @@ function EditDialog({
     abstract: initial.abstract,
     tags: initial.tags.join(', '),
     preview: initial.preview,
+    absurdity_index:
+      initial.absurdity_index != null ? String(initial.absurdity_index) : '',
+    publication_status: initial.publication_status,
   })
 
   const onSubmitForm = async (e: React.FormEvent) => {
@@ -462,6 +495,11 @@ function EditDialog({
       abstract: form.abstract,
       tags: parseListField(form.tags),
       preview: form.preview,
+      absurdity_index:
+        form.absurdity_index.trim() === ''
+          ? null
+          : Number(form.absurdity_index),
+      publication_status: form.publication_status,
     }
     await onSubmit(body)
   }
@@ -535,6 +573,38 @@ function EditDialog({
               value={form.preview}
               onChange={(e) => setForm({ ...form, preview: e.target.value })}
             />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-absurdity">荒诞指数（0–10，留空为未评定）</Label>
+              <Input
+                id="edit-absurdity"
+                type="number"
+                min={0}
+                max={10}
+                step={0.1}
+                value={form.absurdity_index}
+                onChange={(e) => setForm({ ...form, absurdity_index: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-pubstatus">刊出状态</Label>
+              <Select
+                value={form.publication_status}
+                onValueChange={(v) =>
+                  setForm({ ...form, publication_status: v as EditFormState['publication_status'] })
+                }
+              >
+                <SelectTrigger id="edit-pubstatus">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="published">已发表（公开可见）</SelectItem>
+                  <SelectItem value="in_review">评审中（刊前预览）</SelectItem>
+                  <SelectItem value="draft">草稿（仅编辑部可见）</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button

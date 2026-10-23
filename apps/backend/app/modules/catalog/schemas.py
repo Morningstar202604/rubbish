@@ -116,6 +116,8 @@ class ResourceBase(BaseModel):
     keywords: list[str] | None = Field(default=None, max_length=50)
     language: str = Field(default="zh", max_length=10)
     publication_status: PublicationStatus = "published"
+    # 荒诞指数：编辑部评定（0–10，一位小数），None 表示未评定。
+    absurdity_index: float | None = Field(default=None, ge=0, le=10)
 
     @model_validator(mode="after")
     def _fill_preview_from_abstract(self) -> ResourceBase:
@@ -162,6 +164,8 @@ class ResourceUpdate(BaseModel):
     publication_status: PublicationStatus | None = None
     slug: str | None = Field(default=None, min_length=1, max_length=100)
     authors_meta: list[AuthorMeta] | None = Field(default=None, max_length=200)
+    # 荒诞指数：编辑部评定（0–10，一位小数），None 表示未评定。
+    absurdity_index: float | None = Field(default=None, ge=0, le=10)
 
 
 class ResourceResponse(ResourceBase):
@@ -185,6 +189,7 @@ class ResourceResponse(ResourceBase):
     saves: int | None = None
     r_index: float | None = None
     quartile: str | None = None
+    # absurdity_index 继承自 ResourceBase（编辑部评定，0–10，可空）。
 
 
 class ResourceListResponse(BaseModel):
@@ -207,6 +212,9 @@ class JournalMetrics(BaseModel):
     Fields that need a minimum sample (acceptance rate, review turnaround)
     are Optional: ``None`` means "not enough data yet", which the UI must
     render as such instead of showing 0.
+
+    口径说明刻意不进响应：公式与权重是编辑部的内部口径，页面上只呈现
+    数值与含义，不呈现算法（改自 0.5.0，此前暴露 r_index_formula）。
     """
 
     published_total: int
@@ -222,7 +230,13 @@ class JournalMetrics(BaseModel):
     avg_review_days: float | None = None
     median_review_days: float | None = None
     open_access_rate: float | None = None
-    r_index_formula: str
+    # R 因子：全刊已发表记录 R 指数的均值（保留两位小数）——本刊自设计
+    # 的旗舰指标，角色类似传统影响因子，但口径不公开。
+    r_factor: float | None = None
+    # 无引文数据，自引率恒为 0.0（诚实标注，页面上作为固定项展示）。
+    self_citation_rate: float = 0.0
+    # 荒诞指数中位数：已评定记录的中位数；尚无评定时为 None。
+    absurdity_index_median: float | None = None
 
 
 class FacetBucket(BaseModel):

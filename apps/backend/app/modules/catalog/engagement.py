@@ -11,8 +11,10 @@ attention score built only from events the platform actually records:
 ``r_index`` = 100 x (0.5*reads_n + 0.3*downloads_n + 0.2*saves_n) where
 each ``*_n`` is divided by the maximum value **within the same
 discipline**, so a new journal is not compared against absolute traffic.
-The formula and its limits are documented on ``/journal-metrics``;
-nothing here is presented as a citation metric.
+The formula itself is an internal editorial yardstick: the public
+metrics surface reports the numbers (r_index, journal-level r_factor)
+without publishing the weights, and nothing here is presented as a
+citation metric.
 
 Quartiles (``R1``..``R4``) are percentile bands of ``r_index`` inside a
 discipline. They are only assigned when a discipline has at least
@@ -23,6 +25,7 @@ inventing one.
 
 from __future__ import annotations
 
+import statistics
 from dataclasses import dataclass
 from typing import Any
 
@@ -137,6 +140,24 @@ def _quartile_bands(
     return bands
 
 
+def _discipline_maxima(
+    rows: list[Resource], raw: dict[int, tuple[int, int, int]]
+) -> dict[str, tuple[int, int, int]]:
+    """Per-discipline maxima of (reads, downloads, saves) for normalisation."""
+    grouped: dict[str, list[tuple[int, int, int]]] = {}
+    for row in rows:
+        if row.discipline:
+            grouped.setdefault(row.discipline, []).append(raw.get(row.id, (0, 0, 0)))
+    return {
+        discipline: (
+            max((v[0] for v in values), default=0),
+            max((v[1] for v in values), default=0),
+            max((v[2] for v in values), default=0),
+        )
+        for discipline, values in grouped.items()
+    }
+
+
 async def compute_engagement(db: AsyncSession, rows: list[Resource]) -> dict[int, Engagement]:
     """Compute per-record engagement + quartile for a page of resources.
 
@@ -169,13 +190,8 @@ async def compute_engagement(db: AsyncSession, rows: list[Resource]) -> dict[int
             .all()
         )
         all_raw = await load_raw_engagement(db, [r.id for r in all_rows], tenant_id)
+        maxima_by_discipline = _discipline_maxima(all_rows, all_raw)
         for discipline in disciplines:
-            values = [all_raw.get(r.id, (0, 0, 0)) for r in all_rows if r.discipline == discipline]
-            maxima_by_discipline[discipline] = (
-                max((v[0] for v in values), default=0),
-                max((v[1] for v in values), default=0),
-                max((v[2] for v in values), default=0),
-            )
             quartiles[discipline] = _quartile_bands(all_rows, all_raw, discipline)
 
     result: dict[int, Engagement] = {}
@@ -265,6 +281,31 @@ async def journal_metrics(db: AsyncSession, tenant_id: Any) -> dict[str, Any]:
     avg_review_days = round(sum(review_days) / len(review_days), 1) if review_days else None
     median_review_days = round(review_days[len(review_days) // 2], 1) if review_days else None
 
+    # R 因子：全刊已发表记录 R 指数的均值。复用与单篇一致的最大值归一，
+    # 因此一篇孤立的新文章不会因为全刊流量小而虚高。
+    r_factor: float | None = None
+    published_rows = list(
+        (await db.execute(select(Resource).where(*published_filter))).scalars().all()
+    )
+    if published_rows:
+        raw = await load_raw_engagement(db, [r.id for r in published_rows], tenant_id)
+        maxima = _discipline_maxima(published_rows, raw)
+        scores = [
+            _score(*raw.get(r.id, (0, 0, 0)), maxima.get(r.discipline, (0, 0, 0)))
+            for r in published_rows
+        ]
+        r_factor = round(sum(scores) / len(scores), 2)
+
+    absurdity_rows = (
+        await db.execute(
+            select(Resource.absurdity_index).where(
+                *published_filter, Resource.absurdity_index.is_not(None)
+            )
+        )
+    ).scalars()
+    absurdity_values = [float(v) for v in absurdity_rows if v is not None]
+    absurdity_median = round(statistics.median(absurdity_values), 1) if absurdity_values else None
+
     return {
         "published_total": total,
         "by_type": by_type,
@@ -279,10 +320,9 @@ async def journal_metrics(db: AsyncSession, tenant_id: Any) -> dict[str, Any]:
         "avg_review_days": avg_review_days,
         "median_review_days": median_review_days,
         "open_access_rate": 100.0 if total else None,
-        "r_index_formula": (
-            "R = 100 x (0.5 x read_norm + 0.3 x download_norm + 0.2 x save_norm), "
-            "normalised by the discipline maximum"
-        ),
+        "r_factor": r_factor,
+        "self_citation_rate": 0.0,
+        "absurdity_index_median": absurdity_median,
     }
 
 

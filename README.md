@@ -10,7 +10,7 @@
 
 **🌐 [English](README.md) · [简体中文](README.zh-CN.md)**
 
-[![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg?style=flat-square)](LICENSE)
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm--Noncommercial--1.0.0-orange.svg?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12+-3776AB.svg?logo=python&logoColor=white&style=flat-square)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.139-009688.svg?logo=fastapi&logoColor=white&style=flat-square)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=white&style=flat-square)](https://react.dev/)
@@ -43,7 +43,8 @@
 | **Author** | Submit manuscripts (with PDF), multi-version revisions, track review status (pending / major / minor / accept / reject) |
 | **Editor** | Assign reviewers, decide (with editorial notes), manuscript management workbench |
 | **Reviewer** | Review reports, blind review (single / double), decision recommendation |
-| **Reader** | Public catalog search, **in-browser reading (pdf.js)**, cross-device reading progress, follow authors, subscribe |
+| **Reader** | Public catalog search, **in-browser reading (pdf.js) — no login wall**, cross-device reading progress, follow authors, subscribe |
+| **Journal** | Dual-track acceptance (serious + absurd research), editorial metrics (R factor, absurdity index) with hidden methodology, author guide / policies / about pages, submission templates |
 | **Admin** | Users / volumes / issues / journals management, audit logs, batch import (BibTeX / RIS / CSV / DOI / arXiv) |
 
 **Secure by default**: WebAuthn passkeys + TOTP 2FA, server-side JWT revocation with key rotation, sign-up captcha, per-action audit logs, multi-tenant isolation (PostgreSQL RLS).
@@ -121,4 +122,6 @@ cd apps/frontend && E2E_SPAWN_SERVER=1 npx playwright test
 
 ## License
 
-[AGPL-3.0](LICENSE)
+Code is released under [PolyForm Noncommercial 1.0.0](LICENSE): free to use, modify, and redistribute for **learning, research, and noncommercial purposes only** — commercial use, paid services, and bundling into charged products are not permitted.
+
+Papers and site content remain the property of their authors.

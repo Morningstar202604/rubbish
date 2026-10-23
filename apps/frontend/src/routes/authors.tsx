@@ -1,0 +1,272 @@
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { motion } from 'motion/react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpenCheck,
+  CheckCircle2,
+  Download,
+  FileText,
+  PenLine,
+  ShieldCheck,
+  Sparkles,
+  XCircle,
+} from 'lucide-react'
+import { PageHeader } from '@/components/common/page-header'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { useAuth } from '@/hooks/use-auth'
+
+export const Route = createFileRoute('/authors')({
+  component: AuthorsPage,
+})
+
+// 作者指南与收录标准：对标正式期刊的投稿要求（原创性、伦理、评审流程），
+// 但去掉老古董包袱——不收版面费、不要求单位介绍信、正式承认荒诞研究。
+const rise = {
+  initial: { opacity: 0, y: 14 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: '-40px' },
+  transition: { duration: 0.45, ease: 'easeOut' as const },
+}
+
+const ACCEPT_CRITERIA: Array<{ title: string; body: string }> = [
+  {
+    title: '原创性',
+    body: '稿件必须为作者原创且未在其他刊物或平台发表（预印本不在此列）。一稿多投在审稿期内视为违规。',
+  },
+  {
+    title: '可核查性',
+    body: '涉及数据、实验或调查的稿件，应能说明方法与来源；我们不做开放式数据强制存放，但拒绝无法自洽的凭空数据。',
+  },
+  {
+    title: '学术规范',
+    body: '引用他人观点必须注明出处；署名作者须对内容有实质贡献；AI 辅助写作需在致谢中声明。',
+  },
+  {
+    title: '清晰的写作',
+    body: '无论正经还是荒诞，行文要完整：摘要、引言、方法（或论证）、结论缺一不可。荒诞研究的论证同样要像模像样。',
+  },
+]
+
+const BOTH_TRACKS = [
+  {
+    icon: BookOpenCheck,
+    title: '正经研究（Serious Track）',
+    body: '标准学术论文：实证研究、综述、方法论、案例分析。按通行学术规范评审，双盲评审照常执行。',
+  },
+  {
+    icon: Sparkles,
+    title: '荒诞研究（Absurd Track）',
+    body: '我们正式承认荒诞题材的学术价值：从「奶蛙形象与传统文化叙事」到「食堂窗口拥挤度预测」，只要论证自洽、格式规范、有趣而不伤人，编辑部照单全收。传统刊物嫌它荒诞，我们嫌它不够荒诞。',
+  },
+]
+
+const NOT_ACCEPTED = [
+  '违反法律法规或伤害特定群体的内容',
+  '抄袭、代写、数据造假',
+  '纯广告或营销软文（连荒诞的都不行）',
+  '针对真实个人的影射或骚扰',
+  '已在外部刊物正式发表的内容',
+]
+
+function AuthorsPage() {
+  const { isAuthenticated } = useAuth()
+
+  return (
+    <div className="mx-auto max-w-4xl py-8">
+      <Link
+        to="/"
+        className="mb-4 inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-primary"
+      >
+        <ArrowLeft className="mr-1 h-4 w-4" />
+        返回首页
+      </Link>
+
+      <PageHeader
+        title="作者指南"
+        description="投稿要求、收录标准、格式模板与评审流程——一份读完就能动笔的指南。"
+      />
+
+      <div className="space-y-10">
+        <motion.section {...rise}>
+          <h2 className="text-xl font-medium">双轨收录</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Rubbish 是一家正经与荒诞兼容的开放获取期刊。两个赛道共用同一套格式与伦理标准，
+            稿件会在目录中标注所属气质。
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {BOTH_TRACKS.map(({ icon: Icon, title, body }) => (
+              <Card key={title} className="h-full">
+                <CardContent className="p-5">
+                  <p className="flex items-center gap-2 font-medium">
+                    <Icon className="h-4 w-4 text-primary" />
+                    {title}
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </motion.section>
+
+        <motion.section {...rise}>
+          <h2 className="text-xl font-medium">收录标准</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {ACCEPT_CRITERIA.map((c, i) => (
+              <Card key={c.title}>
+                <CardContent className="p-5">
+                  <p className="text-sm font-medium">
+                    <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
+                      {i + 1}
+                    </span>
+                    {c.title}
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.body}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </motion.section>
+
+        <motion.section {...rise}>
+          <h2 className="text-xl font-medium">发表要求</h2>
+          <div className="mt-4 grid gap-6 lg:grid-cols-2">
+            <div className="rounded-lg border bg-card p-5">
+              <h3 className="flex items-center gap-2 text-sm font-medium text-primary">
+                <CheckCircle2 className="h-4 w-4" />
+                我们要求
+              </h3>
+              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                <li>· 稿件为 Markdown / PDF / Word 任一格式，图表清晰</li>
+                <li>· 中文为主，英文稿件亦可（目录会标注语言）</li>
+                <li>· 摘要 150–300 字，关键词 3–6 个</li>
+                <li>· 篇幅建议 3,000–15,000 字（荒诞研究上不封顶，别真写 15 万字）</li>
+                <li>· 全体作者同意署名与排序，投稿后不可悄悄增删作者</li>
+                <li>· 参考文献格式不限（GB/T 7714、APA、BibTeX 均可），但要一致</li>
+              </ul>
+            </div>
+            <div className="rounded-lg border bg-card p-5">
+              <h3 className="flex items-center gap-2 text-sm font-medium text-destructive">
+                <XCircle className="h-4 w-4" />
+                我们不要求
+              </h3>
+              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                <li>· 版面费、审稿费、加速费——本刊一切免费</li>
+                <li>· 单位介绍信、导师签字、纸质公函</li>
+                <li>· 作者职称、头衔、学历门槛（本科生与教授同等待遇）</li>
+                <li>· 英文摘要（中文稿件不需要凑英文 ABSTRACT）</li>
+                <li>· 基金项目编号（有就写，没有不扣分）</li>
+                <li>· CLC 分类号等纸媒时代的遗产</li>
+              </ul>
+            </div>
+          </div>
+        </motion.section>
+
+        <motion.section {...rise}>
+          <h2 className="text-xl font-medium">不予收录</h2>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {NOT_ACCEPTED.map((item) => (
+              <li
+                key={item}
+                className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-muted-foreground"
+              >
+                <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive/70" />
+                {item}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+            荒诞研究同样适用伦理底线：可以离谱，不可以伤人。详见
+            <Link to="/policies" className="mx-1 text-primary hover:underline">
+              期刊政策与社区规范
+            </Link>
+            。
+          </p>
+        </motion.section>
+
+        <motion.section {...rise}>
+          <h2 className="text-xl font-medium">格式模板</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            不强制使用，但用模板能显著降低编辑部的排版时间——你的论文会更快见刊。
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {[
+              {
+                href: '/templates/rubbish-submission-template.md',
+                icon: FileText,
+                title: 'Markdown 模板',
+                body: '推荐。结构齐全，站点导入与在线阅读器最友好。',
+              },
+              {
+                href: '/templates/rubbish-submission-template.tex',
+                icon: FileText,
+                title: 'LaTeX 模板',
+                body: '公式多的正经研究用它；编译出 PDF 后直接投稿。',
+              },
+            ].map((t) => (
+              <Card key={t.href}>
+                <CardContent className="flex items-start gap-4 p-5">
+                  <t.icon className="mt-0.5 h-8 w-8 shrink-0 text-primary/70" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{t.title}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t.body}</p>
+                    <a
+                      href={t.href}
+                      download
+                      className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                    >
+                      <Download className="h-3 w-3" />
+                      下载模板
+                    </a>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </motion.section>
+
+        <motion.section {...rise}>
+          <h2 className="text-xl font-medium">评审流程</h2>
+          <ol className="mt-4 space-y-3">
+            {[
+              ['提交', '注册后在「我的提交」创建稿件并上传文件，状态变为「待审」。'],
+              ['初审', '编辑部检查格式与收录标准，不合适会被退回并附理由。'],
+              ['同行评审', '双盲评审：审稿人不知道你是谁，你也不知道审稿人是谁。'],
+              ['修订', '小修/大修意见返回作者；修订重投不另收任何费用。'],
+              ['录用见刊', '录用后进入刊前整理，刊出后自动进入目录并计入期刊指标。'],
+            ].map(([title, body], i) => (
+              <li key={title} className="flex gap-4">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                  {i + 1}
+                </span>
+                <div>
+                  <p className="text-sm font-medium">{title}</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-4 flex items-start gap-2 text-xs text-muted-foreground">
+            <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+            每次裁决与版本变更均写入审计日志；审稿过程中编辑部不会向任何人泄露你的稿件内容。
+          </p>
+        </motion.section>
+
+        <motion.section {...rise} className="rounded-xl border bg-gradient-to-br from-primary/5 to-accent/10 p-8 text-center">
+          <PenLine className="mx-auto h-8 w-8 text-primary" />
+          <h2 className="mt-3 text-xl font-medium">准备好了？</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+            注册账号即可投稿。已有账号？直接进入我的提交开始写。
+          </p>
+          <Button asChild className="mt-5">
+            <Link to={isAuthenticated ? '/submissions' : '/register'}>
+              {isAuthenticated ? '进入我的投稿' : '免费注册投稿'}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        </motion.section>
+      </div>
+    </div>
+  )
+}

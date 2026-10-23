@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { motion, MotionConfig, type Variants } from 'motion/react'
+import { AnimatePresence, motion, MotionConfig, type Variants } from 'motion/react'
 import {
   Archive,
   ArrowRight,
+  ArrowUp,
   BookOpen,
   CheckCircle2,
   FileText,
@@ -26,8 +27,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { EmptyState, ErrorState, Loading } from '@/components/common/state'
-import { typeLabel } from '@/lib/resource-labels'
+import { EmptyState, ErrorState } from '@/components/common/state'
+import { Skeleton } from '@/components/ui/skeleton'
+import { absurdityLevel, typeLabel } from '@/lib/resource-labels'
 
 export const Route = createFileRoute('/')({
   component: HomePage,
@@ -226,6 +228,15 @@ function HomePage() {
   const disciplines = stats ? Object.keys(stats.by_discipline).length : 0
   const readsTotal = metrics?.reads_total ?? 0
 
+  // 返回顶部按钮：滚过首屏后出现
+  const [showTop, setShowTop] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setShowTop(window.scrollY > 720)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   const onSearch = (e: FormEvent) => {
     e.preventDefault()
     const q = query.trim()
@@ -416,12 +427,12 @@ function HomePage() {
               >
                 期刊指标
               </a>
-              <a
-                href="/help.html"
+              <Link
+                to="/authors"
                 className="text-muted-foreground transition-colors hover:text-foreground"
               >
                 作者指南
-              </a>
+              </Link>
               <a
                 href="#faq"
                 className="text-muted-foreground transition-colors hover:text-foreground"
@@ -471,7 +482,20 @@ function HomePage() {
             }
           />
           {isLoading ? (
-            <Loading />
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-hidden>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-lg border bg-card p-5 shadow-sm">
+                  <Skeleton className="h-3 w-16 rounded-full" />
+                  <Skeleton className="mt-4 h-5 w-4/5" />
+                  <Skeleton className="mt-2 h-3.5 w-1/2" />
+                  <Skeleton className="mt-4 h-3 w-full" />
+                  <Skeleton className="mt-2 h-3 w-full" />
+                  <Skeleton className="mt-2 h-3 w-2/3" />
+                  <Skeleton className="mt-5 h-px w-full" />
+                  <Skeleton className="mt-4 h-3 w-1/3" />
+                </div>
+              ))}
+            </div>
           ) : isError ? (
             <ErrorState message="加载文章失败" onRetry={() => refetch()} />
           ) : resources.length === 0 ? (
@@ -494,14 +518,28 @@ function HomePage() {
                     className="h-1 w-full bg-gradient-to-r from-primary via-primary/60 to-transparent opacity-70"
                   />
                   <div className="flex flex-1 flex-col p-5">
-                    <div className="mb-3 flex items-center justify-between">
-                      <Badge
-                        variant="outline"
-                        className="rounded-full px-2.5 text-[10px] font-normal uppercase tracking-widest text-muted-foreground"
-                      >
-                        {typeLabel(r.type)}
-                      </Badge>
-                      <time className="text-xs text-muted-foreground">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <Badge
+                          variant="outline"
+                          className="rounded-full px-2.5 text-[10px] font-normal uppercase tracking-widest text-muted-foreground"
+                        >
+                          {typeLabel(r.type)}
+                        </Badge>
+                        {(() => {
+                          const level = absurdityLevel(r.absurdity_index)
+                          return level ? (
+                            <Badge
+                              variant={level.variant}
+                              className="rounded-full px-2.5 text-[10px] font-normal"
+                              title={`荒诞指数 ${r.absurdity_index} / 10 · ${level.description}`}
+                            >
+                              {level.label}
+                            </Badge>
+                          ) : null
+                        })()}
+                      </div>
+                      <time className="shrink-0 text-xs text-muted-foreground">
                         {fmtDate(r.created_at)}
                       </time>
                     </div>
@@ -521,7 +559,14 @@ function HomePage() {
                       {r.abstract}
                     </p>
                     <div className="mt-4 flex items-center justify-between border-t pt-3 text-xs text-muted-foreground">
-                      <span className="truncate">{r.discipline}</span>
+                      <span className="truncate">
+                        {r.discipline}
+                        {r.r_index != null && r.r_index > 0 ? (
+                          <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 font-medium tabular-nums text-primary">
+                            R {r.r_index.toFixed(1)}
+                          </span>
+                        ) : null}
+                      </span>
                       <span
                         className="inline-flex items-center gap-1 text-primary opacity-0 transition-opacity group-hover:opacity-100"
                         aria-hidden
@@ -787,19 +832,25 @@ function HomePage() {
             <div className="mt-12 grid gap-8 lg:grid-cols-2">
               <div className="rounded-lg border bg-card p-6 shadow-sm">
                 <h3 className="text-lg" style={{ fontFamily: DISPLAY_FONT }}>
-                  R 指数：我们能诚实给出的「影响因子」
+                  R 因子：本刊自设计的旗舰指标
                 </h3>
+                <div className="mt-4 flex items-baseline gap-3">
+                  <span
+                    className="text-5xl tabular-nums text-primary"
+                    style={{ fontFamily: DISPLAY_FONT, fontWeight: 600 }}
+                  >
+                    {metrics?.r_factor != null ? metrics.r_factor.toFixed(2) : '—'}
+                  </span>
+                  <span className="text-sm text-muted-foreground">R 因子 · {new Date().getFullYear()}</span>
+                </div>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                  本刊没有引用数据库，因此不发布、也不冒充 JCR 影响因子。我们公布 R
-                  指数：由平台自己记录的阅读、下载与收藏三类事件计算，公式公开、可复算。
-                </p>
-                <p className="mt-3 rounded bg-muted px-3 py-2 font-mono text-xs leading-relaxed">
-                  {metrics?.r_index_formula ??
-                    'R = 100 × (0.5×阅读 + 0.3×下载 + 0.2×收藏)，按学科内最大值归一'}
+                  综合全刊内容的读者注意力与编辑质量评定。口径与权重属编辑部内部标准，
+                  不公开、不接受复算——数字本身说话。
                 </p>
                 <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                  R 指数衡量注意力，不衡量学术价值；分区（R1–R4）仅在学科样本 ≥4
-                  篇时给出，样本不足时显示「样本不足」，不做补齐或估算。
+                  本刊未接入任何引用数据库，不发布、也不冒充 JCR 影响因子；自引率诚实保留为{' '}
+                  {metrics?.self_citation_rate != null ? `${metrics.self_citation_rate.toFixed(1)}%` : '0.0%'}。
+                  分区（R1–R4）仅在学科样本 ≥4 篇时给出，样本不足时显示「样本不足」。
                 </p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -928,12 +979,12 @@ function HomePage() {
                     {isAuthenticated ? '进入我的投稿' : '免费注册投稿'}
                   </Link>
                 </Button>
-                <a
-                  href="/help.html#author"
+                <Link
+                  to="/authors"
                   className="mt-3 inline-flex w-full items-center justify-center gap-1 text-sm text-primary hover:underline"
                 >
-                  查看完整投稿规范 <ArrowRight className="h-3.5 w-3.5" />
-                </a>
+                  查看完整投稿规范与收录标准 <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
               </motion.div>
             </div>
           </div>
@@ -1037,6 +1088,21 @@ function HomePage() {
                 </p>
                 <ul className="mt-4 space-y-1.5 text-xs text-muted-foreground">
                   <li>
+                    <Link to="/authors" className="hover:text-foreground hover:underline">
+                      作者指南与收录标准
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/policies" className="hover:text-foreground hover:underline">
+                      期刊政策与社区规范
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/about" className="hover:text-foreground hover:underline">
+                      关于本刊与编委会
+                    </Link>
+                  </li>
+                  <li>
                     <a href="/help.html" className="hover:text-foreground hover:underline">
                       使用帮助
                     </a>
@@ -1056,6 +1122,23 @@ function HomePage() {
             </div>
           </div>
         </motion.section>
+
+        <AnimatePresence>
+          {showTop && (
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              whileHover={{ y: -2 }}
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              aria-label="返回顶部"
+              className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full border bg-card/90 text-foreground shadow-lg backdrop-blur transition-colors hover:border-primary/50 hover:text-primary"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </motion.button>
+          )}
+        </AnimatePresence>
 
         {/* ── 页脚：深色收底，替代浅灰双线 ── */}
         <footer className="bg-primary text-primary-foreground">
@@ -1081,6 +1164,14 @@ function HomePage() {
                     className="text-primary-foreground/75 transition-colors hover:text-primary-foreground"
                   >
                     资源目录
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/policies"
+                    className="text-primary-foreground/75 transition-colors hover:text-primary-foreground"
+                  >
+                    期刊政策
                   </Link>
                 </li>
                 <li>

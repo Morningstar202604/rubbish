@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { ChevronLeft, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { getAuthState } from '@/lib/auth'
 import { formatDateTime } from '@/lib/utils'
+import { useAuth } from '@/hooks/use-auth'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import {
   useReadingProgress,
@@ -33,9 +33,8 @@ function isSafeDownloadUrl(url: string): boolean {
 }
 
 export const Route = createFileRoute('/reader/$resourceId')({
-  beforeLoad: () => {
-    if (!getAuthState().isAuthenticated) throw redirect({ to: '/login' })
-  },
+  // 公开阅读：已发表论文的文件端点对匿名开放（服务端仍对未刊稿 404/401），
+  // 路由不再挡登录；阅读进度同步按登录态降级（见 isAuthenticated 分支）。
   component: ReaderPage,
 })
 
@@ -45,7 +44,8 @@ function ReaderPage() {
   const navigate = useNavigate()
 
   const { data, isLoading, isError, refetch } = useResource(id)
-  const progress = useReadingProgress(id)
+  const { isAuthenticated } = useAuth()
+  const progress = useReadingProgress(id, { enabled: isAuthenticated })
   const updateMut = useUpdateProgress()
   const removeMut = useRemoveFromHistory()
 
@@ -96,7 +96,7 @@ function ReaderPage() {
   const flush = async () => {
     // 首次 mount 未同步完成前不 flush，避免 StrictMode 双挂载时
     // 用初始值覆盖服务端的真实进度。
-    if (!hasSyncedRef.current) return
+    if (!hasSyncedRef.current || !isAuthenticated) return
     const s = stateRef.current
     // 先把时长取出来并立刻清零，再 await 上报。若清零发生在 await 之后，
     // 30s ticker / 手动保存 / unmount 三个 flush 并发时会读到同一份
@@ -162,6 +162,11 @@ function ReaderPage() {
   }
 
   const onManualUpdate = async () => {
+    // 未登录访客没有进度可存；按钮对访客隐藏，这里兜底提示。
+    if (!isAuthenticated) {
+      toast.info('登录后才能同步阅读进度')
+      return
+    }
     // 用户手动点击"保存进度"：绕过 flush 的 hasSyncedRef guard。
     // 原因：GET /progress 在新用户上返回 404 + retry=1，整个 query 完成需要
     // ~1.5s。如果用户在这期间点击保存进度，hasSyncedRef.current 还是 false，
@@ -190,6 +195,10 @@ function ReaderPage() {
   }
 
   const onRemove = async () => {
+    if (!isAuthenticated) {
+      toast.info('登录后才能管理阅读历史')
+      return
+    }
     try {
       await removeMut.mutateAsync(id)
       toast.success('已从阅读历史移除')
@@ -346,14 +355,16 @@ function ReaderPage() {
             </CardContent>
           </Card>
 
-          <Button
-            variant="outline"
-            className="w-full text-destructive"
-            onClick={() => setRemoveOpen(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-            移除阅读历史
-          </Button>
+          {isAuthenticated && (
+            <Button
+              variant="outline"
+              className="w-full text-destructive"
+              onClick={() => setRemoveOpen(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              移除阅读历史
+            </Button>
+          )}
         </aside>
       </div>
 
