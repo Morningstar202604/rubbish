@@ -7,6 +7,17 @@
 `apps/backend/pyproject.toml`、`apps/frontend/package.json`、`apps/backend/app/__init__.py`
 四处完全一致，由 `scripts/check-version.sh` 守门。
 
+## [0.4.1] — 2026-10-23
+
+### Changed
+
+- 品牌图形标换代：`docs/assets/` 的 logo 家族（logo-mark / logo 徽章 /
+  logo-horizontal 及两份反白版）由旧「书页之 S」字标全部重绘为与
+  favicon、应用内 brand-mark 同几何的「印章之 R」（双线方框 + 衬线 R +
+  金色菱形落款）；徽章保留双环、环带字标与底部引用星，横版字标不变。
+- 宣传站（site/）标签页 favicon 此前渲染的是旧 S 字标，已替换为 R 印章
+  圆形版；brand.html 品牌页的图形概念与用色叙事同步更新。
+
 ## [0.4.0] — 2026-10-23
 
 ### Added

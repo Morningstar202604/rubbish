@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Rubbish 横版组合 · 反白版 —— 深色背景（官网导航 / 深色文档页头）用。
+  图形标为「印章之 R」双线线框版，与 logo-mark.svg 同几何。
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 150" width="560" height="150" role="img" aria-label="Rubbish">
-  <g transform="translate(10,15) scale(0.5)">
-    <path d="M 176 72 C 176 54 158 44 120 44 C 84 44 64 58 64 80 C 64 100 80 110 106 116 C 134 122 176 134 176 164 C 176 188 156 196 120 196 C 86 196 64 184 64 168"
-          fill="none" stroke="#F2F6FA" stroke-width="25" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 132 184 C 152 176 168 160 172 140 C 164 164 148 176 124 180 Z" fill="#E4C988"/>
+  <!-- 印章之 R · 反白（64 盒 × 1.875 = 120px） -->
+  <g transform="translate(10,15) scale(1.875)">
+    <rect x="3.5" y="3.5" width="57" height="57" rx="11" fill="none" stroke="#F2F6FA" stroke-width="3"/>
+    <rect x="9" y="9" width="46" height="46" rx="5" fill="none" stroke="#F2F6FA" stroke-opacity="0.5" stroke-width="1.2"/>
+    <text x="32" y="44" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="34" font-weight="600" fill="#F2F6FA">R</text>
+    <path d="M 50.5 44.5 L 56 50 L 50.5 55.5 L 45 50 Z" fill="#E4C988"/>
   </g>
 
   <text x="148" y="88" font-family="Georgia,'Times New Roman',serif" font-size="58"

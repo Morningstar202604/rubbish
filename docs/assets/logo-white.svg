@@ -2,7 +2,7 @@
 <!--
   Rubbish 主标志 —— 「学术徽章」反白版
   与 logo.svg 同几何、同构图；用于深色背景（官网 Hero / 深色导航 / 深色印刷）。
-  外环与文字反白，中央 S 用白色渐变，金色翻页角与引用星保留品牌点缀。
+  外环与文字反白，中央印章 R 用白色渐变，金色菱形落款与引用星保留品牌点缀。
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="Rubbish">
   <defs>
@@ -30,22 +30,13 @@
     <textPath href="#shw-arc-bottom" startOffset="50%" text-anchor="middle">OPEN SCHOLARLY PUBLISHING</textPath>
   </text>
 
-  <path d="M 176 72
-           C 176 54 158 44 120 44
-           C 84 44 64 58 64 80
-           C 64 100 80 110 106 116
-           C 134 122 176 134 176 164
-           C 176 188 156 196 120 196
-           C 86 196 64 184 64 168"
-        fill="none" stroke="url(#shw-white)" stroke-width="25"
-        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- 中央印章 R -->
+  <text x="120" y="152" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="76" font-weight="600" fill="url(#shw-white)">R</text>
 
-  <path d="M 132 184
-           C 152 176 168 160 172 140
-           C 164 164 148 176 124 180
-           Z"
-        fill="url(#shw-gold)"/>
+  <!-- 金色菱形落款 -->
+  <path d="M 146 154 L 158 166 L 146 178 L 134 166 Z" fill="url(#shw-gold)"/>
 
+  <!-- 底部金色引用星（DOI 意象） -->
   <path d="M 120 215 L 122.6 220.6 L 128.2 223.2 L 122.6 225.8 L 120 231.4 L 117.4 225.8 L 111.8 223.2 L 117.4 220.6 Z"
         fill="#E4C988"/>
 </svg>
