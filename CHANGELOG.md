@@ -7,6 +7,23 @@
 `apps/backend/pyproject.toml`、`apps/frontend/package.json`、`apps/backend/app/__init__.py`
 四处完全一致，由 `scripts/check-version.sh` 守门。
 
+## [0.3.4] — 2026-10-23
+
+### Added
+
+- 仓库治理对齐 zcode 标准：根目录 `AGENTS.md`（工作纪律 12+ 节）、
+  `.codebuddy/commands/` 四个命令程序（arch-review / review /
+  security-scan / test-gap）、pre-commit 新增 `no-junk-files` 与
+  `no-secret-files` 守卫钩子（等效 zcode cleanup-check / guard-write），
+  逐条对照见 `docs/zcode-compliance.md`。
+
+### Changed
+
+- 二次验证 otpauth:// 发布方回退名由旧名 ScholarHub 改为 Rubbish
+  （`app/api/two_factor.py` 的 `_issuer()`，该名称会显示在用户的验证器
+  App 中）；`infra/Dockerfile.*` 注释同步清理。清理后
+  `grep -ri scholarhub` 仅剩本文件对 0.3.3 清理动作的历史记录。
+
 ## [0.3.3] — 2026-10-23
 
 ### Changed

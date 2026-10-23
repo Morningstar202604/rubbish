@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Backend image for ScholarHUB.
+# Backend image for Rubbish.
 #
 # Multi-stage: builder uses uv to materialize the project venv from
 # ``pyproject.toml`` + ``uv.lock``; runtime copies just the venv + app

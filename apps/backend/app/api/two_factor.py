@@ -65,11 +65,11 @@ router = APIRouter(prefix="/auth/2fa", tags=["two-factor"])
 def _issuer() -> str:
     """Issuer label baked into otpauth:// URIs (shown in Authenticator apps).
 
-    Falls back to ``ScholarHub`` if the app has no name configured.
+    Falls back to ``Rubbish`` if the app has no name configured.
     """
     from app.core.config import settings
 
-    return settings.app_name or "ScholarHub"
+    return settings.app_name or "Rubbish"
 
 
 def _set_pending_cookie(response: Response, token: str) -> None:

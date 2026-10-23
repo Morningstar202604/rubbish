@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Frontend image for ScholarHUB.
+# Frontend image for Rubbish.
 #
 # Multi-stage: Node.js builder compiles the Vite/React app, then a minimal
 # nginx runtime serves the static output. Build context is the repo root
