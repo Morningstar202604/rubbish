@@ -37,3 +37,19 @@ repos:
         files: '^apps/frontend/src/.*\.(ts|tsx)$'
         additional_dependencies:
           - eslint@10.4.1
+
+  # --- zcode 治理对齐：把 zcode 代理钩子的守卫效果落到 git 层 ---
+  # cleanup-check.js → no-junk-files；guard-write.js → no-secret-files。
+  # 二者均为纯 stdlib 脚本（scripts/hooks/），通过 pre-commit/action 在 CI 强制。
+  - repo: local
+    hooks:
+      - id: no-junk-files
+        name: 禁止提交临时/备份文件 (zcode cleanup-check 等效)
+        entry: scripts/hooks/no_junk_files.py
+        language: script
+        description: 拦截 .tmp/.bak/.orig/.rej/~/.swp/.log 等临时文件进入版本库
+      - id: no-secret-files
+        name: 禁止提交密钥/凭据文件 (zcode guard-write 等效)
+        entry: scripts/hooks/no_secret_files.py
+        language: script
+        description: 按文件名拦截 .env/.pem/.key/id_rsa/.npmrc/credentials 等密钥文件
