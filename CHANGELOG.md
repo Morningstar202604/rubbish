@@ -7,6 +7,16 @@
 `apps/backend/pyproject.toml`、`apps/frontend/package.json`、`apps/backend/app/__init__.py`
 四处完全一致，由 `scripts/check-version.sh` 守门。
 
+## [0.4.2] — 2026-10-24
+
+### Added
+
+- 管理端用户删除：`DELETE /api/admin/users/{id}`（admin 专用）。防护：
+  管理员账号（含自己）不可删；目标 404 语义；users 全部外键为
+  CASCADE/SET NULL，无 RESTRICT，删除安全；写入 `user.deleted` 审计
+  日志（与删除同事务）。用于清理 e2e/smoke 测试账号。
+- 管理员账号角色补齐：admin 增加 `author` 角色（此前仅 editor/reviewer）。
+
 ## [0.4.1] — 2026-10-23
 
 ### Changed

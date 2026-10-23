@@ -153,3 +153,39 @@ async def test_assign_role_creates_audit_log(
     assert logs.status_code == 200
     actions = [log["action"] for log in logs.json()]
     assert "user.assign_role" in actions
+
+
+async def test_admin_can_delete_user(
+    client: AsyncClient, admin_user: dict, test_user: dict
+) -> None:
+    """DELETE /admin/users/{id}：管理员可删除普通用户，审计留痕，重复删 404。"""
+    uid = test_user["user_id"]
+    resp = await client.delete(f"/api/admin/users/{uid}", headers=auth_headers(admin_user))
+    assert resp.status_code == 204
+
+    # 用户列表不再包含该 id
+    users = await client.get("/api/admin/users", headers=auth_headers(admin_user))
+    assert users.status_code == 200
+    assert uid not in [u["id"] for u in users.json()]
+
+    # 审计日志记录 user.deleted
+    logs = await client.get("/api/admin/audit-logs?limit=20", headers=auth_headers(admin_user))
+    assert logs.status_code == 200
+    assert "user.deleted" in [log["action"] for log in logs.json()]
+
+    # 再删一次 → 404
+    again = await client.delete(f"/api/admin/users/{uid}", headers=auth_headers(admin_user))
+    assert again.status_code == 404
+
+
+async def test_delete_admin_account_refused(client: AsyncClient, admin_user: dict) -> None:
+    """管理员账号（含自己）不可删除 → 400。"""
+    resp = await client.delete(
+        f"/api/admin/users/{admin_user['user_id']}", headers=auth_headers(admin_user)
+    )
+    assert resp.status_code == 400
+
+
+async def test_delete_missing_user_404(client: AsyncClient, admin_user: dict) -> None:
+    resp = await client.delete("/api/admin/users/99999", headers=auth_headers(admin_user))
+    assert resp.status_code == 404

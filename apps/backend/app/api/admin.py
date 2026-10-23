@@ -188,6 +188,53 @@ async def set_user_active(
     return await _user_with_roles(db, user)
 
 
+@router.delete(
+    "/users/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(require_admin),
+) -> None:
+    """Permanently delete a user (admin housekeeping for test/spam accounts).
+
+    防护：管理员账号（含自己）不可删除，避免锁死管理入口；目标不存在
+    或不属于本租户 → 404。关联内容按外键级联清理（users 的全部外键均
+    为 CASCADE 或 SET NULL，无 RESTRICT），删除动作写入审计日志且与
+    变更同事务。
+    """
+    tenant_id = require_tenant_id()
+    result = await db.execute(
+        select(User).where(
+            User.id == user_id,
+            User.tenant_id == tenant_id,
+        )
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user.is_admin or user.id == current_admin.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Administrator accounts cannot be deleted",
+        )
+    username = user.username
+    await db.delete(user)
+    # Audit trail: record who deleted whom, same transaction as the delete.
+    db.add(
+        AuditLog(
+            tenant_id=current_admin.tenant_id,
+            actor_user_id=current_admin.id,
+            action="user.deleted",
+            target_type="user",
+            target_id=str(user_id),
+            payload={"username": username},
+        )
+    )
+    await db.commit()
+
+
 async def _get_or_create_role(db: AsyncSession, tenant_id: UUID, role_name: str) -> Role:
     """Get or create a role row (name is unique per tenant)."""
     role = (
