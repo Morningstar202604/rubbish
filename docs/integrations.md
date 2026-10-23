@@ -15,7 +15,7 @@ This document covers the three integrations operators most often wire up:
 
 ## 1. Email (SMTP)
 
-The email backend is selected by `SCHOLARHUB_EMAIL_BACKEND`. Two options:
+The email backend is selected by `RUBBISH_EMAIL_BACKEND`. Two options:
 
 - `console` (default) — every email body is written to the app log. Fine
   for local dev; never use in production.
@@ -26,25 +26,25 @@ The email backend is selected by `SCHOLARHUB_EMAIL_BACKEND`. Two options:
 
 ```bash
 # .env
-SCHOLARHUB_EMAIL_BACKEND=smtp
-SCHOLARHUB_EMAIL_FROM_ADDRESS=no-reply@yourdomain.com
-SCHOLARHUB_EMAIL_FROM_NAME=YourApp
-SCHOLARHUB_EMAIL_SMTP_HOST=smtp.yourprovider.com
-SCHOLARHUB_EMAIL_SMTP_PORT=587
-SCHOLARHUB_EMAIL_SMTP_USERNAME=your-smtp-username
-SCHOLARHUB_EMAIL_SMTP_PASSWORD=your-smtp-password
-SCHOLARHUB_EMAIL_SMTP_STARTTLS=true
-SCHOLARHUB_EMAIL_SMTP_USE_TLS=false
+RUBBISH_EMAIL_BACKEND=smtp
+RUBBISH_EMAIL_FROM_ADDRESS=no-reply@yourdomain.com
+RUBBISH_EMAIL_FROM_NAME=YourApp
+RUBBISH_EMAIL_SMTP_HOST=smtp.yourprovider.com
+RUBBISH_EMAIL_SMTP_PORT=587
+RUBBISH_EMAIL_SMTP_USERNAME=your-smtp-username
+RUBBISH_EMAIL_SMTP_PASSWORD=your-smtp-password
+RUBBISH_EMAIL_SMTP_STARTTLS=true
+RUBBISH_EMAIL_SMTP_USE_TLS=false
 ```
 
 ### Mailgun
 
 ```bash
-SCHOLARHUB_EMAIL_SMTP_HOST=smtp.mailgun.org
-SCHOLARHUB_EMAIL_SMTP_PORT=587
-SCHOLARHUB_EMAIL_SMTP_USERNAME=postmaster@your-domain.mailgun.org
-SCHOLARHUB_EMAIL_SMTP_PASSWORD=<mailgun-smtp-password>
-SCHOLARHUB_EMAIL_SMTP_STARTTLS=true
+RUBBISH_EMAIL_SMTP_HOST=smtp.mailgun.org
+RUBBISH_EMAIL_SMTP_PORT=587
+RUBBISH_EMAIL_SMTP_USERNAME=postmaster@your-domain.mailgun.org
+RUBBISH_EMAIL_SMTP_PASSWORD=<mailgun-smtp-password>
+RUBBISH_EMAIL_SMTP_STARTTLS=true
 ```
 
 Get the SMTP credentials from the Mailgun dashboard → Sending → Domains
@@ -53,21 +53,21 @@ Get the SMTP credentials from the Mailgun dashboard → Sending → Domains
 ### SendGrid
 
 ```bash
-SCHOLARHUB_EMAIL_SMTP_HOST=smtp.sendgrid.net
-SCHOLARHUB_EMAIL_SMTP_PORT=587
-SCHOLARHUB_EMAIL_SMTP_USERNAME=apikey                # literal string "apikey"
-SCHOLARHUB_EMAIL_SMTP_PASSWORD=<your-sendgrid-api-key>
-SCHOLARHUB_EMAIL_SMTP_STARTTLS=true
+RUBBISH_EMAIL_SMTP_HOST=smtp.sendgrid.net
+RUBBISH_EMAIL_SMTP_PORT=587
+RUBBISH_EMAIL_SMTP_USERNAME=apikey                # literal string "apikey"
+RUBBISH_EMAIL_SMTP_PASSWORD=<your-sendgrid-api-key>
+RUBBISH_EMAIL_SMTP_STARTTLS=true
 ```
 
 ### Amazon SES
 
 ```bash
-SCHOLARHUB_EMAIL_SMTP_HOST=email-smtp.<region>.amazonaws.com
-SCHOLARHUB_EMAIL_SMTP_PORT=587
-SCHOLARHUB_EMAIL_SMTP_USERNAME=<your-iam-smtp-username>
-SCHOLARHUB_EMAIL_SMTP_PASSWORD=<your-iam-smtp-password>
-SCHOLARHUB_EMAIL_SMTP_STARTTLS=true
+RUBBISH_EMAIL_SMTP_HOST=email-smtp.<region>.amazonaws.com
+RUBBISH_EMAIL_SMTP_PORT=587
+RUBBISH_EMAIL_SMTP_USERNAME=<your-iam-smtp-username>
+RUBBISH_EMAIL_SMTP_PASSWORD=<your-iam-smtp-password>
+RUBBISH_EMAIL_SMTP_STARTTLS=true
 ```
 
 To generate the IAM SMTP credentials, see the AWS docs: SES → SMTP
@@ -77,11 +77,11 @@ policy — not the same as your regular AWS access key).
 ### Postmark
 
 ```bash
-SCHOLARHUB_EMAIL_SMTP_HOST=smtp.postmarkapp.com
-SCHOLARHUB_EMAIL_SMTP_PORT=587
-SCHOLARHUB_EMAIL_SMTP_USERNAME=<your-server-api-token>
-SCHOLARHUB_EMAIL_SMTP_PASSWORD=<your-server-api-token>
-SCHOLARHUB_EMAIL_SMTP_STARTTLS=true
+RUBBISH_EMAIL_SMTP_HOST=smtp.postmarkapp.com
+RUBBISH_EMAIL_SMTP_PORT=587
+RUBBISH_EMAIL_SMTP_USERNAME=<your-server-api-token>
+RUBBISH_EMAIL_SMTP_PASSWORD=<your-server-api-token>
+RUBBISH_EMAIL_SMTP_STARTTLS=true
 ```
 
 ### Frontend deep-link base URL
@@ -91,7 +91,7 @@ frontend SPA, which routes the user through the verify-email / reset-password
 pages. Configure the SPA origin so the links work in any email client:
 
 ```bash
-SCHOLARHUB_FRONTEND_BASE_URL=https://app.yourdomain.com
+RUBBISH_FRONTEND_BASE_URL=https://app.yourdomain.com
 ```
 
 If unset, links fall back to relative paths (`/auth/verify-email?token=...`),
@@ -101,8 +101,8 @@ logged-in SPA. Don't rely on this in production.
 ### Token lifetimes
 
 ```bash
-SCHOLARHUB_EMAIL_VERIFICATION_EXPIRE_HOURS=24     # default 24
-SCHOLARHUB_PASSWORD_RESET_EXPIRE_MINUTES=60       # default 60
+RUBBISH_EMAIL_VERIFICATION_EXPIRE_HOURS=24     # default 24
+RUBBISH_PASSWORD_RESET_EXPIRE_MINUTES=60       # default 60
 ```
 
 ### Verifying it works
@@ -118,7 +118,7 @@ curl -X POST https://api.yourdomain.com/api/auth/forgot-password \
 If you don't see the email, check the app logs — every send attempt is
 logged with `email_sent_smtp` / `email_smtp_misconfigured_fallback_to_console`
 / `password_reset_email_failed`. The console fallback also fires when
-`SCHOLARHUB_EMAIL_SMTP_HOST` or `SCHOLARHUB_EMAIL_FROM_ADDRESS` is empty,
+`RUBBISH_EMAIL_SMTP_HOST` or `RUBBISH_EMAIL_FROM_ADDRESS` is empty,
 so misconfiguration degrades gracefully rather than 500ing the request.
 
 ### Custom sender (Mailgun API / SendGrid API direct)
@@ -155,12 +155,12 @@ lives in the [provider's developer console](https://developers.google.com/identi
 ### Common configuration
 
 ```bash
-SCHOLARHUB_OIDC_ENABLED=true
-SCHOLARHUB_OIDC_PROVIDER=google              # slug used in URLs
-SCHOLARHUB_OIDC_CLIENT_ID=<your-client-id>
-SCHOLARHUB_OIDC_CLIENT_SECRET=<your-client-secret>
-SCHOLARHUB_OIDC_REDIRECT_URL=https://app.yourdomain.com/auth/oidc/callback
-SCHOLARHUB_OIDC_SCOPES="openid email profile"
+RUBBISH_OIDC_ENABLED=true
+RUBBISH_OIDC_PROVIDER=google              # slug used in URLs
+RUBBISH_OIDC_CLIENT_ID=<your-client-id>
+RUBBISH_OIDC_CLIENT_SECRET=<your-client-secret>
+RUBBISH_OIDC_REDIRECT_URL=https://app.yourdomain.com/auth/oidc/callback
+RUBBISH_OIDC_SCOPES="openid email profile"
 ```
 
 The callback URL **must match exactly** what you configured in the
@@ -178,10 +178,10 @@ the URL fragment. The backend's OIDC callback is at
 3. Set these env vars:
 
 ```bash
-SCHOLARHUB_OIDC_PROVIDER=google
-SCHOLARHUB_OIDC_AUTHORIZE_URL=https://accounts.google.com/o/oauth2/v2/auth
-SCHOLARHUB_OIDC_TOKEN_URL=https://oauth2.googleapis.com/token
-SCHOLARHUB_OIDC_USERINFO_URL=https://openidconnect.googleapis.com/v1/userinfo
+RUBBISH_OIDC_PROVIDER=google
+RUBBISH_OIDC_AUTHORIZE_URL=https://accounts.google.com/o/oauth2/v2/auth
+RUBBISH_OIDC_TOKEN_URL=https://oauth2.googleapis.com/token
+RUBBISH_OIDC_USERINFO_URL=https://openidconnect.googleapis.com/v1/userinfo
 ```
 
 ### GitHub (OAuth 2.0, returns OpenID-shaped userinfo)
@@ -195,11 +195,11 @@ token response.
 3. Env vars:
 
 ```bash
-SCHOLARHUB_OIDC_PROVIDER=github
-SCHOLARHUB_OIDC_AUTHORIZE_URL=https://github.com/login/oauth/authorize
-SCHOLARHUB_OIDC_TOKEN_URL=https://github.com/login/oauth/access_token
-SCHOLARHUB_OIDC_USERINFO_URL=https://api.github.com/user
-SCHOLARHUB_OIDC_SCOPES="read:user user:email"
+RUBBISH_OIDC_PROVIDER=github
+RUBBISH_OIDC_AUTHORIZE_URL=https://github.com/login/oauth/authorize
+RUBBISH_OIDC_TOKEN_URL=https://github.com/login/oauth/access_token
+RUBBISH_OIDC_USERINFO_URL=https://api.github.com/user
+RUBBISH_OIDC_SCOPES="read:user user:email"
 ```
 
 For GitHub, you'll also need to call `/user/emails` to get the verified
@@ -209,19 +209,19 @@ handling. The default code trusts `email_verified` from userinfo.
 ### Generic OIDC (any compliant provider)
 
 ```bash
-SCHOLARHUB_OIDC_PROVIDER=myidp
-SCHOLARHUB_OIDC_AUTHORIZE_URL=https://idp.example.com/authorize
-SCHOLARHUB_OIDC_TOKEN_URL=https://idp.example.com/oauth/token
-SCHOLARHUB_OIDC_USERINFO_URL=https://idp.example.com/userinfo
+RUBBISH_OIDC_PROVIDER=myidp
+RUBBISH_OIDC_AUTHORIZE_URL=https://idp.example.com/authorize
+RUBBISH_OIDC_TOKEN_URL=https://idp.example.com/oauth/token
+RUBBISH_OIDC_USERINFO_URL=https://idp.example.com/userinfo
 ```
 
 ### Keycloak
 
 ```bash
-SCHOLARHUB_OIDC_PROVIDER=keycloak
-SCHOLARHUB_OIDC_AUTHORIZE_URL=https://keycloak.example.com/realms/myrealm/protocol/openid-connect/auth
-SCHOLARHUB_OIDC_TOKEN_URL=https://keycloak.example.com/realms/myrealm/protocol/openid-connect/token
-SCHOLARHUB_OIDC_USERINFO_URL=https://keycloak.example.com/realms/myrealm/protocol/openid-connect/userinfo
+RUBBISH_OIDC_PROVIDER=keycloak
+RUBBISH_OIDC_AUTHORIZE_URL=https://keycloak.example.com/realms/myrealm/protocol/openid-connect/auth
+RUBBISH_OIDC_TOKEN_URL=https://keycloak.example.com/realms/myrealm/protocol/openid-connect/token
+RUBBISH_OIDC_USERINFO_URL=https://keycloak.example.com/realms/myrealm/protocol/openid-connect/userinfo
 ```
 
 ### Multi-provider (future)
@@ -267,7 +267,7 @@ needed for read-only access.
 
 ```bash
 # Optional — Crossref politely asks for a mailto in the User-Agent
-SCHOLARHUB_CROSSREF_MAILTO=you@example.com
+RUBBISH_CROSSREF_MAILTO=you@example.com
 ```
 
 Endpoints:

@@ -5,7 +5,7 @@ import fs from 'node:fs'
 
 const BASE = 'http://localhost:5173'
 const ADMIN = { username: 'admin', password: 'e2e_admin_pw_12345678' }
-const OUT = '/workspace/scholarhub-media/screenshots'
+const OUT = '/workspace/rubbish-media/screenshots'
 fs.mkdirSync(OUT, { recursive: true })
 
 // 需要登录才能看的页面 / 以及各自的等待锚点
@@ -47,7 +47,7 @@ async function main() {
   // ---------- 桌面 1440x900 ----------
   const desk = await browser.newContext({ viewport: { width: 1440, height: 900 } })
   await desk.addInitScript(() => {
-    window.localStorage.setItem('scholarhub_cookie_consent', 'accepted')
+    window.localStorage.setItem('rubbish_cookie_consent', 'accepted')
   })
   const page = await desk.newPage()
   page.setDefaultTimeout(20000)
@@ -69,7 +69,7 @@ async function main() {
     hasTouch: true,
   })
   await mob.addInitScript(() => {
-    window.localStorage.setItem('scholarhub_cookie_consent', 'accepted')
+    window.localStorage.setItem('rubbish_cookie_consent', 'accepted')
   })
   const mpage = await mob.newPage()
   mpage.setDefaultTimeout(20000)

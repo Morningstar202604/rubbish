@@ -5,8 +5,8 @@ import fs from 'node:fs'
 
 const BASE = 'http://localhost:5173'
 const ADMIN = { username: 'admin', password: 'e2e_admin_pw_12345678' }
-const OUT_VIDEO = '/workspace/scholarhub-media/raw'
-const OUT_SHOT = '/workspace/scholarhub-media/screenshots'
+const OUT_VIDEO = '/workspace/rubbish-media/raw'
+const OUT_SHOT = '/workspace/rubbish-media/screenshots'
 
 fs.mkdirSync(OUT_VIDEO, { recursive: true })
 fs.mkdirSync(OUT_SHOT, { recursive: true })
@@ -111,7 +111,7 @@ const RESOURCES = [
     subdiscipline: '',
     abstract:
       'UAMC-2025 contains 4,800 hours of labelled urban soundscape recordings from 12 cities, with co-registered meteorology and traffic counts. Intended as a benchmark for environmental sound classification and long-tail event detection.',
-    venue: 'ScholarHUB Data Repository',
+    venue: 'Rubbish Data Repository',
     tags: 'dataset, audio, benchmark',
     doi: '10.5555/uamc.2025.0004',
     external_url: 'https://example.org/uamc',
@@ -227,7 +227,7 @@ async function main() {
     recordVideo: { dir: OUT_VIDEO, size: { width: 1920, height: 1080 } },
   })
   await context.addInitScript(() => {
-    window.localStorage.setItem('scholarhub_cookie_consent', 'accepted')
+    window.localStorage.setItem('rubbish_cookie_consent', 'accepted')
   })
   const page = await context.newPage()
   page.setDefaultTimeout(20000)

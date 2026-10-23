@@ -26,7 +26,7 @@ const EMPTY = [/暂无/, /还没有/, /空空如也/, /暂时没有/, /没有任
 const b = await chromium.launch()
 const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } })
 await ctx.addInitScript(() =>
-  window.localStorage.setItem('scholarhub_cookie_consent', 'accepted'),
+  window.localStorage.setItem('rubbish_cookie_consent', 'accepted'),
 )
 const p = await ctx.newPage()
 p.setDefaultTimeout(20000)

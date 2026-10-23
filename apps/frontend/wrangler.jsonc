@@ -5,7 +5,7 @@
 // `npm run build`（Root directory 设为 apps/frontend），也可本地
 // `npx wrangler pages deploy dist` 手动发布。
 {
-  "name": "scholarhub",
+  "name": "rubbish",
   "compatibility_date": "2026-09-01",
   "pages_build_output_dir": "dist"
 }

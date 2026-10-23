@@ -108,8 +108,8 @@ npm audit                            # npm dependency CVE scan
 If a secret or vulnerability is exposed:
 
 1. **Rotate immediately** (treat the leaked value as public).
-2. For JWT keys: update `SCHOLARHUB_SECRET_KEY` and
-   `SCHOLARHUB_PREVIOUS_SECRET_KEYS` in every environment, then
+2. For JWT keys: update `RUBBISH_SECRET_KEY` and
+   `RUBBISH_PREVIOUS_SECRET_KEYS` in every environment, then
    call `POST /api/admin/reload-secret-keys`.
 3. **Audit access** via `GET /api/audit-logs` (admin).
 4. **Notify** through a GitHub Security Advisory.

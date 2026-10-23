@@ -2,13 +2,13 @@
 // 全程带字幕节拍（每段停留时间足够看清页面）。
 //
 // 数据侧要先跑完 seed-*.mjs，否则页面是空的。
-// 输出：/workspace/scholarhub-media/raw/*.webm（1920×1080 VP8）
+// 输出：/workspace/rubbish-media/raw/*.webm（1920×1080 VP8）
 import { chromium } from 'playwright'
 import fs from 'node:fs'
 
 const BASE = 'http://localhost:5173'
 const ADMIN = { username: 'admin', password: 'e2e_admin_pw_12345678' }
-const OUT_VIDEO = '/workspace/scholarhub-media/raw'
+const OUT_VIDEO = '/workspace/rubbish-media/raw'
 
 fs.rmSync(OUT_VIDEO, { recursive: true, force: true })
 fs.mkdirSync(OUT_VIDEO, { recursive: true })
@@ -36,7 +36,7 @@ async function main() {
     recordVideo: { dir: OUT_VIDEO, size: { width: 1920, height: 1080 } },
   })
   await context.addInitScript(() => {
-    window.localStorage.setItem('scholarhub_cookie_consent', 'accepted')
+    window.localStorage.setItem('rubbish_cookie_consent', 'accepted')
   })
   const page = await context.newPage()
   page.setDefaultTimeout(25000)

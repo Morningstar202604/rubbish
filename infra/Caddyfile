@@ -1,16 +1,16 @@
-# ScholarHUB production Caddyfile.
+# Rubbish production Caddyfile.
 #
-# Replace ``scholarhub.example.com`` with your real domain. Caddy
+# Replace ``rubbish.example.com`` with your real domain. Caddy
 # issues + renews Let's Encrypt certs automatically when the host is
 # reachable on 80/443 from the public internet.
 #
 # For internal / self-hosted deployments without a public DNS entry:
-#   scholarhub.internal {
+#   rubbish.internal {
 #       internal
 #       ...
 #   }
 
-scholarhub.example.com {
+rubbish.example.com {
 	# API — reverse proxy to the backend service.
 	handle_path /api/* {
 		reverse_proxy backend:8000 {

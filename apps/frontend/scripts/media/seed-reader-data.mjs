@@ -26,7 +26,7 @@ async function main() {
   const browser = await chromium.launch()
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
   await ctx.addInitScript(() => {
-    window.localStorage.setItem('scholarhub_cookie_consent', 'accepted')
+    window.localStorage.setItem('rubbish_cookie_consent', 'accepted')
   })
   const page = await ctx.newPage()
   page.setDefaultTimeout(20000)

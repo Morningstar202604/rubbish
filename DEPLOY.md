@@ -25,20 +25,20 @@
 1. **数据库**：Neon 建库 → 拿到连接串，改写成
    `postgresql+asyncpg://user:pass@host/db`。
 2. **跑迁移**（必须，RLS 策略在迁移里）：
-   `cd apps/backend && SCHOLARHUB_DATABASE_URL=<连接串> uv run alembic upgrade head`
+   `cd apps/backend && RUBBISH_DATABASE_URL=<连接串> uv run alembic upgrade head`
 3. **后端**：Railway/Render 新建服务，用后端 Dockerfile
    （`docker build -f apps/backend/Dockerfile .`，构建上下文为仓库根），环境变量：
 
    | 变量 | 值 |
    |---|---|
-   | `SCHOLARHUB_DATABASE_URL` | PG 连接串 |
-   | `SCHOLARHUB_ENVIRONMENT` | `production` |
-   | `SCHOLARHUB_SECRET_KEY` | `python -c "import secrets;print(secrets.token_hex(32))"` |
-   | `SCHOLARHUB_FERNET_KEY` | `python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"` |
-   | `SCHOLARHUB_ADMIN_PASSWORD` | ≥12 位强密码 |
-   | `SCHOLARHUB_ALLOWED_HOSTS` | 后端域名，如 `api.example.com` |
-   | `SCHOLARHUB_CORS_ORIGINS` | 前端域名，如 `https://rubbish.pages.dev` |
-   | R2（可选）：`SCHOLARHUB_STORAGE_BACKEND=s3` + S3 endpoint/key/secret/bucket | 指向 R2 的 S3 兼容端点 |
+   | `RUBBISH_DATABASE_URL` | PG 连接串 |
+   | `RUBBISH_ENVIRONMENT` | `production` |
+   | `RUBBISH_SECRET_KEY` | `python -c "import secrets;print(secrets.token_hex(32))"` |
+   | `RUBBISH_FERNET_KEY` | `python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"` |
+   | `RUBBISH_ADMIN_PASSWORD` | ≥12 位强密码 |
+   | `RUBBISH_ALLOWED_HOSTS` | 后端域名，如 `api.example.com` |
+   | `RUBBISH_CORS_ORIGINS` | 前端域名，如 `https://rubbish.pages.dev` |
+   | R2（可选）：`RUBBISH_STORAGE_BACKEND=s3` + S3 endpoint/key/secret/bucket | 指向 R2 的 S3 兼容端点 |
 
 4. **前端**：CF Pages 连 Git 仓库，Root directory = `apps/frontend`，
    构建命令 `npm run build`，输出 `dist`；构建环境变量
@@ -47,11 +47,11 @@
 
 ## 方案 B：单端口一体化（最省事）
 
-后端容器直接托管前端静态文件（`SCHOLARHUB_STATIC_DIR` 已内置于
+后端容器直接托管前端静态文件（`RUBBISH_STATIC_DIR` 已内置于
 Dockerfile），一个服务搞定，前端走同源 `/api`，**无需 CORS**：
 
 1. 按方案 A 步骤 1-3 部署后端容器（Dockerfile 已把 `dist/` 打进镜像并设好
-   `SCHOLARHUB_STATIC_DIR`）。
+   `RUBBISH_STATIC_DIR`）。
 2. Cloudflare DNS 把主域名指向该服务即可；前端不用单独部署。
 3. 本地预览同款行为：`cd apps/backend && PORT=8000 uv run python deploy_server.py`。
 
@@ -104,7 +104,7 @@ RLS 策略只存在于 Alembic 迁移里（最新版本 022），`create_all` �
 
 ```bash
 cd apps/backend
-SCHOLARHUB_DATABASE_URL=<direct 连接串> uv run alembic upgrade head
+RUBBISH_DATABASE_URL=<direct 连接串> uv run alembic upgrade head
 ```
 
 迁移 020 会执行 `CREATE EXTENSION IF NOT EXISTS pg_trgm`（性能索引）；Neon 支持 pg_trgm
@@ -125,18 +125,18 @@ Dockerfile 路径 `apps/backend/Dockerfile`、构建上下文 `.`（仓库根）
 
 | 变量 | 必填 | 取值 |
 |---|---|---|
-| `SCHOLARHUB_DATABASE_URL` | ✅ | Neon **pooled** 串改写 + `?prepared_statement_cache_size=0`（见步骤 1） |
-| `SCHOLARHUB_DATABASE_URL_DIRECT` | ✅ | Neon **direct** 串改写，仅 preDeployCommand 迁移时使用 |
-| `SCHOLARHUB_ENVIRONMENT` | ✅ | `production`（render.yaml 已内置） |
-| `SCHOLARHUB_SECRET_KEY` | ✅ | render.yaml `generateValue` 自动生成（base64 256-bit） |
-| `SCHOLARHUB_FERNET_KEY` | ✅ | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`（必须是合法 Fernet key，generateValue 不保证 url-safe） |
-| `SCHOLARHUB_ADMIN_PASSWORD` | ✅ | ≥12 位强密码（首次登录后立即改掉 + 开 TOTP） |
-| `SCHOLARHUB_ALLOWED_HOSTS` | ✅ | `<service>.onrender.com`（多个用逗号，含自定义域名）；production 禁止留空/`*` |
-| `SCHOLARHUB_CORS_ORIGINS` | 建议 | 单端口同源部署填 `https://<service>.onrender.com`；production 禁止 `*` |
-| `SCHOLARHUB_TRUSTED_PROXIES_COUNT` | 建议 | `1`（Render 反代一层，限流按 X-Forwarded-For 还原真实 IP；render.yaml 已内置） |
-| `SCHOLARHUB_JSON_LOGS` | 建议 | `true`（结构化日志；render.yaml 已内置） |
-| `SCHOLARHUB_STORAGE_BACKEND` | 可选 | 默认 `local` + 挂载持久盘 `/data/uploads`；生产建议切 `s3`（R2），另加 `SCHOLARHUB_S3_*` 5 项 |
-| `SCHOLARHUB_MEILISEARCH_URL` / `_API_KEY` | 可选 | 留空 = 不启用，搜索回退内置 DB ILIKE（**无需为方案 D 再开 Meilisearch**） |
+| `RUBBISH_DATABASE_URL` | ✅ | Neon **pooled** 串改写 + `?prepared_statement_cache_size=0`（见步骤 1） |
+| `RUBBISH_DATABASE_URL_DIRECT` | ✅ | Neon **direct** 串改写，仅 preDeployCommand 迁移时使用 |
+| `RUBBISH_ENVIRONMENT` | ✅ | `production`（render.yaml 已内置） |
+| `RUBBISH_SECRET_KEY` | ✅ | render.yaml `generateValue` 自动生成（base64 256-bit） |
+| `RUBBISH_FERNET_KEY` | ✅ | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`（必须是合法 Fernet key，generateValue 不保证 url-safe） |
+| `RUBBISH_ADMIN_PASSWORD` | ✅ | ≥12 位强密码（首次登录后立即改掉 + 开 TOTP） |
+| `RUBBISH_ALLOWED_HOSTS` | ✅ | `<service>.onrender.com`（多个用逗号，含自定义域名）；production 禁止留空/`*` |
+| `RUBBISH_CORS_ORIGINS` | 建议 | 单端口同源部署填 `https://<service>.onrender.com`；production 禁止 `*` |
+| `RUBBISH_TRUSTED_PROXIES_COUNT` | 建议 | `1`（Render 反代一层，限流按 X-Forwarded-For 还原真实 IP；render.yaml 已内置） |
+| `RUBBISH_JSON_LOGS` | 建议 | `true`（结构化日志；render.yaml 已内置） |
+| `RUBBISH_STORAGE_BACKEND` | 可选 | 默认 `local` + 挂载持久盘 `/data/uploads`；生产建议切 `s3`（R2），另加 `RUBBISH_S3_*` 5 项 |
+| `RUBBISH_MEILISEARCH_URL` / `_API_KEY` | 可选 | 留空 = 不启用，搜索回退内置 DB ILIKE（**无需为方案 D 再开 Meilisearch**） |
 
 > 端口无需配置：镜像里 `PORT=8080` 只是缺省值，Render 运行时注入的 `PORT` 会覆盖它，
 > `deploy_server.py` 按注入值监听。
@@ -173,16 +173,16 @@ curl https://<service>.onrender.com/api/health        # 期望 {"status":"ok"}
 Render free 实例**不支持** preDeployCommand 与 persistent disk
 （<https://render.com/docs/deploys#pre-deploy-command>、<https://render.com/docs/disks>）。
 如用 free 套餐：① 删除 render.yaml 里的 `preDeployCommand` 与 `disk` 字段、删除
-`dockerCommand`（让镜像自带 CMD 在启动时对 `SCHOLARHUB_DATABASE_URL` 执行迁移）；②
-`SCHOLARHUB_DATABASE_URL` 直接填 **direct** 连接串（单实例小流量，无需 pooled）；③
-文件存储必须切 `SCHOLARHUB_STORAGE_BACKEND=s3`（R2），free 实例本地盘重启即丢。
+`dockerCommand`（让镜像自带 CMD 在启动时对 `RUBBISH_DATABASE_URL` 执行迁移）；②
+`RUBBISH_DATABASE_URL` 直接填 **direct** 连接串（单实例小流量，无需 pooled）；③
+文件存储必须切 `RUBBISH_STORAGE_BACKEND=s3`（R2），free 实例本地盘重启即丢。
 
 ## 上线前 checklist
 
 - [ ] `alembic upgrade head` 已在目标库执行（RLS 就位，`test_rls_coverage` 保证所有租户表都有策略）
-- [ ] `SCHOLARHUB_ENVIRONMENT=production`（触发强密钥/ALLOWED_HOSTS 校验）
+- [ ] `RUBBISH_ENVIRONMENT=production`（触发强密钥/ALLOWED_HOSTS 校验）
 - [ ] SECRET_KEY / FERNET_KEY / ADMIN_PASSWORD 均为强随机值且**持久化**（重启不变）
-- [ ] `SCHOLARHUB_ALLOWED_HOSTS` / `SCHOLARHUB_CORS_ORIGINS` 收紧到真实域名
+- [ ] `RUBBISH_ALLOWED_HOSTS` / `RUBBISH_CORS_ORIGINS` 收紧到真实域名
 - [ ] 首次登录后立即改 admin 密码 + 开启 TOTP（`/api/auth/2fa`）
 - [ ] 健康检查：`GET /api/health` → `{"status":"ok"}`
 - [ ] 文件存储用 R2/S3（容器本地盘会随重启丢文件）

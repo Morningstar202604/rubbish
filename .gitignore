@@ -92,7 +92,7 @@ scripts/scan_secrets.py
 
 # Work artifacts (auto-generated during development)
 *artifact*.md
-scholarhub_*.md
+rubbish_*.md
 
 # TypeScript
 *.tsbuildinfo

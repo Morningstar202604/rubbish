@@ -7,6 +7,16 @@
 `apps/backend/pyproject.toml`、`apps/frontend/package.json`、`apps/backend/app/__init__.py`
 四处完全一致，由 `scripts/check-version.sh` 守门。
 
+## [0.3.3] — 2026-10-23
+
+### Changed
+
+- 品牌残留清理：文档、环境变量示例、Docker/Caddy/wrangler 配置、媒体脚本与
+  SVG 资产中的旧项目名全部替换为 Rubbish（`grep -ri scholarhub` 已归零）。
+- 官网（GitHub Pages）改为从页面同源加载截图/logo/演示视频；部署 workflow
+  会把 `site/` 与 `docs/assets/` 合成 `_site` 再发布，不再依赖
+  raw.githubusercontent.com（国内网络下经常不可达）。
+
 ## [0.3.2] — 2026-10-23
 
 ### Security
@@ -32,7 +42,7 @@
 ### Changed
 
 - **项目更名**：包名 `rubbish-backend` / `@rubbish/frontend`，环境变量前缀
-  `SCHOLARHUB_` → `RUBBISH_`，Cookie `rubbish_refresh`，日志命名空间
+  `RUBBISH_` → `RUBBISH_`，Cookie `rubbish_refresh`，日志命名空间
   `rubbish.*`，README/文档/官网/镜像链接全部指向 `*/rubbish` 仓库。
 - **许可证由 MIT 改为 AGPL-3.0-or-later**：公益项目防止闭源商业分支回流，
   理由见 `NOTICE.md`。
@@ -63,7 +73,7 @@
   管理员工作台不受影响。Meilisearch 相关性结果回读时套用同一过滤。
 - **OAI-PMH 只收割已发表记录**：ListRecords / GetRecord 增加 published 过滤，
   与文件端点的授权边界对齐。
-- `/metrics` 默认关闭（`SCHOLARHUB_METRICS_PUBLIC=false`）：该端点无鉴权且会
+- `/metrics` 默认关闭（`RUBBISH_METRICS_PUBLIC=false`）：该端点无鉴权且会
   暴露全部路由模板与流量规模。
 
 ### Added

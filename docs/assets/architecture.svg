@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ScholarHUB 架构图（v2）。
+  Rubbish 架构图（v2）。
 
   相比旧版的修正：
     1. 补齐模块网格 —— 旧图只有 10 个格子且漏掉 doi / recommendations 名挤；
@@ -9,7 +9,7 @@
     3. Redis 由"规划中"改为真实状态（已用于限流，带内存降级）。
     4. 所有文字重新排版，长模块名不再顶框；配色与 S logo 统一为靛蓝紫。
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" width="960" height="600" role="img" aria-label="ScholarHUB 系统架构">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" width="960" height="600" role="img" aria-label="Rubbish 系统架构">
   <defs>
     <linearGradient id="fe-fill" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#EEF2FF"/>
@@ -37,7 +37,7 @@
   <rect width="960" height="600" fill="#FFFFFF"/>
 
   <!-- 标题 -->
-  <text x="480" y="36" text-anchor="middle" class="h1">ScholarHUB 系统架构</text>
+  <text x="480" y="36" text-anchor="middle" class="h1">Rubbish 系统架构</text>
   <text x="480" y="57" text-anchor="middle" class="sub">前端 SPA · 模块化后端 API · 双层租户隔离的 PostgreSQL</text>
 
   <!-- ============ 前端层 ============ -->

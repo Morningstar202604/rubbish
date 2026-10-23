@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ScholarHUB 主标志 —— 「学术徽章」（Seal）
+  Rubbish 主标志 —— 「学术徽章」（Seal）
 
   设计语言：
     - 双环徽章：外环深学术蓝粗线、内环出版金细线 —— 学术机构 / 期刊印章惯例；
-    - 环带字标：上 SCHOLARHUB、下 OPEN SCHOLARLY PUBLISHING，衬线体（Georgia / Times 系），
+    - 环带字标：上 RUBBISH、下 OPEN SCHOLARLY PUBLISHING，衬线体（Georgia / Times 系），
       延续学术出版的字形传统；
     - 中央图形：「书页之 S」—— 深学术蓝 S 主笔画 + 金色翻页角（翻起一页，呼应投稿→审稿→发表），
       与 logo-mark.svg（图形标）共享同一图形基因；
@@ -13,7 +13,7 @@
   配色规范：主色 #16324F（深学术蓝）、点缀 #C7A24B（出版金）、辅助灰蓝 #5A6B7C。
   使用规范：期刊封面 / 官网 Hero / 正式传播用本徽章；小尺寸（<48px）与 favicon 用 logo-mark.svg。
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="ScholarHUB">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="Rubbish">
   <defs>
     <linearGradient id="sh-seal-gold" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#D8B76A"/>
@@ -34,7 +34,7 @@
   <!-- 环带文字 -->
   <text font-family="Georgia,'Times New Roman',serif" font-size="21"
         font-weight="700" letter-spacing="4.4" fill="#16324F">
-    <textPath href="#sh-arc-top" startOffset="50%" text-anchor="middle">SCHOLARHUB</textPath>
+    <textPath href="#sh-arc-top" startOffset="50%" text-anchor="middle">RUBBISH</textPath>
   </text>
   <text font-family="Georgia,'Times New Roman',serif" font-size="11.2"
         letter-spacing="2.3" fill="#5A6B7C">

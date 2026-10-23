@@ -37,7 +37,7 @@ Rubbish 是一个**模块化、多租户的学术期刊发表平台**:核心只�
 
 核心层刻意保持最小,只承担每个学术期刊站点都需要的"地基":
 
-1. **租户** — 每个领域表都带 `tenant_id`。单租户部署只有一行 + `SCHOLARHUB_TENANCY_MODE=single`;多租户部署通过 host-header 解析租户并按 `tenant_id` 隔离数据。**单租户模式已实现**,多租户模式(host-header → tenant 查找表)尚未实现(`TenantContextMiddleware._resolve_tenant` 默认返回 `None` 即 default-deny)。
+1. **租户** — 每个领域表都带 `tenant_id`。单租户部署只有一行 + `RUBBISH_TENANCY_MODE=single`;多租户部署通过 host-header 解析租户并按 `tenant_id` 隔离数据。**单租户模式已实现**,多租户模式(host-header → tenant 查找表)尚未实现(`TenantContextMiddleware._resolve_tenant` 默认返回 `None` 即 default-deny)。
 
 2. **身份与访问** — 本地用户账号(已实现)、按租户隔离的角色 + 权限模型(已实现)、短时 access token + httpOnly cookie refresh(已实现)。邮件验证 + 密码重置(无状态签名 token 绑定 `token_version`,已实现)。OIDC SSO via authlib(Google / GitHub / Generic / Keycloak,已实现,通过环境变量配置)。邮件发送走可插拔 sender(console dev / SMTP relay for Mailgun / SendGrid / SES / Postmark,已实现)。
 

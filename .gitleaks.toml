@@ -1,5 +1,5 @@
 # Gitleaks config — block any high-confidence secret from leaving the repo.
-# Detection is tuned to the ScholarHub stack (FastAPI backend, Vite frontend).
+# Detection is tuned to the Rubbish stack (FastAPI backend, Vite frontend).
 # Lower entropy thresholds catch accidental test-token commits.
 
 [extend]
@@ -9,7 +9,7 @@ useDefault = true
 
 [[rules]]
 id = "rubbish-jwt-secret"
-description = "Backend JWT secret key (SCHOLARHUB_SECRET_KEY / JWT_SECRET)"
+description = "Backend JWT secret key (RUBBISH_SECRET_KEY / JWT_SECRET)"
 regex = '''(?i)(?:rubbish_)?secret_key\s*[:=]\s*["']?[A-Za-z0-9_\-+/=]{32,}["']?'''
 keywords = ["secret_key", "rubbish"]
 entropy = 3.5

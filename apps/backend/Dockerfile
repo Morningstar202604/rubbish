@@ -1,6 +1,6 @@
-# ScholarHUB 后端单容器镜像（含前端静态托管，单端口）。
+# Rubbish 后端单容器镜像（含前端静态托管，单端口）。
 # 构建上下文必须是仓库根目录：
-#   docker build -f apps/backend/Dockerfile -t scholarhub .
+#   docker build -f apps/backend/Dockerfile -t rubbish .
 FROM python:3.12-slim AS frontend-build
 
 # --- 前端构建层 ---
@@ -27,13 +27,13 @@ COPY apps/backend/alembic.ini ./
 COPY apps/backend/deploy_server.py ./
 COPY --from=frontend-build /build/dist ./static
 
-ENV SCHOLARHUB_STATIC_DIR=/app/static \
-    SCHOLARHUB_STORAGE_PATH=/data/uploads \
+ENV RUBBISH_STATIC_DIR=/app/static \
+    RUBBISH_STORAGE_PATH=/data/uploads \
     PORT=8080
 VOLUME ["/data/uploads"]
 EXPOSE 8080
 
-# 生产必须显式注入：SCHOLARHUB_DATABASE_URL / SECRET_KEY / FERNET_KEY /
+# 生产必须显式注入：RUBBISH_DATABASE_URL / SECRET_KEY / FERNET_KEY /
 # ADMIN_PASSWORD / ALLOWED_HOSTS（见 DEPLOY.md）。
 # 启动前自动 alembic upgrade head：RLS 策略只存在于迁移里，create_all
 # 不会生成；PaaS（Render 等）没有交互 shell，必须在镜像内自动完成。

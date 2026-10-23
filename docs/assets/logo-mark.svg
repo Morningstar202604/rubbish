@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ScholarHUB 图形标 —— 「书页之 S」
+  Rubbish 图形标 —— 「书页之 S」
 
   与 logo.svg（学术徽章）中央图形同几何：
     - 深学术蓝 S 主笔画（#16324F 系渐变），圆头收笔，严格居中；
@@ -10,7 +10,7 @@
 
   配色规范：主色 #16324F（深学术蓝）、点缀 #C7A24B（出版金）。
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="ScholarHUB mark">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="Rubbish mark">
   <defs>
     <linearGradient id="sh-mark-blue" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#1B3A5C"/>

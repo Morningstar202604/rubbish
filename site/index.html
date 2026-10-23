@@ -335,8 +335,8 @@
       <h3 data-i18n="start-c1-t">🐳 Docker Compose <span class="badge g" data-i18n="start-badge">推荐</span></h3>
       <p data-i18n="start-c1-d">Postgres + 后端 + 前端全部拉起来，包含自动 TLS 的 Caddy。</p>
       <pre><span class="c" data-i18n="start-c1-code1"># 生成强密钥</span>
-<span class="k">echo</span> "SCHOLARHUB_SECRET_KEY=$(openssl rand -hex 32)" > .env
-<span class="k">echo</span> "SCHOLARHUB_ADMIN_PASSWORD=$(openssl rand -base64 18)" >> .env
+<span class="k">echo</span> "RUBBISH_SECRET_KEY=$(openssl rand -hex 32)" > .env
+<span class="k">echo</span> "RUBBISH_ADMIN_PASSWORD=$(openssl rand -base64 18)" >> .env
 
 <span class="c" data-i18n="start-c1-code2"># 启动 dev 栈</span>
 docker compose -f infra/docker-compose.yml up --build</pre>

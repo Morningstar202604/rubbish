@@ -15,7 +15,7 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      # 用变量兜住旧部署：已有数据卷的库用户名/库名是 scholarhub，
+      # 用变量兜住旧部署：已有数据卷的库用户名/库名是 rubbish，
       # 直接改名会让容器初始化跳过后连不上。新部署走默认值 rubbish。
       POSTGRES_USER: ${POSTGRES_USER:-rubbish}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in repo-root .env}

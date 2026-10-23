@@ -156,7 +156,7 @@ async function main() {
   const consent = () => {}
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
   await ctx.addInitScript(() => {
-    window.localStorage.setItem('scholarhub_cookie_consent', 'accepted')
+    window.localStorage.setItem('rubbish_cookie_consent', 'accepted')
   })
 
   // --- 作者 A/B/C 各自投递 ---
