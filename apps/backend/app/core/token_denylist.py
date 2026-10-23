@@ -23,7 +23,7 @@ from typing import Protocol
 from app.core.config import settings
 from app.core.logging import get_logger
 
-logger = get_logger("scholarhub.token_denylist")
+logger = get_logger("rubbish.token_denylist")
 
 # Redis key prefix to namespace denylist entries within a shared Redis.
 _KEY_PREFIX = "token_denylist:"
@@ -140,7 +140,7 @@ _denylist_lock = asyncio.Lock()
 async def get_denylist() -> TokenDenylist:
     """Return the configured token denylist backend (singleton).
 
-    Uses Redis if ``SCHOLARHUB_REDIS_URL`` is configured, otherwise
+    Uses Redis if ``RUBBISH_REDIS_URL`` is configured, otherwise
     falls back to an in-memory denylist. If Redis is configured but
     the package is not installed or the connection fails, logs a
     warning and falls back to in-memory (fail-open).

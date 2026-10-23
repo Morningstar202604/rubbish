@@ -24,7 +24,7 @@ from app.schemas import TenantHostCreate, TenantHostResponse
 
 router = APIRouter(prefix="/admin/tenant-hosts", tags=["tenant-hosts"])
 
-logger = get_logger("scholarhub.tenant_hosts")
+logger = get_logger("rubbish.tenant_hosts")
 
 
 @router.get("", response_model=list[TenantHostResponse])

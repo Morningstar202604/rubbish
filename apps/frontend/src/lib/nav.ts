@@ -6,6 +6,8 @@ export interface NavItem {
   icon: LucideIcon
   auth?: boolean
   adminOnly?: boolean
+  /** 侧边栏分组标题：角色化导航 —— 读者/作者/审稿人/编辑各自只见自己的分区 */
+  group?: string
 }
 
 /**

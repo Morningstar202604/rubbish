@@ -2,7 +2,7 @@
 # 依赖已被 lock 文件卡死（package-lock.json / uv.lock），只验证、不更新。
 version: '1.0'
 name: master-pipeline
-displayName: ScholarHUB CI
+displayName: Rubbish CI
 triggers:
   push:
     - matchType: PRECISE

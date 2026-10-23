@@ -50,6 +50,7 @@ function ReaderPage() {
   const removeMut = useRemoveFromHistory()
 
   const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState<number | null>(null)
   const [progressPercent, setProgressPercent] = useState(0)
   const [completed, setCompleted] = useState(false)
   // 本地累加器：仅跟踪本次会话新增的秒数，flush 后清零
@@ -141,10 +142,23 @@ function ReaderPage() {
     }
   }, [])
 
-  // 翻页前立即 flush 旧状态
+  // 翻页：页码钳制 + 按真实页数自动折算进度，到末页自动勾选“已读完”（仍可手动覆盖）
   const goToPage = (newPage: number) => {
     void flush()
-    setPage(Math.max(1, newPage))
+    const clamped = Math.max(1, newPage)
+    setPage(clamped)
+    if (totalPages && totalPages > 0) {
+      setProgressPercent(Math.min(100, Math.round((clamped / totalPages) * 100)))
+      if (clamped >= totalPages) setCompleted(true)
+    }
+  }
+
+  // PdfViewer 回调：文档加载完成时同步总页数，把过期页码/进度拉回真实范围
+  const handleLoaded = (n: number) => {
+    setTotalPages(n)
+    const clamped = Math.min(Math.max(1, page), n)
+    setPage(clamped)
+    setProgressPercent(Math.min(100, Math.round((clamped / n) * 100)))
   }
 
   const onManualUpdate = async () => {
@@ -220,6 +234,7 @@ function ReaderPage() {
             <PdfViewer
               url={data.download_url}
               initialPage={progress.data?.page ?? 1}
+              onLoaded={handleLoaded}
               onPageChange={(p) => goToPage(p)}
             />
           ) : (
@@ -357,7 +372,10 @@ function ReaderPage() {
           >
             上一页
           </Button>
-          <span className="text-xs text-muted-foreground">{page} 页</span>
+          <span className="text-xs text-muted-foreground">
+            {page}
+            {totalPages ? ` / ${totalPages}` : ''} 页
+          </span>
           <Button
             variant="outline"
             size="sm"

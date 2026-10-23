@@ -55,7 +55,7 @@ async def test_export_bibtex_format(client: AsyncClient, admin_user: dict) -> No
     response = await client.get(f"/api/export?ids={rid}&format=bibtex")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/x-bibtex"
-    assert 'filename="scholarhub-export.bib"' in response.headers["content-disposition"]
+    assert 'filename="rubbish-export.bib"' in response.headers["content-disposition"]
     body = response.text
     assert "@article{" in body
     assert "Alice Author and Bob Reviewer" in body

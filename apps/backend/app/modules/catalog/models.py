@@ -85,8 +85,15 @@ class Resource(Base, TenantScopedMixin):
     publisher: Mapped[str | None] = mapped_column(String(500), nullable=True)
     short_container_title: Mapped[str | None] = mapped_column(String(200), nullable=True)
     keywords: Mapped[list[str] | None] = mapped_column(JSONBVariant, nullable=True)
-    language: Mapped[str] = mapped_column(String(10), nullable=False, default="en")
+    # 本站是中文期刊：默认 zh 而不是 en。稿件的语言在目录条目上维护，
+    # 因为 submission 模型没有 language 列（物化时沿用这里的中文默认值）。
+    language: Mapped[str] = mapped_column(String(10), nullable=False, default="zh")
     publication_status: Mapped[str] = mapped_column(String(20), nullable=False, default="published")
+    # 下载计数：公开 /api/catalog/{id}/file 每次命中 +1，用于 R 指数
+    # （见 app/modules/catalog/engagement.py）。只做原子自增，不做行锁。
+    download_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False

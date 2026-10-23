@@ -121,7 +121,7 @@ function CatalogListPage() {
     <div>
       <PageHeader
         title="资源目录"
-        description="浏览 ScholarHUB 中所有学术资源。"
+        description="浏览 Rubbish 中所有学术资源。"
         actions={
           isAdmin ? (
             <Button asChild>

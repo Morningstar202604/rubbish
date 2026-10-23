@@ -1,4 +1,4 @@
-# ScholarHUB production stack — Postgres + Meilisearch + Backend + Frontend + Caddy.
+# Rubbish production stack — Postgres + Meilisearch + Backend + Frontend + Caddy.
 #
 # Prerequisites:
 #   1. A server with Docker + Docker Compose installed.
@@ -18,14 +18,14 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: scholarhub
-      POSTGRES_USER: scholarhub
-      POSTGRES_PASSWORD: ${SCHOLARHUB_DB_PASSWORD:?SCHOLARHUB_DB_PASSWORD is required — set it in repo-root .env}
+      POSTGRES_DB: rubbish
+      POSTGRES_USER: rubbish
+      POSTGRES_PASSWORD: ${RUBBISH_DB_PASSWORD:?RUBBISH_DB_PASSWORD is required — set it in repo-root .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U scholarhub"]
+      test: ["CMD-SHELL", "pg_isready -U rubbish"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -33,7 +33,7 @@ services:
   meilisearch:
     image: getmeili/meilisearch:v1.12
     environment:
-      MEILI_MASTER_KEY: ${SCHOLARHUB_MEILISEARCH_API_KEY:?SCHOLARHUB_MEILISEARCH_API_KEY is required — set it in repo-root .env}
+      MEILI_MASTER_KEY: ${RUBBISH_MEILISEARCH_API_KEY:?RUBBISH_MEILISEARCH_API_KEY is required — set it in repo-root .env}
       MEILI_NO_ANALYTICS: "true"
     volumes:
       - meilisearch_data:/meili_data
@@ -51,10 +51,10 @@ services:
     env_file:
       - ../.env
     environment:
-      SCHOLARHUB_DATABASE_URL: postgresql+asyncpg://scholarhub:${SCHOLARHUB_DB_PASSWORD:?SCHOLARHUB_DB_PASSWORD is required — set it in repo-root .env}@postgres:5432/scholarhub
-      SCHOLARHUB_MEILISEARCH_URL: http://meilisearch:7700
-      SCHOLARHUB_MEILISEARCH_API_KEY: ${SCHOLARHUB_MEILISEARCH_API_KEY:?SCHOLARHUB_MEILISEARCH_API_KEY is required — set it in repo-root .env}
-      SCHOLARHUB_ENVIRONMENT: production
+      RUBBISH_DATABASE_URL: postgresql+asyncpg://rubbish:${RUBBISH_DB_PASSWORD:?RUBBISH_DB_PASSWORD is required — set it in repo-root .env}@postgres:5432/rubbish
+      RUBBISH_MEILISEARCH_URL: http://meilisearch:7700
+      RUBBISH_MEILISEARCH_API_KEY: ${RUBBISH_MEILISEARCH_API_KEY:?RUBBISH_MEILISEARCH_API_KEY is required — set it in repo-root .env}
+      RUBBISH_ENVIRONMENT: production
     depends_on:
       postgres:
         condition: service_healthy
@@ -117,7 +117,7 @@ services:
   #   environment:
   #     GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
   #     GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
-  #     GF_SERVER_ROOT_URL: https://${SCHOLARHUB_DOMAIN:-localhost}/grafana
+  #     GF_SERVER_ROOT_URL: https://${RUBBISH_DOMAIN:-localhost}/grafana
   #   volumes:
   #     - grafana_data:/var/lib/grafana
   #     - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro

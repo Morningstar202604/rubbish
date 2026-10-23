@@ -17,7 +17,7 @@ type Reporter = (error: unknown, context?: ErrorContext) => void
 
 const consoleReporter: Reporter = (error, context) => {
   // 开发期直接打到控制台；生产环境若未配置监控后端，也至少留下痕迹
-  console.error('[scholarhub] unhandled error', error, context ?? {})
+  console.error('[rubbish] unhandled error', error, context ?? {})
 }
 
 let reporter: Reporter = consoleReporter
@@ -79,6 +79,6 @@ export async function initMonitoring(): Promise<void> {
     })
   } catch (err) {
     // SDK 加载失败不能影响应用启动
-    console.warn('[scholarhub] Sentry init failed, falling back to console', err)
+    console.warn('[rubbish] Sentry init failed, falling back to console', err)
   }
 }

@@ -1,11 +1,11 @@
 [project]
-name = "scholarhub-backend"
-version = "0.2.2"
-description = "ScholarHUB backend — modular multi-tenant academic platform base"
+name = "rubbish-backend"
+version = "0.3.0"
+description = "Rubbish backend — modular multi-tenant academic platform base"
 # Python 版本锁定在 3.12 系列：与 .python-version、Dockerfile、CI 完全一致
 requires-python = ">=3.12,<3.13"
-license = "MIT"
-authors = [{ name = "ScholarHUB Contributors" }]
+license = "AGPL-3.0-or-later"
+authors = [{ name = "Rubbish Contributors" }]
 # 依赖全部 == 精确锁定（版本来自 uv.lock，与 lock 文件双保险）。
 # 升级方式：改这里 + `uv lock` 刷新 lock 后提交，禁止单独漂移。
 dependencies = [
@@ -42,14 +42,14 @@ dependencies = [
 monitoring = [
     "sentry-sdk[fastapi]==2.64.0",
 ]
-# 可选：全文搜索。未配置 SCHOLARHUB_MEILISEARCH_URL 时目录搜索走内置
+# 可选：全文搜索。未配置 RUBBISH_MEILISEARCH_URL 时目录搜索走内置
 # DB ILIKE；配置后由 Meilisearch 提供容错拼写 + 相关性排序。
 # 启用：uv sync --extra search
 search = [
     "meilisearch-python-sdk==4.11.0",
 ]
 # 可选：S3 兼容对象存储（AWS S3 / MinIO / R2 / OSS）。默认 local
-# 文件系统零依赖；SCHOLARHUB_STORAGE_BACKEND=s3 时需要本组。
+# 文件系统零依赖；RUBBISH_STORAGE_BACKEND=s3 时需要本组。
 # 启用：uv sync --extra s3
 s3 = [
     "boto3==1.43.60",

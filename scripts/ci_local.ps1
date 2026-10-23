@@ -66,9 +66,9 @@ if (-not $SkipMypy) {
 
 Step 'pytest' {
     Set-Location $backendDir
-    $env:SCHOLARHUB_ENVIRONMENT = 'test'
-    $env:SCHOLARHUB_SECRET_KEY = 'ci-test-secret-key-must-be-at-least-32-chars-long'
-    $env:SCHOLARHUB_ADMIN_PASSWORD = 'ci-test-admin-pass-at-least-12-chars'
+    $env:RUBBISH_ENVIRONMENT = 'test'
+    $env:RUBBISH_SECRET_KEY = 'ci-test-secret-key-must-be-at-least-32-chars-long'
+    $env:RUBBISH_ADMIN_PASSWORD = 'ci-test-admin-pass-at-least-12-chars'
     uv run pytest --maxfail=1 --tb=short -q
 }
 

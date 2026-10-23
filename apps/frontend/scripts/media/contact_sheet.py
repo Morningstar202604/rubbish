@@ -13,8 +13,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-SRC = Path("/workspace/scholarhub/docs/assets/screenshots")
-OUT = Path("/workspace/scholarhub/docs/assets/screenshots-overview.png")
+SRC = Path("/workspace/rubbish/docs/assets/screenshots")
+OUT = Path("/workspace/rubbish/docs/assets/screenshots-overview.png")
 
 ITEMS = [
     ("01-home.png", "概览 Overview"),
@@ -84,7 +84,7 @@ def main() -> None:
     # 品牌色竖条
     draw.rectangle([PAD, 34, PAD + 6, 96], fill=ACCENT)
 
-    draw.text((PAD + 22, 30), "ScholarHUB · 界面总览", font=font(FONT_BOLD, 36), fill=INK)
+    draw.text((PAD + 22, 30), "Rubbish · 界面总览", font=font(FONT_BOLD, 36), fill=INK)
     draw.text(
         (PAD + 22, 84),
         "投稿 · 审稿 · 发表 · 阅读 全流程 · 桌面 1440×900 · 移动端 390×844",
@@ -164,7 +164,7 @@ def main() -> None:
         # 底部品牌条
         draw.text(
             (tx, y + THUMB_H + CAP_H - 44),
-            "github.com/x33834/scholarhub",
+            "github.com/x33834/rubbish",
             font=font(FONT_REG, 15),
             fill=ACCENT,
         )

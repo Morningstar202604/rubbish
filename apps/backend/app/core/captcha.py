@@ -44,7 +44,7 @@ class _AlwaysPassVerifier:
             # to import cleanly even before configure_logging() runs.
             from app.core.logging import get_logger
 
-            get_logger("scholarhub.captcha").warning(
+            get_logger("rubbish.captcha").warning(
                 "captcha_disabled_using_passthrough",
                 provider="dev-passthrough",
             )

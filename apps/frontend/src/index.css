@@ -2,8 +2,8 @@
 @import "tw-animate-css";
 
 @theme {
-  --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC",
-    "SimSun", ui-serif, Georgia, serif;
+  --font-serif: "Noto Serif SC Variable", "Noto Serif SC", "Source Han Serif SC",
+    "Songti SC", "SimSun", ui-serif, Georgia, serif;
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -133,3 +133,5 @@ h3,
 h4 {
   font-family: var(--font-serif);
 }
+
+/* 期刊门面动效改由 motion 库驱动（MotionConfig reducedMotion="user" 自动尊重系统设置） */

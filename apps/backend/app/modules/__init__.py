@@ -8,7 +8,7 @@ calls ``registry.register(...)``.
 Why explicit list (not entry-point scanning):
 
 - Zero third-party dependency, debuggable, no surprises at startup.
-- scholarhub does not run a plugin marketplace (see ARCHITECTURE.md
+- rubbish does not run a plugin marketplace (see ARCHITECTURE.md
   "What we chose not to do"); vendored modules are all we need.
 - Adding/removing a module is one line in one file.
 """

@@ -117,7 +117,7 @@ export async function forceVerifyEmail(email: string): Promise<void> {
 // data-testid="cookie-banner" 精确选择器。
 export async function primeCookieConsent(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    window.localStorage.setItem('scholarhub_cookie_consent', 'accepted')
+    window.localStorage.setItem('rubbish_cookie_consent', 'accepted')
   })
 }
 

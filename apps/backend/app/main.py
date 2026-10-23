@@ -7,16 +7,18 @@ core routers → module routers.
 from __future__ import annotations
 
 import logging
+import mimetypes
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.ext.asyncio import AsyncSession
 from tenacity import (
     before_sleep_log,
     retry,
@@ -29,11 +31,14 @@ from app import __version__
 from app.api import (
     admin,
     auth,
+    capabilities,
     gdpr,
     health,
     metrics,
     modules,
+    oai,
     privacy,
+    seo,
     tenant_hosts,
     two_factor,
     users,
@@ -42,7 +47,7 @@ from app.api import (
 from app.api.oidc import router as oidc_router
 from app.core.bootstrap import run_bootstrap
 from app.core.config import settings
-from app.core.db import check_db_connection, dispose_engine
+from app.core.db import check_db_connection, dispose_engine, get_db
 from app.core.logging import configure_logging, get_logger
 from app.core.modules import load_all, registry
 from app.core.monitoring import init_monitoring
@@ -54,7 +59,7 @@ from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 
 configure_logging()
-logger = get_logger("scholarhub.startup")
+logger = get_logger("rubbish.startup")
 
 # Sentry must be initialised before the FastAPI app is constructed so its
 # auto-instrumentation can wrap the ASGI app. No-op when DSN is unset.
@@ -234,6 +239,10 @@ app.include_router(metrics.router)
 # Privacy is also mounted at root so it's accessible without /api prefix.
 app.include_router(privacy.router)
 app.include_router(privacy.router, prefix="/api")
+# Feature availability for the SPA (email delivery, SSO, registration).
+app.include_router(capabilities.router, prefix="/api")
+# Crawler surface: robots.txt + sitemap.xml (must precede the SPA catch-all).
+app.include_router(seo.router)
 app.include_router(two_factor.router, prefix="/api")
 app.include_router(gdpr.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
@@ -241,6 +250,8 @@ app.include_router(users.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(tenant_hosts.router, prefix="/api")
 app.include_router(modules.router, prefix="/api")
+# OAI-PMH 2.0 元数据收割端点（DOAJ/CNKI/图书馆联盟索引对接，根路径挂载）。
+app.include_router(oai.router)
 # WebAuthn / Passkeys as an alternative to TOTP 2FA.
 app.include_router(webauthn.router, prefix="/api")
 # OIDC routes always mount; each endpoint 503s when OIDC is not configured
@@ -254,7 +265,7 @@ for name, module_router in registry.all_routers():
     logger.info("module_router_mounted", module=name, prefix=f"/api/{name}")
 
 
-# --- 单端口部署模式（SCHOLARHUB_STATIC_DIR） ---
+# --- 单端口部署模式（RUBBISH_STATIC_DIR） ---
 # 设置该环境变量后，FastAPI 直接托管前端构建产物（vite dist/），
 # SPA 深链接（如 /resources/1）回退到 index.html。这让整个应用
 # 以单端口 HTTP 服务部署到 Render/Railway/Fly/CF Tunnel 等平台，
@@ -273,7 +284,7 @@ for name, module_router in registry.all_routers():
 
 # 注意：catch-all 必须注册在 root() 之前（否则 / 被 root 抢走）、
 # 在所有 API/docs/health 路由之后（具体路由按注册顺序优先匹配）。
-_static_dir_env = os.environ.get("SCHOLARHUB_STATIC_DIR", "").strip()
+_static_dir_env = os.environ.get("RUBBISH_STATIC_DIR", "").strip()
 if _static_dir_env:
     _static_root = Path(_static_dir_env).resolve()
     if _static_root.is_dir():
@@ -286,7 +297,11 @@ if _static_dir_env:
             )
 
         @app.get("/{full_path:path}", include_in_schema=False)
-        async def spa_static_fallback(full_path: str) -> FileResponse:
+        async def spa_static_fallback(
+            full_path: str,
+            request: Request,
+            db: AsyncSession = Depends(get_db),
+        ) -> Response:
             # API 未匹配到的路径保持 404 JSON，避免前端把错误页当数据处理。
             if full_path.startswith("api/") or full_path == "api":
                 raise HTTPException(status_code=404, detail="Not Found")
@@ -295,10 +310,22 @@ if _static_dir_env:
             # 用 is_relative_to 精确判断，避免 ../static-dev 之类同级目录被
             # startswith 误判为命中（前缀绕过）。
             if full_path and candidate.is_file() and candidate.is_relative_to(_static_root):
-                return FileResponse(str(candidate))
+                # WebP 不在 Python 的 mimetypes 默认表里（容器内没有
+                # /etc/mime.types 时尤其如此），明示一次，否则浏览器会
+                # 拿到 application/octet-stream 并触发下载而不是渲染。
+                media_type = mimetypes.guess_type(candidate.name)[0]
+                if media_type is None and candidate.suffix.lower() == ".webp":
+                    media_type = "image/webp"
+                return FileResponse(str(candidate), media_type=media_type)
             index_file = _static_root / "index.html"
             if index_file.is_file():
-                return FileResponse(str(index_file))
+                # Per-route <title>/description/OG/citation tags: the SPA has
+                # a single HTML shell, so crawlers would otherwise see the
+                # same metadata on every article page.
+                html_text, _status = await seo.build_index_html(
+                    index_file.read_text(encoding="utf-8"), full_path, request, db
+                )
+                return Response(content=html_text, media_type="text/html; charset=utf-8")
             raise HTTPException(status_code=404, detail="Frontend build not found")
 
         logger.info("static_serving_enabled", static_dir=str(_static_root))
@@ -309,7 +336,7 @@ if _static_dir_env:
 @app.get("/")
 async def root() -> dict[str, str]:
     return {
-        "name": "ScholarHUB API",
+        "name": "Rubbish API",
         "version": __version__,
         "docs": "/docs",
     }

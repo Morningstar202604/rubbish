@@ -68,7 +68,7 @@ def _build_datacite_metadata(resource: Any, doi: str) -> dict[str, Any]:
                 "doi": doi,
                 "creators": authors_list,
                 "titles": [{"title": resource.title}],
-                "publisher": resource.publisher or "ScholarHUB",
+                "publisher": resource.publisher or "Rubbish",
                 "publicationYear": str(resource.year or "2026"),
                 "types": {
                     "resourceTypeGeneral": "Text",

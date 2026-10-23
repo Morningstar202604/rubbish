@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
 import {
   Bell,
@@ -43,25 +43,25 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { CookieBanner } from '@/components/common/cookie-banner'
 
 const NAV: NavItem[] = [
-  { to: '/dashboard', label: '概览', icon: Home, auth: true },
-  { to: '/catalog', label: '资源目录', icon: BookOpen },
-  { to: '/library', label: '阅读列表', icon: Library, auth: true },
-  { to: '/follows', label: '关注与订阅', icon: Heart, auth: true },
-  { to: '/submissions', label: '我的提交', icon: ScrollText, auth: true },
-  { to: '/review/assignments', label: '审稿工作台', icon: ClipboardCheck, auth: true },
+  { to: '/dashboard', label: '概览', icon: Home, auth: true, group: '总览' },
+  { to: '/catalog', label: '资源目录', icon: BookOpen, group: '内容' },
+  { to: '/library', label: '阅读列表', icon: Library, auth: true, group: '内容' },
+  { to: '/follows', label: '关注与订阅', icon: Heart, auth: true, group: '内容' },
+  { to: '/recommendations', label: '推荐', icon: Lightbulb, auth: true, group: '内容' },
+  { to: '/submissions', label: '我的提交', icon: ScrollText, auth: true, group: '我的工作' },
+  { to: '/review/assignments', label: '审稿工作台', icon: ClipboardCheck, auth: true, group: '我的工作' },
   // 编辑工作台（admin 审核队列）：挂在审稿工作台旁，语义上属于编辑部工作流，
   // 而非"我的提交"的子页面
-  { to: '/submissions/pending', label: '编辑工作台', icon: Gavel, auth: true, adminOnly: true },
-  { to: '/ingest', label: '导入', icon: Upload, auth: true },
-  { to: '/recommendations', label: '推荐', icon: Lightbulb, auth: true },
-  { to: '/notifications', label: '通知', icon: Bell, auth: true },
+  { to: '/submissions/pending', label: '编辑工作台', icon: Gavel, auth: true, adminOnly: true, group: '我的工作' },
+  { to: '/ingest', label: '导入', icon: Upload, auth: true, group: '我的工作' },
+  { to: '/notifications', label: '通知', icon: Bell, auth: true, group: '消息' },
   // admin 组：用户 → 期刊四件套（卷/期/信息/设置）归组连续排列，审计日志垫底
-  { to: '/admin/users', label: '用户管理', icon: Users, auth: true, adminOnly: true },
-  { to: '/admin/volumes', label: '卷管理', icon: Layers, auth: true, adminOnly: true },
-  { to: '/admin/issues', label: '期管理', icon: CalendarDays, auth: true, adminOnly: true },
-  { to: '/admin/journal', label: '期刊信息', icon: Building2, auth: true, adminOnly: true },
-  { to: '/admin/settings', label: '期刊设置', icon: Settings, auth: true, adminOnly: true },
-  { to: '/admin/audit-logs', label: '审计日志', icon: ShieldCheck, auth: true, adminOnly: true },
+  { to: '/admin/users', label: '用户管理', icon: Users, auth: true, adminOnly: true, group: '站点管理' },
+  { to: '/admin/volumes', label: '卷管理', icon: Layers, auth: true, adminOnly: true, group: '站点管理' },
+  { to: '/admin/issues', label: '期管理', icon: CalendarDays, auth: true, adminOnly: true, group: '站点管理' },
+  { to: '/admin/journal', label: '期刊信息', icon: Building2, auth: true, adminOnly: true, group: '站点管理' },
+  { to: '/admin/settings', label: '期刊设置', icon: Settings, auth: true, adminOnly: true, group: '站点管理' },
+  { to: '/admin/audit-logs', label: '审计日志', icon: ShieldCheck, auth: true, adminOnly: true, group: '站点管理' },
 ]
 
 export function AppShell() {
@@ -121,6 +121,21 @@ export function AppShell() {
     }
   }
 
+  // 期刊门面模式：首页走独立的全宽 editorial 版式（自带报头/导航/页脚），
+  // 不套工作台侧边栏 —— 否则访客看到的是"作者后台"而不是对外期刊官网。
+  // 注意：提前返回必须放在全部 hooks 之后（rules of hooks），
+  // 否则会形成条件式 hook 调用（react-hooks/rules-of-hooks 会拦截）。
+  if (location.pathname === '/') {
+    return (
+      <div className="min-h-screen bg-background">
+        <ModuleErrorBoundary name="页面" resetKeys={[location.pathname]}>
+          <Outlet />
+        </ModuleErrorBoundary>
+        <CookieBanner />
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen bg-background">
       {/* 移动端遮罩：<md 抽屉打开时显示 */}
@@ -145,7 +160,7 @@ export function AppShell() {
         <div className="flex h-14 items-center justify-between border-b px-4">
           <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
             <BrandMark className="h-5 w-5 shrink-0" />
-            {!collapsed && <span>ScholarHUB</span>}
+            {!collapsed && <span>Rubbish</span>}
           </Link>
           {/* 移动端关闭按钮（仅 <md 显示） */}
           <button
@@ -158,12 +173,26 @@ export function AppShell() {
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto px-2 py-3">
-          {visibleNav.map((item) => {
+          {visibleNav.map((item, idx) => {
             const Icon = item.icon
             const active = item.to === activePath
             const showBadge = item.to === '/notifications' && (unread?.unread ?? 0) > 0
+            // 角色化分组：组变化时插入分组标题（展开态）或分隔线（折叠态），
+            // 让读者/作者/审稿人/编辑一眼看清自己的工作区分块
+            const showGroup =
+              item.group !== undefined &&
+              (idx === 0 || visibleNav[idx - 1].group !== item.group)
             return (
-              <Link
+              <Fragment key={item.to}>
+                {showGroup &&
+                  (collapsed ? (
+                    <div className="my-2 border-t border-sidebar-foreground/15" aria-hidden />
+                  ) : (
+                    <p className="mb-1 mt-3 px-3 text-[10px] font-medium uppercase tracking-widest text-sidebar-foreground/45 first:mt-1">
+                      {item.group}
+                    </p>
+                  ))}
+                <Link
                 key={item.to}
                 to={item.to}
                 className={cn(
@@ -181,6 +210,7 @@ export function AppShell() {
                   </span>
                 )}
               </Link>
+              </Fragment>
             )
           })}
         </nav>

@@ -37,7 +37,7 @@ from app.schemas import TokenResponse
 
 router = APIRouter(prefix="/auth/webauthn", tags=["webauthn"])
 
-logger = get_logger("scholarhub.webauthn")
+logger = get_logger("rubbish.webauthn")
 
 
 # ---------------------------------------------------------------------------

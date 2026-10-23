@@ -1,11 +1,82 @@
 # Changelog
 
-本文件记录 ScholarHUB 每个版本值得关注的变更，遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)
+本文件记录 Rubbish 每个版本值得关注的变更，遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)
 ，版本号遵循语义化版本 `主版本.次版本.修订号`（三段都要写全，修订号不得省略）。
 
 版本号的唯一真源是仓库根目录 `VERSION`，必须与
 `apps/backend/pyproject.toml`、`apps/frontend/package.json`、`apps/backend/app/__init__.py`
 四处完全一致，由 `scripts/check-version.sh` 守门。
+
+## [0.3.0] — 2026-10-23
+
+项目更名为 **Rubbish**，定位收敛为"收录全球学术垃圾的开放获取期刊"，
+视觉与评价体系对标 Science 的版面语言（刊名报头、双线导航、栏目化首页），
+但**不照抄**其指标口径：本刊公布自算的 R 指数，不冒充影响因子。
+
+### Changed
+
+- **项目更名**：包名 `rubbish-backend` / `@rubbish/frontend`，环境变量前缀
+  `SCHOLARHUB_` → `RUBBISH_`，Cookie `rubbish_refresh`，日志命名空间
+  `rubbish.*`，README/文档/官网/镜像链接全部指向 `*/rubbish` 仓库。
+- **许可证由 MIT 改为 AGPL-3.0-or-later**：公益项目防止闭源商业分支回流，
+  理由见 `NOTICE.md`。
+- 首页新增「期刊指标」「平台图集」两个板块，导航扩到 9 项；图集为真实
+  线上截图（WebP，268KB 总计）。
+
+### Added
+
+- **R 指数与学科分区**：`GET /api/catalog/journal-metrics` 公开自算指标，
+  R = 100×(0.5×阅读归一 + 0.3×下载归一 + 0.2×收藏归一)，按学科最大值归一；
+  分区 R1–R4 仅在学科样本 ≥4 篇时生成，否则返回 `null`（页面显示"样本不足"）。
+- `resources.download_count` 列（迁移 005）+ 公开文件端点原子自增。
+- `/journal-metrics` 页面：公开公式、口径、样本限制与机器可读端点。
+- 文章详情页新增「阅读与影响」卡片（R 指数/分区/阅读/下载/收藏）。
+- 首页图集使用 `whileInView` 逐格淡入 + 悬停缩放，遵循 `prefers-reduced-motion`。
+
+### Fixed
+
+- 目录创建/更新遇到唯一约束冲突时不再一律报"Slug 已被占用"，按实际冲突
+  字段返回 DOI 或 Slug 的具体提示。
+
+## [0.2.3] — 2026-10-22
+
+### Security
+
+- **公开面不再泄露未发表记录**：目录列表/详情/统计/分面统一按
+  `publication_status == "published"` 过滤，匿名与非管理员访问草稿一律 404；
+  管理员工作台不受影响。Meilisearch 相关性结果回读时套用同一过滤。
+- **OAI-PMH 只收割已发表记录**：ListRecords / GetRecord 增加 published 过滤，
+  与文件端点的授权边界对齐。
+- `/metrics` 默认关闭（`SCHOLARHUB_METRICS_PUBLIC=false`）：该端点无鉴权且会
+  暴露全部路由模板与流量规模。
+
+### Added
+
+- **期刊门面首页**：新增本期导读、征稿范围、评审流程、开放获取与长期保存、
+  作者指南、常见问题、编辑部联系方式；导航同步扩展。
+- **抓取面**：`/robots.txt`、`/sitemap.xml`（仅已发表条目），SPA 兜底路由按
+  路径注入独立 `<title>`、description、Open Graph、JSON-LD 与 Google Scholar
+  `citation_*` 标签；未知文章返回 `noindex`。
+- **能力探测端点** `GET /api/capabilities`：前端据此判断邮件是否真的会送达。
+- 文章详情返回 `has_file`，仅在存在可下载稿件时显示「下载 PDF」。
+- 详情页与推荐页的「加入阅读列表」改为真实功能（选择列表或现场新建）。
+
+### Changed
+
+- **邮件文案不再说谎**：console 邮件后端下，注册直接进入工作台，忘记密码页
+  明确提示联系编辑部；仅在 SMTP 接通后才提示「请查收邮件」。
+- 目录条目语言默认值 `en` → `zh`；详情页语言、类型、状态改为中文展示，
+  推荐理由由内部诊断串改为可读文案。
+- 隐私政策改为独立中文 HTML 页面，联系方式更正为 admin@argjiemi.cn。
+- Cookie 横幅中文化并修正「可选 Cookie 用于 CSRF」的误导表述。
+- 帮助页品牌统一为 Rubbish。
+- `uv.lock` / `package-lock.json` 恢复官方 registry 地址。
+
+### Fixed
+
+- `apps/backend/app/modules/submission/routes.py` 拆分为作者/编辑/文件三个模块
+  （52KB → 349 行入口 + 2 个职责文件），路由注册顺序保持不变。
+- 新增 OAI-PMH 4 个测试与 SEO/能力探测 6 个测试、目录草稿可见性 3 个测试。
 
 ## [0.2.2] — 2026-10-18
 
@@ -134,7 +205,7 @@
 
 - 明确仓库主从关系：**GitHub/badhope 为核心仓库**，GitCode、Gitee、X33834、Morningstar202604
   均为只读镜像，禁止在镜像上直接提交（此前在镜像上手工提交导致五平台 HEAD 全部分叉）。
-- 五平台对齐统一走 `scholarhub-sync-all`（平台间 3 秒间隔，分叉时用 `--force`）。
+- 五平台对齐统一走 `rubbish-sync-all`（平台间 3 秒间隔，分叉时用 `--force`）。
 
 ### Known issues
 

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as JournalMetricsRouteImport } from './routes/journal-metrics'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as RecommendationsRouteImport } from './routes/recommendations'
@@ -52,6 +53,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JournalMetricsRoute = JournalMetricsRouteImport.update({
+  id: '/journal-metrics',
+  path: '/journal-metrics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -189,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/journal-metrics': typeof JournalMetricsRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/recommendations': typeof RecommendationsRoute
@@ -220,6 +227,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/journal-metrics': typeof JournalMetricsRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/recommendations': typeof RecommendationsRoute
@@ -252,6 +260,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/journal-metrics': typeof JournalMetricsRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/recommendations': typeof RecommendationsRoute
@@ -285,6 +294,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/forgot-password'
+    | '/journal-metrics'
     | '/login'
     | '/notifications'
     | '/recommendations'
@@ -316,6 +326,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/forgot-password'
+    | '/journal-metrics'
     | '/login'
     | '/notifications'
     | '/recommendations'
@@ -347,6 +358,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/forgot-password'
+    | '/journal-metrics'
     | '/login'
     | '/notifications'
     | '/recommendations'
@@ -379,6 +391,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  JournalMetricsRoute: typeof JournalMetricsRoute
   LoginRoute: typeof LoginRoute
   NotificationsRoute: typeof NotificationsRoute
   RecommendationsRoute: typeof RecommendationsRoute
@@ -428,6 +441,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/journal-metrics': {
+      id: '/journal-metrics'
+      path: '/journal-metrics'
+      fullPath: '/journal-metrics'
+      preLoaderRoute: typeof JournalMetricsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -619,6 +639,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  JournalMetricsRoute: JournalMetricsRoute,
   LoginRoute: LoginRoute,
   NotificationsRoute: NotificationsRoute,
   RecommendationsRoute: RecommendationsRoute,

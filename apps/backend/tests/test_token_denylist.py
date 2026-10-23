@@ -82,7 +82,7 @@ async def test_memory_different_jtis_independent() -> None:
 
 @pytest.mark.asyncio
 async def test_get_denylist_returns_memory_when_no_redis() -> None:
-    """Without SCHOLARHUB_REDIS_URL, the factory returns MemoryTokenDenylist."""
+    """Without RUBBISH_REDIS_URL, the factory returns MemoryTokenDenylist."""
     reset_denylist()
     denylist = await get_denylist()
     assert isinstance(denylist, MemoryTokenDenylist)

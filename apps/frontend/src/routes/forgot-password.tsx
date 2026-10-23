@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useForgotPassword } from '@/hooks/api/use-auth'
+import { useCapabilities } from '@/hooks/use-capabilities'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -13,6 +14,8 @@ export const Route = createFileRoute('/forgot-password')({
 
 function ForgotPasswordPage() {
   const mut = useForgotPassword()
+  const capabilities = useCapabilities()
+  const emailDelivery = capabilities.data?.email_delivery ?? false
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
 
@@ -35,6 +38,12 @@ function ForgotPasswordPage() {
           <CardTitle className="text-2xl">忘记密码</CardTitle>
           <CardDescription>
             输入注册邮箱，我们会发送密码重置链接到你的邮箱。
+            {capabilities.isFetched && !emailDelivery && (
+              <span className="mt-2 block text-xs text-muted-foreground">
+                当前站点未开通邮件服务，自助重置暂不可用；请直接联系编辑部
+                admin@argjiemi.cn 重置密码。
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>

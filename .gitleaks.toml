@@ -8,34 +8,34 @@
 useDefault = true
 
 [[rules]]
-id = "scholarhub-jwt-secret"
+id = "rubbish-jwt-secret"
 description = "Backend JWT secret key (SCHOLARHUB_SECRET_KEY / JWT_SECRET)"
-regex = '''(?i)(?:scholarhub_)?secret_key\s*[:=]\s*["']?[A-Za-z0-9_\-+/=]{32,}["']?'''
-keywords = ["secret_key", "scholarhub"]
+regex = '''(?i)(?:rubbish_)?secret_key\s*[:=]\s*["']?[A-Za-z0-9_\-+/=]{32,}["']?'''
+keywords = ["secret_key", "rubbish"]
 entropy = 3.5
 
 [[rules]]
-id = "scholarhub-admin-password"
+id = "rubbish-admin-password"
 description = "Backend bootstrap admin password"
-regex = '''(?i)(?:scholarhub_)?admin_password\s*[:=]\s*["']?[^\s"']{12,}["']?'''
+regex = '''(?i)(?:rubbish_)?admin_password\s*[:=]\s*["']?[^\s"']{12,}["']?'''
 keywords = ["admin_password"]
 
 [[rules]]
-id = "scholarhub-database-url"
+id = "rubbish-database-url"
 description = "Database URL containing real credentials"
 regex = '''(?i)(?:postgres(?:ql)?|mysql)://[^\s:@/]+:[^\s:@/]+@[^\s/]+/[^\s/?]+'''
 entropy = 3.5
 
 [[rules]]
-id = "scholarhub-redis-url"
+id = "rubbish-redis-url"
 description = "Redis URL containing real password"
 regex = '''redis://:[^\s:@/]+@'''
 entropy = 3.0
 
 [[rules]]
-id = "scholarhub-oidc-client-secret"
+id = "rubbish-oidc-client-secret"
 description = "OIDC client secret"
-regex = '''(?i)(?:scholarhub_)?oidc.*client_secret\s*[:=]\s*["']?[A-Za-z0-9_\-]{16,}["']?'''
+regex = '''(?i)(?:rubbish_)?oidc.*client_secret\s*[:=]\s*["']?[A-Za-z0-9_\-]{16,}["']?'''
 keywords = ["oidc"]
 
 [allowlist]
@@ -59,5 +59,5 @@ regexes = [
   '''\*{4,}''',  # already-redacted
   # Explicitly-labelled test/dev placeholders (never real credentials)
   '''(?i)test_only_do_not_use_in_production''',
-  '''scholarhub_dev''',
+  '''rubbish_dev''',
 ]

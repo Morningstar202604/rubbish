@@ -14,7 +14,7 @@ test.describe('guest browse', () => {
     await page.goto('/')
     await expect(page).toHaveURL(/\/$/)
     await expect(
-      page.getByRole('heading', { name: /开放学术出版/ }),
+      page.getByRole('heading', { name: /Rubbish/ }),
     ).toBeVisible()
     // 首页有两处「登录」（顶部横幅 + 门面区快捷入口），限定到横幅避免歧义
     await expect(page.getByRole('banner').getByRole('link', { name: '登录' })).toBeVisible()
@@ -37,12 +37,13 @@ test.describe('guest browse', () => {
     request,
   }) => {
     // 用 admin API 造一条资源（详情页需要真实数据；E2E 库启动时为空）
-    const loginRes = await request.post('http://localhost:8000/api/auth/login', {
+    const apiBase = process.env.E2E_BACKEND_URL ?? 'http://localhost:8000'
+    const loginRes = await request.post(`${apiBase}/api/auth/login`, {
       data: { username: ADMIN.username, password: ADMIN.password },
     })
     expect(loginRes.ok()).toBeTruthy()
     const { access_token } = (await loginRes.json()) as { access_token: string }
-    const createRes = await request.post('http://localhost:8000/api/catalog', {
+    const createRes = await request.post(`${apiBase}/api/catalog`, {
       headers: { Authorization: `Bearer ${access_token}` },
       data: {
         slug: `guest-detail-${Date.now().toString(36)}`,
@@ -123,7 +124,7 @@ test.describe('guest browse', () => {
     await page.goto('/login')
     // 登录页标题是 CardTitle（非 h1/h2），用 text 断言即可
     await expect(page.getByText('登录', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText('使用账号密码登录 ScholarHUB。')).toBeVisible()
+    await expect(page.getByText('使用账号密码登录 Rubbish。')).toBeVisible()
     await expect(page.getByLabel('用户名或邮箱')).toBeVisible()
     await expect(page.getByLabel('密码', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: '登录' })).toBeVisible()

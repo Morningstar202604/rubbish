@@ -168,7 +168,7 @@ def test_build_datacite_metadata_defaults_and_omits_missing_fields(
 
     attrs = registration._build_datacite_metadata(resource, "10.5072/1")["data"]["attributes"]
 
-    assert attrs["publisher"] == "ScholarHUB"
+    assert attrs["publisher"] == "Rubbish"
     assert attrs["publicationYear"] == "2026"
     assert attrs["types"]["resourceType"] == "JournalArticle"
     assert attrs["descriptions"] == []

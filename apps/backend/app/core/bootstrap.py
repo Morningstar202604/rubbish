@@ -31,7 +31,7 @@ from app.core.security import hash_password
 from app.core.tenant import TENANT_CONTEXT_VAR
 from app.models import Role, Tenant, User, UserRole
 
-logger = get_logger("scholarhub.bootstrap")
+logger = get_logger("rubbish.bootstrap")
 
 # Predefined role slugs (kept in sync with deps.py).
 ROLE_EDITOR = "editor"

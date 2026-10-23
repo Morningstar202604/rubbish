@@ -1,23 +1,6 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!--
-  ScholarHUB favicon —— 圆形深蓝底 + 白色书页 S + 金色翻页角。
-  圆形底色保证浅色/深色浏览器标签栏、浅色/深色主题下均清晰可辨；
-  图形与 logo-mark.svg 同几何（缩比），与徽章（logo.svg）共享同一图形基因。
--->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="ScholarHUB">
-  <circle cx="32" cy="32" r="32" fill="#16324F"/>
-  <path d="M 46.9 19.2
-           C 46.9 14.4 42.1 11.7 32 11.7
-           C 22.4 11.7 17.1 15.5 17.1 21.3
-           C 17.1 26.7 21.3 29.3 28.3 30.9
-           C 35.7 32.5 46.9 35.7 46.9 43.7
-           C 46.9 50.1 41.6 52.3 32 52.3
-           C 22.9 52.3 17.1 49.1 17.1 44.8"
-        fill="none" stroke="#FFFFFF" stroke-width="6.7"
-        stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M 35.2 49.1
-           C 40.5 46.9 44.8 42.7 45.9 37.3
-           C 43.7 43.7 39.5 46.9 33.1 48
-           Z"
-        fill="#C7A24B"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#24344d"/>
+  <rect x="8" y="8" width="48" height="48" rx="5" fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1.2"/>
+  <text x="32" y="44" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="34" font-weight="600" fill="#ffffff">R</text>
+  <path d="M50.5 44.5 L56 50 L50.5 55.5 L45 50 Z" fill="#C7A24B"/>
 </svg>

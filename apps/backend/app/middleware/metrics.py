@@ -1,7 +1,7 @@
 """HTTP request metrics middleware (pure ASGI).
 
-Records ``scholarhub_http_requests_total`` +
-``scholarhub_http_request_duration_seconds`` for every request, with the
+Records ``rubbish_http_requests_total`` +
+``rubbish_http_request_duration_seconds`` for every request, with the
 **template path** (e.g. ``/api/users/{user_id}``) as the label so cardinality
 stays bounded even under load.
 
@@ -34,7 +34,7 @@ from app.core.metrics import (
     update_db_pool_metrics,
 )
 
-logger = get_logger("scholarhub.metrics")
+logger = get_logger("rubbish.metrics")
 
 
 def _resolve_template_path(scope: Scope) -> str:

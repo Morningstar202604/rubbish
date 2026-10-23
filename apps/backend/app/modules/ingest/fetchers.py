@@ -26,7 +26,7 @@ from app.modules.ingest.schemas import IngestResource
 
 # Crossref politely asks callers to identify themselves with a mailto.
 # Read from settings; falls back to a placeholder if not configured.
-CROSSREF_MAILTO = settings.crossref_mailto or "scholarhub-operator@example.com"
+CROSSREF_MAILTO = settings.crossref_mailto or "rubbish-operator@example.com"
 CROSSREF_BASE_URL = "https://api.crossref.org/works"
 # Use HTTPS for arXiv (same host/path as the plaintext endpoint) to prevent
 # in-transit tampering by a man-in-the-middle.
@@ -81,7 +81,7 @@ async def fetch_crossref(doi: str) -> IngestResource:
     # URL-encode the DOI so a '?' inside it cannot inject extra query params.
     url = f"{CROSSREF_BASE_URL}/{quote(doi, safe='/')}"
     headers = {
-        "User-Agent": f"ScholarHUB/0.1 (mailto:{CROSSREF_MAILTO})",
+        "User-Agent": f"Rubbish/0.1 (mailto:{CROSSREF_MAILTO})",
         "Accept": "application/json",
     }
     try:

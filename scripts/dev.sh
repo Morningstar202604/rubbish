@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start the full ScholarHUB dev stack on bare metal: PostgreSQL + API + SPA.
+# Start the full Rubbish dev stack on bare metal: PostgreSQL + API + SPA.
 #
 # Why this exists: the Compose path builds the backend from
 # ``ghcr.io/astral-sh/uv``, which is unreachable on some networks. This
@@ -16,8 +16,8 @@ cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 RUN_DIR="$ROOT/.run"
 
-API_PORT="${SCHOLARHUB_API_PORT:-8000}"
-WEB_PORT="${SCHOLARHUB_WEB_PORT:-5173}"
+API_PORT="${RUBBISH_API_PORT:-8000}"
+WEB_PORT="${RUBBISH_WEB_PORT:-5173}"
 
 START_BACKEND=1
 START_FRONTEND=1
@@ -75,7 +75,7 @@ ensure_postgres() {
         done
         die "PostgreSQL did not become ready (check: pg_ctlcluster $ver main start)"
     fi
-    warn "pg_ctlcluster not found — assuming SCHOLARHUB_DATABASE_URL points elsewhere"
+    warn "pg_ctlcluster not found — assuming RUBBISH_DATABASE_URL points elsewhere"
 }
 
 # --- 2. .env bootstrap ---------------------------------------------------
@@ -95,9 +95,9 @@ import sys
 
 path = sys.argv[1]
 generated = {
-    "SCHOLARHUB_SECRET_KEY": secrets.token_hex(32),
-    "SCHOLARHUB_ADMIN_PASSWORD": "Sch0lar!" + secrets.token_urlsafe(12),
-    "SCHOLARHUB_FERNET_KEY": base64.urlsafe_b64encode(os.urandom(32)).decode(),
+    "RUBBISH_SECRET_KEY": secrets.token_hex(32),
+    "RUBBISH_ADMIN_PASSWORD": "Sch0lar!" + secrets.token_urlsafe(12),
+    "RUBBISH_FERNET_KEY": base64.urlsafe_b64encode(os.urandom(32)).decode(),
 }
 lines = []
 for line in open(path, encoding="utf-8"):
@@ -179,7 +179,7 @@ bootstrap_env
 
 cat <<EOF
 
-$(printf '\033[32mScholarHUB dev stack is running\033[0m')
+$(printf '\033[32mRubbish dev stack is running\033[0m')
   API docs : http://localhost:$API_PORT/docs
   SPA      : http://localhost:$WEB_PORT
   logs     : $RUN_DIR/{backend,frontend}.log

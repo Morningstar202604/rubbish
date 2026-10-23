@@ -1,4 +1,4 @@
-# ScholarHUB 上线部署指南
+# Rubbish 上线部署指南
 
 > 代码状态：backend 644 tests / coverage 84%，frontend 100 tests，ruff/mypy/tsc 全绿；
 > CI 7 jobs（backend / migrations / frontend / e2e / precommit / security / docker-build 镜像门禁）。
@@ -37,7 +37,7 @@
    | `SCHOLARHUB_FERNET_KEY` | `python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"` |
    | `SCHOLARHUB_ADMIN_PASSWORD` | ≥12 位强密码 |
    | `SCHOLARHUB_ALLOWED_HOSTS` | 后端域名，如 `api.example.com` |
-   | `SCHOLARHUB_CORS_ORIGINS` | 前端域名，如 `https://scholarhub.pages.dev` |
+   | `SCHOLARHUB_CORS_ORIGINS` | 前端域名，如 `https://rubbish.pages.dev` |
    | R2（可选）：`SCHOLARHUB_STORAGE_BACKEND=s3` + S3 endpoint/key/secret/bucket | 指向 R2 的 S3 兼容端点 |
 
 4. **前端**：CF Pages 连 Git 仓库，Root directory = `apps/frontend`，

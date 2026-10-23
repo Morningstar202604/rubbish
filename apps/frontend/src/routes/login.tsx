@@ -151,7 +151,7 @@ function LoginPage() {
       <Card className="w-full">
         <CardHeader>
           <CardTitle className="text-2xl">登录</CardTitle>
-          <CardDescription>使用账号密码登录 ScholarHUB。</CardDescription>
+          <CardDescription>使用账号密码登录 Rubbish。</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">

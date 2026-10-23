@@ -45,14 +45,14 @@ REGISTRY = CollectorRegistry(auto_describe=True)
 # ---------------------------------------------------------------------------
 
 HTTP_REQUESTS_TOTAL = Counter(
-    "scholarhub_http_requests_total",
+    "rubbish_http_requests_total",
     "Total HTTP requests processed, labelled by method, path, and status class.",
     ["method", "path", "status"],
     registry=REGISTRY,
 )
 
 HTTP_REQUEST_DURATION_SECONDS = Histogram(
-    "scholarhub_http_request_duration_seconds",
+    "rubbish_http_request_duration_seconds",
     "HTTP request duration in seconds.",
     ["method", "path"],
     buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
@@ -60,7 +60,7 @@ HTTP_REQUEST_DURATION_SECONDS = Histogram(
 )
 
 HTTP_REQUESTS_IN_PROGRESS = Gauge(
-    "scholarhub_http_requests_in_progress",
+    "rubbish_http_requests_in_progress",
     "HTTP requests currently being served.",
     ["method"],
     registry=REGISTRY,
@@ -71,25 +71,25 @@ HTTP_REQUESTS_IN_PROGRESS = Gauge(
 # ---------------------------------------------------------------------------
 
 DB_POOL_SIZE = Gauge(
-    "scholarhub_db_pool_size",
+    "rubbish_db_pool_size",
     "SQLAlchemy engine connection pool size (current connections).",
     registry=REGISTRY,
 )
 
 DB_POOL_CHECKED_OUT = Gauge(
-    "scholarhub_db_pool_checked_out",
+    "rubbish_db_pool_checked_out",
     "SQLAlchemy engine connections currently checked out.",
     registry=REGISTRY,
 )
 
 DB_POOL_OVERFLOW = Gauge(
-    "scholarhub_db_pool_overflow",
+    "rubbish_db_pool_overflow",
     "SQLAlchemy engine overflow connections beyond pool_size.",
     registry=REGISTRY,
 )
 
 RATE_LIMIT_REJECTIONS_TOTAL = Counter(
-    "scholarhub_rate_limit_rejections_total",
+    "rubbish_rate_limit_rejections_total",
     "Number of requests rejected by the rate limiter.",
     ["path"],
     registry=REGISTRY,

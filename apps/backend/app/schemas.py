@@ -151,7 +151,7 @@ class UserResponse(BaseModel):
 
     id: int
     # 输出 schema 不再用 EmailStr：数据库里已存过的 email 视为合法。
-    # 之前用 EmailStr 会导致 admin@scholarhub.local 这类保留 TLD 邮箱无法
+    # 之前用 EmailStr 会导致 admin@rubbish.local 这类保留 TLD 邮箱无法
     # 序列化（admin/users 直接 500），输出端做二次校验是反模式。
     email: str
     username: str

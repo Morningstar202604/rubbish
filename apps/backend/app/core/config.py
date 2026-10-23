@@ -1,6 +1,6 @@
 """Application configuration via pydantic-settings v2.
 
-All settings are read from environment variables prefixed ``SCHOLARHUB_`` or
+All settings are read from environment variables prefixed ``RUBBISH_`` or
 from a ``.env`` file at the backend root. Secrets (``secret_key``,
 ``admin_password``) have no defaults and must be provided in every non-test
 environment; the ``validate_secrets`` model validator enforces this.
@@ -47,21 +47,21 @@ _WEAK_ADMIN_PASSWORDS = frozenset(
 class Settings(BaseSettings):
     """Strongly-typed application settings.
 
-    All env vars are prefixed ``SCHOLARHUB_`` (e.g. ``SCHOLARHUB_DATABASE_URL``).
-    Nested fields use ``__`` separator (e.g. ``SCHOLARHUB_DB__POOL_SIZE``).
+    All env vars are prefixed ``RUBBISH_`` (e.g. ``RUBBISH_DATABASE_URL``).
+    Nested fields use ``__`` separator (e.g. ``RUBBISH_DB__POOL_SIZE``).
     """
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        env_prefix="SCHOLARHUB_",
+        env_prefix="RUBBISH_",
         env_nested_delimiter="__",
         extra="ignore",
         case_sensitive=False,
     )
 
     # --- Application identity ---
-    app_name: str = "ScholarHUB API"
+    app_name: str = "Rubbish API"
     environment: Literal["development", "staging", "production", "test"] = "development"
     debug: bool = False
 
@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     bootstrap_tenant_slug: str = "default"
 
     # --- Database (PostgreSQL only �?RLS requires PG) ---
-    database_url: str = "postgresql+asyncpg://scholarhub:scholarhub@localhost:5432/scholarhub"
+    database_url: str = "postgresql+asyncpg://rubbish:rubbish@localhost:5432/rubbish"
     db_pool_size: int = Field(default=10, ge=1)
     db_max_overflow: int = Field(default=20, ge=0)
     db_pool_recycle: int = Field(default=1800, ge=0, description="0 = never recycle")
@@ -91,13 +91,13 @@ class Settings(BaseSettings):
     # M3 hardening: comma-separated list of *previous* signing keys (newest
     # first). Tokens minted before a rotation verify against this list so
     # existing sessions keep working until they expire. Set via
-    # ``SCHOLARHUB_PREVIOUS_SECRET_KEYS``. Empty string is fine when no
+    # ``RUBBISH_PREVIOUS_SECRET_KEYS``. Empty string is fine when no
     # rotation is in flight.
     previous_secret_keys: str = Field(default="")
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
     algorithm: str = "HS256"
-    refresh_token_cookie_name: str = "scholarhub_refresh"
+    refresh_token_cookie_name: str = "rubbish_refresh"
     # Symmetric key for at-rest encryption of secrets we cannot hash (i.e.
     # TOTP seeds, where we need to recover the cleartext to compute the
     # expected code at verify time). 32-byte url-safe base64 (Fernet format).
@@ -117,10 +117,10 @@ class Settings(BaseSettings):
 
     # --- WebAuthn / Passkeys ---
     # Relying Party identifier — typically the domain serving the app
-    # (e.g. "scholarhub.example.com" or "localhost" for dev).
+    # (e.g. "rubbish.example.com" or "localhost" for dev).
     webauthn_rp_id: str = "localhost"
-    # Human-readable RP name, e.g. "ScholarHUB".
-    webauthn_rp_name: str = "ScholarHUB"
+    # Human-readable RP name, e.g. "Rubbish".
+    webauthn_rp_name: str = "Rubbish"
     # Expected origin for WebAuthn ceremonies. Must match the origin
     # the browser sends — typically the SPA base URL (e.g. "http://localhost:5173").
     webauthn_origin: str = "http://localhost:5173"
@@ -146,8 +146,8 @@ class Settings(BaseSettings):
     # Mailgun / SendGrid / SES / Postmark all expose an SMTP relay, so this
     # one backend covers every mainstream transactional provider.
     email_backend: Literal["console", "smtp"] = "console"
-    email_from_address: str = "no-reply@scholarhub.local"
-    email_from_name: str = "ScholarHUB"
+    email_from_address: str = "no-reply@rubbish.local"
+    email_from_name: str = "Rubbish"
     email_smtp_host: str = ""
     email_smtp_port: int = Field(default=587, ge=1, le=65535)
     email_smtp_username: str = ""
@@ -219,6 +219,16 @@ class Settings(BaseSettings):
     # --- Rate limiting ---
     rate_limit_per_minute: int = Field(default=120, ge=1)
 
+    # --- Public surface ---
+    # Canonical public origin used to build absolute URLs in the sitemap,
+    # robots.txt and per-page metadata. Empty = infer from the request
+    # (behind a TLS-terminating proxy that yields http://app:8080, so
+    # production deployments should set this explicitly).
+    public_base_url: str = ""
+    # Prometheus /metrics is unauthenticated and exposes route-level
+    # traffic shapes. Off by default; flip on only on a private network.
+    metrics_public: bool = False
+
     # --- Logging ---
     log_level: str = Field(default="INFO", pattern=r"^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
     json_logs: bool = False
@@ -239,10 +249,10 @@ class Settings(BaseSettings):
     # the SDK is never imported when unconfigured.
     meilisearch_url: str = ""
     meilisearch_api_key: str = ""
-    meilisearch_index_prefix: str = "scholarhub"
+    meilisearch_index_prefix: str = "rubbish"
 
     # --- Admin bootstrap ---
-    admin_email: str = "admin@scholarhub.local"
+    admin_email: str = "admin@rubbish.local"
     admin_username: str = "admin"
     admin_password: str = Field(default="")
 
@@ -300,12 +310,12 @@ class Settings(BaseSettings):
         # Non-test environments: reject weak/missing secrets.
         if self.secret_key in _WEAK_SECRET_KEYS:
             raise ValueError(
-                "SCHOLARHUB_SECRET_KEY is missing or uses a known-weak value. "
+                "RUBBISH_SECRET_KEY is missing or uses a known-weak value. "
                 "Generate a strong key with: openssl rand -hex 32"
             )
         if len(self.secret_key) < 32:
             raise ValueError(
-                "SCHOLARHUB_SECRET_KEY must be at least 32 characters long. "
+                "RUBBISH_SECRET_KEY must be at least 32 characters long. "
                 "Generate with: openssl rand -hex 32"
             )
 
@@ -319,28 +329,28 @@ class Settings(BaseSettings):
                 continue
             if chunk in _WEAK_SECRET_KEYS:
                 raise ValueError(
-                    "SCHOLARHUB_PREVIOUS_SECRET_KEYS contains a weak value. "
+                    "RUBBISH_PREVIOUS_SECRET_KEYS contains a weak value. "
                     "Rotate only with real keys generated via: openssl rand -hex 32"
                 )
             if len(chunk) < 32:
                 raise ValueError(
-                    "Every entry in SCHOLARHUB_PREVIOUS_SECRET_KEYS must be at least 32 characters."
+                    "Every entry in RUBBISH_PREVIOUS_SECRET_KEYS must be at least 32 characters."
                 )
 
         if self.admin_password in _WEAK_ADMIN_PASSWORDS:
             raise ValueError(
-                "SCHOLARHUB_ADMIN_PASSWORD is missing or uses a common weak value. "
+                "RUBBISH_ADMIN_PASSWORD is missing or uses a common weak value. "
                 "Provide a strong password of at least 12 characters."
             )
         if len(self.admin_password) < 12:
-            raise ValueError("SCHOLARHUB_ADMIN_PASSWORD must be at least 12 characters long.")
+            raise ValueError("RUBBISH_ADMIN_PASSWORD must be at least 12 characters long.")
 
         # Fernet key is required in non-test environments because TOTP 2FA
         # (M2 hardening) encrypts user secrets at rest with it. Tests get a
         # deterministic key above; production must provide one via env.
         if not self.fernet_key:
             raise ValueError(
-                "SCHOLARHUB_FERNET_KEY is missing. Generate with: "
+                "RUBBISH_FERNET_KEY is missing. Generate with: "
                 "python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
             )
         # Validate the actual Fernet format. An ill-formed key would only
@@ -355,15 +365,14 @@ class Settings(BaseSettings):
             )
         except Exception as exc:  # InvalidToken / ValueError
             raise ValueError(
-                "SCHOLARHUB_FERNET_KEY is not a valid Fernet key "
-                "(must be 32 url-safe base64 bytes)."
+                "RUBBISH_FERNET_KEY is not a valid Fernet key (must be 32 url-safe base64 bytes)."
             ) from exc
 
         # Production-specific checks.
         if self.is_production:
             hosts = self.allowed_hosts_list
             if not hosts or hosts == ["*"]:
-                raise ValueError("SCHOLARHUB_ALLOWED_HOSTS must be explicitly set in production")
+                raise ValueError("RUBBISH_ALLOWED_HOSTS must be explicitly set in production")
             if "*" in self.cors_origins_list:
                 raise ValueError("CORS wildcard '*' is not allowed in production")
 

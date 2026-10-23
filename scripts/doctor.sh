@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Environment self-check for ScholarHUB development.
+# Environment self-check for Rubbish development.
 #
 # Answers "why won't this start?" before you spend time on stack traces:
 # toolchain versions, PostgreSQL reachability, .env presence, port conflicts,
@@ -12,8 +12,8 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 
-API_PORT="${SCHOLARHUB_API_PORT:-8000}"
-WEB_PORT="${SCHOLARHUB_WEB_PORT:-5173}"
+API_PORT="${RUBBISH_API_PORT:-8000}"
+WEB_PORT="${RUBBISH_WEB_PORT:-5173}"
 
 PASS=0
 WARN=0
@@ -70,17 +70,17 @@ if command -v pg_isready >/dev/null 2>&1; then
         warn "PostgreSQL installed but not running — try: sudo pg_ctlcluster <ver> main start"
     fi
 else
-    warn "PostgreSQL client tools not found — relying on SCHOLARHUB_DATABASE_URL"
+    warn "PostgreSQL client tools not found — relying on RUBBISH_DATABASE_URL"
 fi
 
 head_ "Configuration"
 if [ -f apps/backend/.env ]; then
     ok "apps/backend/.env present (read from the backend working directory)"
-    if grep -qE '^SCHOLARHUB_SECRET_KEY=change-me' apps/backend/.env 2>/dev/null; then
-        bad "SCHOLARHUB_SECRET_KEY is still the placeholder — generate one: openssl rand -hex 32"
+    if grep -qE '^RUBBISH_SECRET_KEY=change-me' apps/backend/.env 2>/dev/null; then
+        bad "RUBBISH_SECRET_KEY is still the placeholder — generate one: openssl rand -hex 32"
     fi
-    if grep -qE '^SCHOLARHUB_ADMIN_PASSWORD=change-me' apps/backend/.env 2>/dev/null; then
-        bad "SCHOLARHUB_ADMIN_PASSWORD is still the placeholder"
+    if grep -qE '^RUBBISH_ADMIN_PASSWORD=change-me' apps/backend/.env 2>/dev/null; then
+        bad "RUBBISH_ADMIN_PASSWORD is still the placeholder"
     fi
 else
     warn "apps/backend/.env missing — ./scripts/dev.sh will create it"

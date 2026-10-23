@@ -11,18 +11,21 @@ from app.core.config import settings
 
 
 @pytest.mark.asyncio
-async def test_privacy_endpoint_returns_markdown(
+async def test_privacy_endpoint_returns_html(
     client: AsyncClient,
 ) -> None:
     r = await client.get("/privacy")
     assert r.status_code == 200
-    assert r.headers["content-type"].startswith("text/plain")
+    assert r.headers["content-type"].startswith("text/html")
     body = r.text
     # The policy text is the contract; spot-check the load-bearing claims.
-    assert "Privacy Policy" in body
-    assert "365 days" in body  # audit log retention
-    assert "30-day grace window" in body
+    assert "隐私政策" in body
+    assert "365" in body  # audit log retention
+    assert "30" in body  # grace window
     assert "/api/users/me/export" in body
+    # Rendered as a document, not a raw dump of markdown markers.
+    assert "<h2>" in body
+    assert "## " not in body
 
 
 @pytest.mark.asyncio

@@ -11,13 +11,13 @@
 #   raw/*.webm                    — Playwright 录制的使用流程（取最新一个）
 #   /tmp/promo/outro.png          — 片尾卡片（仓库地址 + 指标）
 # 输出：
-#   /workspace/scholarhub-media/ScholarHUB-promo.webm   宣传片（含片头尾）
+#   /workspace/rubbish-media/Rubbish-promo.webm   宣传片（含片头尾）
 #
 # 说明：不再单独产出 walkthrough —— 它与宣传片中间段完全重复，
 # 需要的话把 list.txt 里的 intro/outro 两行删掉重跑即可。
 set -euo pipefail
 
-MEDIA=/workspace/scholarhub-media
+MEDIA=/workspace/rubbish-media
 RAW=$(ls -t "$MEDIA"/raw/*.webm | head -1)
 TMP=$(mktemp -d)
 echo "raw: $RAW"
@@ -77,11 +77,11 @@ ffmpeg -v error -y -i "$RAW" \
 : > "$TMP/list.txt"
 for f in intro walk outro; do echo "file '$TMP/$f.webm'" >> "$TMP/list.txt"; done
 ffmpeg -v error -y -f concat -safe 0 -i "$TMP/list.txt" \
-  $VP9 -crf 34 -r 25 "$MEDIA/ScholarHUB-promo.webm"
+  $VP9 -crf 34 -r 25 "$MEDIA/Rubbish-promo.webm"
 
 echo
-echo "== ScholarHUB-promo.webm"
+echo "== Rubbish-promo.webm"
 ffprobe -v error -select_streams v:0 \
   -show_entries stream=codec_name,width,height,r_frame_rate \
-  -show_entries format=duration,size -of default=nw=1 "$MEDIA/ScholarHUB-promo.webm"
+  -show_entries format=duration,size -of default=nw=1 "$MEDIA/Rubbish-promo.webm"
 rm -rf "$TMP"

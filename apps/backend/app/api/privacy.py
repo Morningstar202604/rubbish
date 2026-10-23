@@ -3,119 +3,178 @@
 GDPR Article 13 / 14 requires that data subjects be informed of the
 controller's identity, the categories of data processed, the purposes
 of processing, and the retention period before any personal data is
-collected. We surface the policy document as a single endpoint so
-that any client (SPA, mobile, curl) can fetch the canonical text
-without having to bundle a copy at build time.
+collected. We serve the policy as a small standalone HTML page so a
+visitor without JavaScript still gets a readable document (the SPA
+shell would render nothing).
 
-The text itself lives in ``PRIVACY_POLICY_MD`` so it can be updated
-by an ops change without redeploying. The endpoint returns it as
-``text/markdown`` so a browser renders it as plain text and a SPA
-can convert it to HTML via a markdown library if it wants the
-formatted view.
+Retention constants live in ``app.core.retention`` so this text and the
+code cannot drift apart silently.
 """
 
 from __future__ import annotations
 
+import html
+
 from fastapi import APIRouter
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import HTMLResponse
+
+from app.core.retention import AUDIT_LOG_RETENTION_DAYS, USER_DELETION_GRACE_DAYS
 
 router = APIRouter(tags=["public"])
 
+CONTACT_EMAIL = "admin@argjiemi.cn"
 
-PRIVACY_POLICY_MD = """\
-# ScholarHub Privacy Policy
+PRIVACY_POLICY_MD = f"""\
+# Rubbish 隐私政策
 
-_Last updated: 2026-07-25_
+_最后更新：2026-10-22_
 
-## Who we are
+## 我们是谁
 
-ScholarHub ("we", "us") operates an academic literature platform.
-Our contact for privacy enquiries is `privacy@scholarhub.example`.
+Rubbish（rubbish.argjiemi.cn）是一份开放获取学术期刊，由本站编辑部运营。
+隐私相关事宜请联系 `{CONTACT_EMAIL}`。
 
-## What data we collect
+## 我们收集哪些数据
 
-When you register an account we collect:
+注册账号时收集：
 
-- Email address (used for login and password reset).
-- Username (display name on your public profile).
-- Password (stored as a bcrypt hash; we never see the cleartext).
-- Time of account creation.
+- 邮箱地址（用于登录与密码找回）。
+- 用户名（公开显示的作者名）。
+- 密码（以 bcrypt 哈希存储，我们无法看到明文）。
+- 账号创建时间。
 
-When you use the service we additionally collect:
+使用服务时还会收集：
 
-- Books / articles you submit, annotate, or list.
-- Reviews and ratings you write.
-- Optional profile fields you choose to fill in (display name, bio).
-- IP address and approximate request timing for security audit logs.
-- HTTP cookies: a session refresh cookie (HttpOnly, SameSite=Strict)
-  and, if enabled, a CSRF double-submit cookie.
+- 你提交、评审或收藏的稿件与文献记录。
+- 你填写的审稿意见与评分。
+- 安全审计所需的 IP 地址与请求时间。
+- Cookie：一个 HttpOnly 的登录刷新令牌，以及（如启用）CSRF 双提交 Cookie。
 
-We do **not** collect:
+我们**不**收集：广告标识符、第三方追踪像素、生物识别数据、特殊类别个人数据。
 
-- Advertising identifiers.
-- Third-party tracking pixels.
-- Biometric data.
-- Special-category data (race, religion, health, sexuality, etc.).
+## 用途
 
-## What we use it for
+- 提供登录、投稿、评审、阅读等核心服务。
+- 防止滥用（限流、暴力破解防护）。
+- 记录账号操作审计日志，保留 {AUDIT_LOG_RETENTION_DAYS} 天。
 
-- Providing the service (authentication, storing your library).
-- Preventing abuse (rate limiting, brute-force protection).
-- Auditing account actions for 365 days so you have a record of who
-  accessed your data and when.
-- Complying with legal obligations.
+## 保留期限
 
-## Legal basis
+- 账号资料：直至你申请删除。
+- 删除账号后：邮箱、用户名、密码、TOTP 密钥立即匿名化，数据行在
+  **{USER_DELETION_GRACE_DAYS} 天宽限期**后彻底删除。
+- 审计日志：**{AUDIT_LOG_RETENTION_DAYS} 天**。
+- 备份：90 天内轮换删除。
 
-For users in the EEA / UK we rely on Article 6(1)(b) — performance
-of a contract — for the authentication and library data, and on
-Article 6(1)(f) — legitimate interests — for security audit logs.
+## 你的权利
 
-## How long we keep it
+- 导出全部个人数据：`GET /api/users/me/export`。
+- 注销账号：`DELETE /api/users/me`，{USER_DELETION_GRACE_DAYS} 天内可恢复。
+- 关闭双因素认证：`POST /api/auth/2fa/disable`。
+- 其他数据主体请求：发送邮件至 `{CONTACT_EMAIL}`，我们将在 30 天内答复。
 
-- Account profile data: until you delete your account.
-- After you delete your account: PII fields (email, username,
-  password, TOTP secret) are anonymised in place immediately, and
-  the row is hard-deleted after a **30-day grace window**.
-- Audit logs: **365 days**.
-- Backups: deleted within 90 days.
+## 我们如何保护数据
 
-## Your rights
+- 生产环境全站 HTTPS。
+- 密码使用 bcrypt 加盐哈希。
+- 访问令牌 15 分钟过期，可通过 token 版本号即时吊销。
+- 刷新令牌每次使用都轮换，已消费的令牌重放会被拒绝。
+- 支持 TOTP 双因素认证，建议所有账号开启。
+- 代理层限流拦截暴力破解。
+- 审计日志记录操作者、对象、动作与时间。
 
-You can at any time:
+## 政策变更
 
-- Download all data we hold about you (`GET /api/users/me/export`).
-- Soft-delete your account (`DELETE /api/users/me`).
-- Restore a soft-deleted account within the 30-day grace window
-  (`POST /api/users/me/restore`).
-- Disable two-factor authentication (`POST /api/auth/2fa/disable`).
-
-For data-subject access requests that go beyond the self-service
-endpoints above, email `privacy@scholarhub.example`. We respond
-within 30 days as required by Article 12(3).
-
-## How we protect it
-
-- All traffic is served over HTTPS in production.
-- Passwords are bcrypt-hashed with a per-deployment salt.
-- JWT access tokens are short-lived (15 minutes) and revocable via
-  a per-user token version counter.
-- Refresh tokens are rotated on every use; replay of a consumed
-  refresh token is refused.
-- Two-factor authentication (TOTP) is available and recommended.
-- Rate limiting rejects brute-force attempts at the proxy layer.
-- Audit logs are tamper-evident: each row records the actor, the
-  target, the action, and the timestamp.
-
-## Changes to this policy
-
-Material changes are announced on the project blog at least 14 days
-before they take effect. The "Last updated" date above is the source
-of truth.
+重大变更会提前 14 天在站内公告。以上「最后更新」日期为准。
 """
 
 
-@router.get("/privacy", response_class=PlainTextResponse, include_in_schema=False)
-async def get_privacy_policy() -> str:
-    """Return the privacy policy as plain text / markdown."""
-    return PRIVACY_POLICY_MD
+def _inline(text: str) -> str:
+    """Escape, then turn ``code`` spans and paired ``**`` into markup."""
+    escaped = html.escape(text)
+    parts = escaped.split("`")
+    for i in range(1, len(parts), 2):
+        parts[i] = f"<code>{parts[i]}</code>"
+    escaped = "".join(parts)
+    chunks = escaped.split("**")
+    return "".join(
+        f"<strong>{chunk}</strong>" if i % 2 else chunk for i, chunk in enumerate(chunks)
+    )
+
+
+def _render_html(markdown_text: str) -> str:
+    """Render the policy as a minimal, dependency-free HTML page.
+
+    The document is a fixed constant (no user input), so a hand-rolled
+    heading/paragraph renderer is sufficient and keeps this route free of
+    a markdown dependency.
+    """
+    body: list[str] = []
+    in_list = False
+    for raw in markdown_text.splitlines():
+        line = raw.rstrip()
+        if line.startswith("- "):
+            if not in_list:
+                body.append("<ul>")
+                in_list = True
+            body.append(f"<li>{_inline(line[2:])}</li>")
+            continue
+        if in_list:
+            body.append("</ul>")
+            in_list = False
+        if not line:
+            continue
+        if line.startswith("## "):
+            body.append(f"<h2>{_inline(line[3:])}</h2>")
+        elif line.startswith("# "):
+            body.append(f"<h1>{_inline(line[2:])}</h1>")
+        elif line.startswith("_") and line.endswith("_"):
+            body.append(f'<p class="muted">{_inline(line.strip("_"))}</p>')
+        else:
+            body.append(f"<p>{_inline(line)}</p>")
+    if in_list:
+        body.append("</ul>")
+
+    return f"""<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="index" />
+<title>隐私政策 · Rubbish</title>
+<style>
+  :root {{ color-scheme: light dark; }}
+  body {{ margin: 0; background: #fbfaf6; color: #1b2233;
+         font: 16px/1.75 -apple-system, "Segoe UI", "Noto Sans SC", sans-serif; }}
+  main {{ max-width: 760px; margin: 0 auto; padding: 48px 20px 72px; }}
+  h1 {{ font-size: 30px; margin: 0 0 4px; }}
+  h2 {{ font-size: 19px; margin: 32px 0 8px; }}
+  p, li {{ color: #333c4f; }}
+  .muted {{ color: #6b7488; font-size: 14px; }}
+  ul {{ padding-left: 22px; }}
+  code {{ background: #efece3; border-radius: 4px; padding: 1px 5px; font-size: 13px; }}
+  a {{ color: #33409b; }}
+  footer {{ margin-top: 40px; border-top: 1px solid #dcd7c9; padding-top: 16px;
+            font-size: 14px; color: #6b7488; }}
+  @media (prefers-color-scheme: dark) {{
+    body {{ background: #12151c; color: #e8ecf5; }}
+    p, li {{ color: #c4cbdb; }}
+    code {{ background: #232a37; }}
+    a {{ color: #9fb0ff; }}
+    footer {{ border-color: #2a3140; color: #8b93a7; }}
+  }}
+</style>
+</head>
+<body>
+<main>
+{chr(10).join(body)}
+<footer>© 2026 Rubbish · 开放获取期刊 · <a href="/">返回首页</a></footer>
+</main>
+</body>
+</html>"""
+
+
+@router.get("/privacy", response_class=HTMLResponse, include_in_schema=False)
+async def get_privacy_policy() -> HTMLResponse:
+    """Return the privacy policy as a standalone HTML page."""
+    return HTMLResponse(_render_html(PRIVACY_POLICY_MD))

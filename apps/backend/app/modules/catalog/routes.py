@@ -12,19 +12,21 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_admin, require_tenant_id
+from app.api.deps import get_current_user_optional, require_admin, require_tenant_id
 from app.core import search as fulltext
 from app.core.db import get_db, paginate
 from app.core.schemas import PaginationMeta
 from app.models import AuditLog, User
+from app.modules.catalog.engagement import compute_engagement, journal_metrics
 from app.modules.catalog.models import Resource
 from app.modules.catalog.ontology_routes import router as ontology_router
 from app.modules.catalog.schemas import (
     FacetBucket,
+    JournalMetrics,
     ResourceCreate,
     ResourceFacets,
     ResourceListResponse,
@@ -43,6 +45,21 @@ DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
 
 
+def _conflict_detail(exc: IntegrityError) -> str:
+    """Name the field that actually collided.
+
+    Both ``slug`` and ``doi`` carry unique constraints; reporting every
+    IntegrityError as "slug taken" sent users hunting for a duplicate
+    slug when the real problem was a reused DOI.
+    """
+    message = str(getattr(exc, "orig", exc)).lower()
+    if "doi" in message:
+        return "DOI already exists in this catalog"
+    if "slug" in message:
+        return "Slug already taken in this tenant"
+    return "Record conflicts with an existing entry"
+
+
 @router.get("", response_model=ResourceListResponse)
 async def list_resources(
     type: str | None = None,
@@ -54,6 +71,7 @@ async def list_resources(
     sort: str | None = Query(default=None, pattern=r"^(year|title|created_at)$"),
     order: str | None = Query(default=None, pattern=r"^(asc|desc)$"),
     db: AsyncSession = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
 ) -> ResourceListResponse:
     """List resources with pagination, filtering, and basic search.
 
@@ -63,7 +81,11 @@ async def list_resources(
     Meilisearch failure — the original DB ILIKE path runs unchanged.
     """
     tenant_id = require_tenant_id()
+    is_admin = bool(viewer and viewer.is_admin)
 
+    # Meilisearch documents carry no publication_status, so the relevance
+    # ids are re-fetched through the same publication filter as the DB path
+    # below — an indexed draft can never leak just because it ranked high.
     if q is not None and fulltext.search_enabled():
         hit = await fulltext.search_resource_ids(
             tenant_id=str(tenant_id),
@@ -89,7 +111,7 @@ async def list_resources(
             # Preserve Meilisearch relevance order.
             ranked = [rows_by_id[i] for i in ids if i in rows_by_id]
             return ResourceListResponse(
-                data=[ResourceResponse.model_validate(r) for r in ranked],
+                data=await _with_engagement(db, ranked),
                 meta=PaginationMeta(
                     total=total,
                     page=page,
@@ -99,6 +121,10 @@ async def list_resources(
             )
 
     stmt = select(Resource).where(Resource.tenant_id == tenant_id)
+    if not is_admin:
+        # Public surface: only published records exist as far as anonymous
+        # and non-admin callers are concerned.
+        stmt = stmt.where(Resource.publication_status == "published")
     if type is not None:
         stmt = stmt.where(Resource.type == type)
     if discipline is not None:
@@ -124,16 +150,21 @@ async def list_resources(
         order_by=order_by,
     )
     return ResourceListResponse(
-        data=[ResourceResponse.model_validate(r) for r in rows],
+        data=await _with_engagement(db, rows),
         meta=meta,
     )
 
 
 @router.get("/stats", response_model=ResourceStats)
-async def get_stats(db: AsyncSession = Depends(get_db)) -> ResourceStats:
+async def get_stats(
+    db: AsyncSession = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
+) -> ResourceStats:
     """Aggregate stats: total count + breakdowns by type and discipline."""
     tenant_id = require_tenant_id()
     base_filter = Resource.tenant_id == tenant_id
+    if not (viewer and viewer.is_admin):
+        base_filter = base_filter & (Resource.publication_status == "published")
     total = (await db.execute(select(func.count(Resource.id)).where(base_filter))).scalar_one()
     by_type_rows = await db.execute(
         select(Resource.type, func.count(Resource.id)).where(base_filter).group_by(Resource.type)
@@ -143,10 +174,26 @@ async def get_stats(db: AsyncSession = Depends(get_db)) -> ResourceStats:
         .where(base_filter)
         .group_by(Resource.discipline)
     )
+    downloads_total = (
+        await db.execute(
+            select(func.coalesce(func.sum(Resource.download_count), 0)).where(base_filter)
+        )
+    ).scalar_one()
+    from app.modules.reader.models import ReadingHistory
+
+    reads_total = (
+        await db.execute(
+            select(func.coalesce(func.sum(ReadingHistory.visit_count), 0)).where(
+                ReadingHistory.tenant_id == tenant_id
+            )
+        )
+    ).scalar_one()
     return ResourceStats(
         total=total,
         by_type={t: c for t, c in by_type_rows.all()},
         by_discipline={d: c for d, c in by_discipline_rows.all()},
+        downloads_total=int(downloads_total or 0),
+        reads_total=int(reads_total or 0),
     )
 
 
@@ -155,10 +202,18 @@ async def get_facets(
     type: str | None = None,
     discipline: str | None = None,
     db: AsyncSession = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
 ) -> ResourceFacets:
     """Year + tag facet buckets for the current filter."""
     tenant_id = require_tenant_id()
+    is_admin = bool(viewer and viewer.is_admin)
     stmt = select(Resource).where(Resource.tenant_id == tenant_id)
+    if not is_admin:
+        stmt = stmt.where(Resource.publication_status == "published")
+    if not is_admin:
+        # Public surface: only published records exist as far as anonymous
+        # and non-admin callers are concerned.
+        stmt = stmt.where(Resource.publication_status == "published")
     if type is not None:
         stmt = stmt.where(Resource.type == type)
     if discipline is not None:
@@ -177,6 +232,8 @@ async def get_facets(
     # 并对拉取行数做上限保护（10k 行足够 facet 50 个 top tag），避免匿名浏览
     # 全表 tags 物化的 O(N×M) 开销。若未来 data > 10k 需引入 SQL 端 JSON 展开。
     stmt_tags = select(Resource.tags).where(Resource.tenant_id == tenant_id)
+    if not is_admin:
+        stmt_tags = stmt_tags.where(Resource.publication_status == "published")
     if type is not None:
         stmt_tags = stmt_tags.where(Resource.type == type)
     if discipline is not None:
@@ -192,6 +249,34 @@ async def get_facets(
         years=years,
         tags=[FacetBucket(value=t, count=c) for t, c in tags_sorted],
     )
+
+
+async def _with_engagement(db: AsyncSession, rows: Any) -> list[ResourceResponse]:
+    """Serialize rows and attach R-index engagement in one extra pass."""
+    responses = [ResourceResponse.model_validate(r) for r in rows]
+    engagement = await compute_engagement(db, list(rows))
+    for response in responses:
+        metrics = engagement.get(response.id)
+        if metrics is None:
+            continue
+        response.reads = metrics.reads
+        response.downloads = metrics.downloads
+        response.saves = metrics.saves
+        response.r_index = metrics.r_index
+        response.quartile = metrics.quartile
+    return responses
+
+
+@router.get("/journal-metrics", response_model=JournalMetrics)
+async def get_journal_metrics(db: AsyncSession = Depends(get_db)) -> JournalMetrics:
+    """Public, self-computed journal metrics (see /journal-metrics page).
+
+    Deliberately NOT an impact factor: no citation data exists here, so
+    every number comes from this deployment's own event tables and the
+    formula is published alongside it.
+    """
+    tenant_id = require_tenant_id()
+    return JournalMetrics(**await journal_metrics(db, tenant_id))
 
 
 @router.get("/{resource_id}/file")
@@ -251,6 +336,15 @@ async def download_resource_file(
             detail="This resource has no downloadable file",
         )
 
+    # 下载计数（R 指数的 0.3 权重项）：只在真正返回内容前自增一次，
+    # 404/302 预签名跳转都不算，避免把外部存储的鉴权失败算成一次下载。
+    await db.execute(
+        update(Resource)
+        .where(Resource.id == resource_id)
+        .values(download_count=Resource.download_count + 1)
+    )
+    await db.commit()
+
     storage = get_storage()
     url = storage.presigned_url(submission.file_path)
     if url:
@@ -305,19 +399,48 @@ async def download_resource_file(
 async def get_resource(
     resource_id: int,
     db: AsyncSession = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
 ) -> ResourceResponse:
-    """Get a single resource by id."""
+    """Get a single resource by id (published-only for non-admin callers)."""
     tenant_id = require_tenant_id()
-    result = await db.execute(
-        select(Resource).where(
-            Resource.id == resource_id,
-            Resource.tenant_id == tenant_id,
-        )
+    stmt = select(Resource).where(
+        Resource.id == resource_id,
+        Resource.tenant_id == tenant_id,
     )
+    if not (viewer and viewer.is_admin):
+        # 404 rather than 403: an unpublished record should not even
+        # confirm its existence to the public.
+        stmt = stmt.where(Resource.publication_status == "published")
+    result = await db.execute(stmt)
     resource = result.scalar_one_or_none()
     if resource is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
-    return ResourceResponse.model_validate(resource)
+    response = ResourceResponse.model_validate(resource)
+    # Whether a downloadable manuscript exists: the file endpoint only
+    # serves resources backed by a submission, so check that link once
+    # here instead of letting the UI probe and collect a 404.
+    from app.modules.submission.models import Submission
+
+    has_file = (
+        await db.execute(
+            select(Submission.id)
+            .where(
+                Submission.resource_id == resource.id,
+                Submission.tenant_id == tenant_id,
+                Submission.file_path.is_not(None),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    response.has_file = has_file is not None
+    engagement = (await compute_engagement(db, [resource])).get(resource.id)
+    if engagement is not None:
+        response.reads = engagement.reads
+        response.downloads = engagement.downloads
+        response.saves = engagement.saves
+        response.r_index = engagement.r_index
+        response.quartile = engagement.quartile
+    return response
 
 
 @router.post("", response_model=ResourceResponse, status_code=status.HTTP_201_CREATED)
@@ -404,7 +527,7 @@ async def create_resource(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Slug already taken in this tenant",
+            detail=_conflict_detail(exc),
         ) from exc
     await db.refresh(resource)
     await fulltext.index_resource(resource)  # best-effort, never raises
@@ -497,7 +620,7 @@ async def update_resource(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Slug already taken in this tenant",
+            detail=_conflict_detail(exc),
         ) from exc
     await db.refresh(resource)
     await fulltext.index_resource(resource)  # best-effort, never raises

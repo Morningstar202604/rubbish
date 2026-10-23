@@ -82,7 +82,7 @@ def _set_pending_cookie(response: Response, token: str) -> None:
     from app.core.config import settings
 
     response.set_cookie(
-        key="scholarhub_2fa_pending",
+        key="rubbish_2fa_pending",
         value=token,
         httponly=True,
         secure=settings.cookie_secure,
@@ -96,7 +96,7 @@ def _clear_pending_cookie(response: Response) -> None:
     from app.core.config import settings
 
     response.delete_cookie(
-        key="scholarhub_2fa_pending",
+        key="rubbish_2fa_pending",
         path="/api/auth",
         samesite=settings.cookie_samesite,
     )

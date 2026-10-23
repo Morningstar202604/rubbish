@@ -151,3 +151,10 @@ apps/backend/e2e_run_server.db
 # Dev audits / backup dirs
 .audit/
 versions_backup*/
+.aqg/
+apps/frontend/dist/
+apps/frontend/test-results/
+apps/backend/.coverage
+apps/backend/e2e_test*.db
+apps/backend/deploy_demo.db*
+apps/backend/prebuilt-static/assets/

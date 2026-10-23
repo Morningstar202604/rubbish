@@ -1,4 +1,4 @@
-# ScholarHUB 单机全家桶：数据库 + 后端(含前端静态) + 自动 HTTPS，一条命令上线。
+# Rubbish 单机全家桶：数据库 + 后端(含前端静态) + 自动 HTTPS，一条命令上线。
 # 适用：任意 VPS（Hetzner/腾讯云轻量等，1C2G 起步）。前提：装好 Docker + Compose v2。
 #
 # 使用：
@@ -15,13 +15,15 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: scholarhub
+      # 用变量兜住旧部署：已有数据卷的库用户名/库名是 scholarhub，
+      # 直接改名会让容器初始化跳过后连不上。新部署走默认值 rubbish。
+      POSTGRES_USER: ${POSTGRES_USER:-rubbish}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in repo-root .env}
-      POSTGRES_DB: scholarhub
+      POSTGRES_DB: ${POSTGRES_DB:-rubbish}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U scholarhub -d scholarhub"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rubbish} -d ${POSTGRES_DB:-rubbish}"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -35,21 +37,26 @@ services:
       db:
         condition: service_healthy
     environment:
-      SCHOLARHUB_ENVIRONMENT: production
+      RUBBISH_ENVIRONMENT: production
       # 容器网络内直连 db 服务； Neon 等外部库时替换此值即可。
-      SCHOLARHUB_DATABASE_URL: postgresql+asyncpg://scholarhub:${POSTGRES_PASSWORD}@db:5432/scholarhub
-      SCHOLARHUB_SECRET_KEY: ${SCHOLARHUB_SECRET_KEY:?set in repo-root .env}
-      SCHOLARHUB_FERNET_KEY: ${SCHOLARHUB_FERNET_KEY:?set in repo-root .env}
-      SCHOLARHUB_ADMIN_EMAIL: ${SCHOLARHUB_ADMIN_EMAIL:-admin@scholarhub.local}
-      SCHOLARHUB_ADMIN_USERNAME: ${SCHOLARHUB_ADMIN_USERNAME:-admin}
-      SCHOLARHUB_ADMIN_PASSWORD: ${SCHOLARHUB_ADMIN_PASSWORD:?set in repo-root .env}
-      SCHOLARHUB_ALLOWED_HOSTS: ${SITE_DOMAIN},localhost
-      SCHOLARHUB_CORS_ORIGINS: https://${SITE_DOMAIN}
-      SCHOLARHUB_STORAGE_BACKEND: local
-      SCHOLARHUB_STORAGE_PATH: /data/uploads
-      SCHOLARHUB_STATIC_DIR: /app/static
-      SCHOLARHUB_LOG_LEVEL: WARNING
-      SCHOLARHUB_JSON_LOGS: "false"
+      RUBBISH_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-rubbish}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-rubbish}
+      RUBBISH_SECRET_KEY: ${RUBBISH_SECRET_KEY:?set in repo-root .env}
+      RUBBISH_FERNET_KEY: ${RUBBISH_FERNET_KEY:?set in repo-root .env}
+      RUBBISH_ADMIN_EMAIL: ${RUBBISH_ADMIN_EMAIL:-admin@rubbish.local}
+      RUBBISH_ADMIN_USERNAME: ${RUBBISH_ADMIN_USERNAME:-admin}
+      RUBBISH_ADMIN_PASSWORD: ${RUBBISH_ADMIN_PASSWORD:?set in repo-root .env}
+      RUBBISH_ALLOWED_HOSTS: ${SITE_DOMAIN},localhost
+      RUBBISH_CORS_ORIGINS: https://${SITE_DOMAIN}
+      RUBBISH_STORAGE_BACKEND: local
+      RUBBISH_STORAGE_PATH: /data/uploads
+      RUBBISH_STATIC_DIR: /app/static
+      RUBBISH_LOG_LEVEL: WARNING
+      RUBBISH_JSON_LOGS: "false"
+      # 公开站点根地址：sitemap、OAI-PMH 与邮件深链都靠它拼绝对 URL。
+      # 反向代理后应用只看到 http://app:8080，不设置就会产出错误协议。
+      RUBBISH_PUBLIC_BASE_URL: ${RUBBISH_PUBLIC_BASE_URL:-}
+      # /metrics 默认关闭：无鉴权端点，开着等于公开路由表与流量规模。
+      RUBBISH_METRICS_PUBLIC: ${RUBBISH_METRICS_PUBLIC:-false}
     volumes:
       - uploads:/data/uploads
     # 必须先跑迁移再启动：RLS 策略只存在于 alembic 迁移里，

@@ -3,7 +3,7 @@
 The app never talks to an SMTP server or a transactional API directly —
 it goes through ``EmailSender``. The default ``ConsoleEmailSender`` logs
 the message to stdout, which is fine for dev and tests. To go live, set
-``SCHOLARHUB_EMAIL_BACKEND=smtp`` and configure SMTP credentials (see
+``RUBBISH_EMAIL_BACKEND=smtp`` and configure SMTP credentials (see
 ``Settings.email_*`` in ``app/core/config.py``).
 
 Mailgun / SendGrid / SES / Postmark all expose an SMTP relay, so the
@@ -25,7 +25,7 @@ from typing import Protocol, runtime_checkable
 from app.core.config import settings
 from app.core.logging import get_logger
 
-logger = get_logger("scholarhub.email")
+logger = get_logger("rubbish.email")
 
 
 @runtime_checkable

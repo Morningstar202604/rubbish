@@ -40,7 +40,7 @@ test.describe('全流程用户旅程', () => {
     await guest.goto('/')
     await expect(guest).toHaveURL(/\/$/, { timeout: 10_000 })
     await expect(
-      guest.getByRole('heading', { name: /开放学术出版/ }),
+      guest.getByRole('heading', { name: /Rubbish/ }),
     ).toBeVisible()
     // 首页有两处「登录」（横幅 + 门面区），限定到横幅避免 strict 歧义
     await expect(

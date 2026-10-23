@@ -1,27 +1,27 @@
 <div align="center">
 
-<img src="docs/assets/logo-horizontal.svg" alt="ScholarHUB" width="320" />
+<img src="docs/assets/logo-horizontal.svg" alt="Rubbish" width="320" />
 
-# ScholarHUB
+# Rubbish
 
-**开放学术出版平台 — Submit · Review · Publish · Read，一个代码库跑完整个出版闭环**
+**收录全球学术垃圾的开放获取期刊 — Submit · Review · Publish · Read，一个代码库跑完整个出版闭环**
 
-> 11 个后端模块 · 644 单元测试（84% 覆盖率）· 66 条 E2E 用例 · 全链路严格类型
+> 11 个后端模块 · 683 单元测试（84% 覆盖率）· 68 条 E2E 用例 · 全链路严格类型
 
 **🌐 [English](README.md) · [简体中文](README.zh-CN.md)**
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg?style=flat-square)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12+-3776AB.svg?logo=python&logoColor=white&style=flat-square)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.139-009688.svg?logo=fastapi&logoColor=white&style=flat-square)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=white&style=flat-square)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6.svg?logo=typescript&logoColor=white&style=flat-square)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1.svg?logo=postgresql&logoColor=white&style=flat-square)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker_Compose-2496ED.svg?logo=docker&logoColor=white&style=flat-square)](https://docs.docker.com/compose/)
-[![Unit tests](https://img.shields.io/badge/unit_tests-644-10B981?style=flat-square&logo=pytest&logoColor=white)](#测试)
+[![Unit tests](https://img.shields.io/badge/unit_tests-683-10B981?style=flat-square&logo=pytest&logoColor=white)](#测试)
 [![Coverage](https://img.shields.io/badge/coverage-84%25-2C5AA0?style=flat-square)](#测试)
-[![E2E](https://img.shields.io/badge/E2E_specs-66-22C55E?style=flat-square&logo=playwright&logoColor=white)](#测试)
+[![E2E](https://img.shields.io/badge/E2E_specs-68-22C55E?style=flat-square&logo=playwright&logoColor=white)](#测试)
 
-**镜像仓库**：[GitHub](https://github.com/x33834/scholarhub) · [GitHub](https://github.com/Morningstar202604/scholarhub) · [GitCode](https://gitcode.com/badhope/scholarhub) · [Gitee](https://gitee.com/badhope/scholarhub)
+**镜像仓库**：[GitHub](https://github.com/x33834/rubbish) · [GitHub](https://github.com/Morningstar202604/rubbish) · [GitCode](https://gitcode.com/badhope/rubbish) · [Gitee](https://gitee.com/badhope/rubbish)
 
 **[功能一览](#功能一览) · [界面预览](#界面预览) · [架构](#架构) · [快速开始](#快速开始) · [技术栈](#技术栈) · [测试](#测试) · [文档](#文档)**
 
@@ -92,7 +92,7 @@ uv run python deploy_server.py
 | 前端 | React 19 · TypeScript 5.9 · TanStack Router/Query · Tailwind CSS v4 · pdf.js |
 | 后端 | FastAPI · SQLAlchemy 2 (async) · Alembic · PostgreSQL 17 / SQLite |
 | 安全 | WebAuthn · TOTP · JWT denylist · bcrypt · CSP 安全头 |
-| 质量 | pytest (644) · Playwright E2E (66) · ruff · mypy strict · npm audit |
+| 质量 | pytest (683) · Playwright E2E (68) · ruff · mypy strict · npm audit |
 
 ## 测试
 
@@ -114,4 +114,4 @@ cd apps/frontend && E2E_SPAWN_SERVER=1 npx playwright test
 
 ## License
 
-[MIT](LICENSE)
+[AGPL-3.0](LICENSE)

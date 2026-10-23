@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an idea or an improvement for ScholarHUB
+description: Suggest an idea or an improvement for Rubbish
 labels: ["enhancement", "triage"]
 body:
   - type: textarea

@@ -14,8 +14,8 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.types import Receive, Scope, Send
 
-os.environ.setdefault("SCHOLARHUB_ENVIRONMENT", "test")
-os.environ.setdefault("SCHOLARHUB_DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+os.environ.setdefault("RUBBISH_ENVIRONMENT", "test")
+os.environ.setdefault("RUBBISH_DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 
 from app.core import config as config_module
 from app.middleware.rate_limit import RateLimitMiddleware

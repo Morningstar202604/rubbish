@@ -2,11 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { Loading } from '@/components/common/state'
-import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 // pdf.js 阅读器：替代 iframe 直接嵌 PDF 的方案。
 // iframe 的缺点：无法知道总页数/当前页、进度只能按输入猜测、移动端缩放体验差。
 // pdf.js 是 Mozilla 开源的 PDF 渲染库，本地解析渲染、支持按页精确同步进度。
+//
+// 关键实现约束：canvas 必须常驻挂载（loading/error 用覆盖层表示）。
+// 曾经把 canvas 放在 loading 条件分支里 —— setLoading(false) 之后立即
+// renderPage，此时 React 尚未提交 DOM，canvasRef.current === null，
+// render 静默 return，页面永远停在一张 300x150 的空白默认画布上。
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
 
 interface PdfViewerProps {
@@ -39,6 +44,7 @@ export default function PdfViewer({
   // 渲染指定页（页码变化时调用；初始加载在 onLoad 后调一次）
   const renderPage = async (num: number, doc: pdfjsLib.PDFDocumentProxy) => {
     const canvas = canvasRef.current
+    // canvas 常驻挂载后这里正常拿得到；拿不到说明组件正在卸载，直接放弃
     if (!canvas) return
     const token = ++renderTokenRef.current
     const target = Math.min(Math.max(1, num), doc.numPages)
@@ -56,15 +62,28 @@ export default function PdfViewer({
       canvas.height = Math.floor(viewport.height)
       const ctx = canvas.getContext('2d')
       if (!ctx) return
-      // v6 的 RenderParameters 类型在 minor 版本间有漂移，这里用 any 桥接：
-      // 运行参数（canvasContext + viewport）自 v3 起从未变化，类型声明跟丢而已。
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await pdfPage.render({ canvasContext: ctx, viewport } as any).promise
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      // 渲染失败绝不静默：surface 到 UI 与 window.__pdfErr，便于线上定位。
+      // v5 渲染全在主线程 canvasContext，稳定不卡（v6 worker 侧渲染实测会静默挂起）
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await pdfPage.render({ canvasContext: ctx, viewport } as any).promise
+      } catch (err) {
+        const msg = `PDF 页面渲染失败：${err instanceof Error ? err.message : String(err)}`
+        ;(window as unknown as { __pdfErr?: string }).__pdfErr = msg
+        console.error('[pdf-viewer]', err)
+        if (token === renderTokenRef.current) setError(msg)
+        return
+      }
       if (token === renderTokenRef.current) {
         onPageChange?.(target)
       }
-    } catch {
-      // 竞态或渲染错误：不弹错，等待下一次翻页重试
+    } catch (err) {
+      // getPage / viewport 等前置步骤失败：同样 surface，不再静默。
+      const msg = `PDF 页面加载失败：${err instanceof Error ? err.message : String(err)}`
+      ;(window as unknown as { __pdfErr?: string }).__pdfErr = msg
+      console.error('[pdf-viewer]', err)
+      if (token === renderTokenRef.current) setError(msg)
     }
   }
 
@@ -86,9 +105,12 @@ export default function PdfViewer({
         setLoading(false)
         onLoaded?.(doc.numPages)
         await renderPage(initialPage, doc)
-      } catch {
+      } catch (err) {
         if (!disposed) {
-          setError('PDF 加载失败（文件可能已损坏或格式不支持）')
+          const msg = `PDF 加载失败（文件可能已损坏或格式不支持）：${err instanceof Error ? err.message : String(err)}`
+          ;(window as unknown as { __pdfErr?: string }).__pdfErr = msg
+          console.error('[pdf-viewer]', err)
+          setError(msg)
           setLoading(false)
         }
       }
@@ -108,50 +130,49 @@ export default function PdfViewer({
     void renderPage(pageNumRef.current + delta, doc)
   }
 
-  if (error) {
-    return (
-      <div className="flex h-full min-h-[40vh] items-center justify-center rounded-md border p-4 text-sm text-muted-foreground">
-        {error}
-      </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <div className="flex h-full min-h-[40vh] items-center justify-center rounded-md border">
-        <Loading />
-      </div>
-    )
-  }
-
   return (
     <div className="flex h-full flex-col">
-      <div className="flex flex-1 items-start justify-center overflow-auto rounded-md border bg-muted/30 p-2">
-        <canvas ref={canvasRef} className="max-w-full rounded-sm shadow" />
+      <div className="relative flex min-h-[40vh] flex-1 items-start justify-center overflow-auto rounded-md border bg-muted/30 p-2">
+        {/* canvas 常驻挂载：loading/error 只是覆盖层，保证 renderPage 拿得到元素 */}
+        <canvas
+          ref={canvasRef}
+          aria-label="PDF 页面预览"
+          className={cn('max-w-full rounded-sm shadow', (loading || error) && 'invisible')}
+        />
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Loading />
+          </div>
+        )}
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <p className="text-center text-sm text-muted-foreground">{error}</p>
+          </div>
+        )}
       </div>
-      {totalPages > 0 && (
+      {totalPages > 0 && !error && (
         <div className="flex items-center justify-center gap-2 pt-2 text-sm">
-          <Button
-            variant="outline"
-            size="sm"
+          <button
+            type="button"
             onClick={() => goTo(-1)}
             disabled={page <= 1}
             aria-label="上一页"
+            className="rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-muted disabled:opacity-50"
           >
             上一页
-          </Button>
+          </button>
           <span className="tabular-nums">
             {page} / {totalPages} 页
           </span>
-          <Button
-            variant="outline"
-            size="sm"
+          <button
+            type="button"
             onClick={() => goTo(1)}
             disabled={page >= totalPages}
             aria-label="下一页"
+            className="rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-muted disabled:opacity-50"
           >
             下一页
-          </Button>
+          </button>
         </div>
       )}
     </div>

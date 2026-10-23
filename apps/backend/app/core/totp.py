@@ -140,7 +140,7 @@ def hash_backup_code(code: str) -> str:
     DB exfiltration, not online guessing.
     """
     normalized = code.replace("-", "").strip().upper()
-    return hashlib.sha256(b"scholarhub:backup:" + normalized.encode("ascii")).hexdigest()
+    return hashlib.sha256(b"rubbish:backup:" + normalized.encode("ascii")).hexdigest()
 
 
 def normalize_backup_code(code: str) -> str:

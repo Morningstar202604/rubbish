@@ -13,6 +13,7 @@ import type {
   FollowStatusResponse,
   IngestResource,
   IssueInfo,
+  JournalMetrics,
   JournalSettings,
   MessageResponse,
   NotificationListResponse,
@@ -129,6 +130,14 @@ export function useResource(id: number) {
   })
 }
 
+export function useJournalMetrics() {
+  return useQuery<JournalMetrics>({
+    queryKey: ['catalog', 'journal-metrics'],
+    queryFn: async () => (await api.get<JournalMetrics>('/catalog/journal-metrics')).data,
+    staleTime: 60_000,
+  })
+}
+
 export function useCatalogStats() {
   return useQuery<ResourceStats>({
     queryKey: keys.catalog.stats(),
@@ -189,10 +198,20 @@ export function useReadingProgress(
   resourceId: number,
   options?: { enabled?: boolean },
 ) {
-  return useQuery<ReadingProgressResponse>({
+  return useQuery<ReadingProgressResponse | null>({
     queryKey: keys.reader.progress(resourceId),
-    queryFn: async () =>
-      (await api.get<ReadingProgressResponse>(`/reader/history/${resourceId}/progress`)).data,
+    queryFn: async () => {
+      try {
+        return (await api.get<ReadingProgressResponse>(`/reader/history/${resourceId}/progress`))
+          .data
+      } catch (err) {
+        // 404 = 这个用户还没读过这篇，是正常状态而不是错误。
+        // 之前它会走重试并往控制台打红字，看起来像坏页面。
+        const status = (err as { response?: { status?: number } }).response?.status
+        if (status === 404) return null
+        throw err
+      }
+    },
     // 访客不发请求：阅读进度接口需要登录，未登录时只会得到 401。
     enabled: resourceId > 0 && (options?.enabled ?? true),
   })

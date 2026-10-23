@@ -22,7 +22,7 @@ async def test_register_creates_user_and_returns_tokens(client: AsyncClient) -> 
     assert data["username"] == "newuser"
     assert data["is_admin"] is False
     # Refresh token cookie should be set.
-    assert "scholarhub_refresh" in response.cookies
+    assert "rubbish_refresh" in response.cookies
 
 
 async def test_register_duplicate_email_returns_201_no_token(
@@ -45,7 +45,7 @@ async def test_register_duplicate_email_returns_201_no_token(
     assert "refresh_token" not in body
     assert "message" in body
     # No refresh cookie set on duplicate registration.
-    assert "scholarhub_refresh" not in response.cookies
+    assert "rubbish_refresh" not in response.cookies
 
 
 async def test_login_returns_valid_tokens(client: AsyncClient, test_user: dict) -> None:

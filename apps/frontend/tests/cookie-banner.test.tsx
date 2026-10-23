@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CookieBanner } from '@/components/common/cookie-banner'
 
-const KEY = 'scholarhub_cookie_consent'
+const KEY = 'rubbish_cookie_consent'
 
 describe('CookieBanner', () => {
   beforeEach(() => {
@@ -17,7 +17,7 @@ describe('CookieBanner', () => {
   it('shows the banner when no decision is stored', () => {
     render(<CookieBanner />)
     expect(screen.getByTestId('cookie-banner')).toBeInTheDocument()
-    expect(screen.getByText(/we use cookies/i)).toBeInTheDocument()
+    expect(screen.getByText(/本站使用 cookie/i)).toBeInTheDocument()
   })
 
   it('hides the banner when a prior decision exists', () => {

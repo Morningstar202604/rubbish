@@ -58,7 +58,7 @@ def _read_json_lines(buf: StringIO) -> list[dict]:
 async def test_user_id_bound_after_get_current_user(log_capture):
     """When a request is authenticated, user_id appears in the log context."""
     bind_contextvars(request_id="rid-anon", tenant_id="tid-anon")
-    logger = get_logger("scholarhub.test")
+    logger = get_logger("rubbish.test")
 
     bind_contextvars(user_id="42", is_admin=False)
     logger.info("logged_in", action="register")
@@ -74,7 +74,7 @@ async def test_user_id_bound_after_get_current_user(log_capture):
 
 async def test_admin_user_flag_propagates(log_capture):
     """An admin user should be tagged with ``is_admin=True``."""
-    logger = get_logger("scholarhub.test")
+    logger = get_logger("rubbish.test")
 
     bind_contextvars(user_id="1", is_admin=True)
     logger.info("admin_action", target="reload-secret-keys")
@@ -95,7 +95,7 @@ async def test_optional_user_does_not_leak(log_capture):
     """
     from structlog.contextvars import clear_contextvars
 
-    logger = get_logger("scholarhub.test")
+    logger = get_logger("rubbish.test")
     clear_contextvars()
     logger.info("anonymous_request")
 
@@ -109,7 +109,7 @@ async def test_context_isolated_between_requests(log_capture):
     """Simulated second request must not see first request's ``user_id``."""
     from structlog.contextvars import clear_contextvars
 
-    logger = get_logger("scholarhub.test")
+    logger = get_logger("rubbish.test")
 
     # Request 1: user A
     bind_contextvars(request_id="rid-A", user_id="100")

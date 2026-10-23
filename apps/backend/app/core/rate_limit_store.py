@@ -4,7 +4,7 @@ The middleware in ``app.middleware.rate_limit`` delegates bucket
 storage to a ``RateLimiterStore``. Two implementations are shipped:
 
 - ``MemoryRateLimiterStore``: in-process sliding window. Default
-  when ``SCHOLARHUB_REDIS_URL`` is empty. Fine for single-node
+  when ``RUBBISH_REDIS_URL`` is empty. Fine for single-node
   deployments; loses state on restart; not safe across replicas.
 - ``RedisRateLimiterStore``: uses Redis sorted sets with a fixed
   time window, atomic via Lua. Falls back to the memory store when
@@ -32,7 +32,7 @@ from typing import Any
 
 from app.core.logging import get_logger
 
-logger = get_logger("scholarhub.rate_limit_store")
+logger = get_logger("rubbish.rate_limit_store")
 
 # How long the breaker stays open after a Redis failure. While the
 # cooldown is running, buckets are served from the memory fallback
@@ -295,7 +295,7 @@ def get_rate_limiter_store() -> RateLimiterStore:
     """Return the process-wide rate limiter store.
 
     Selection:
-    - If ``SCHOLARHUB_REDIS_URL`` is non-empty, return a
+    - If ``RUBBISH_REDIS_URL`` is non-empty, return a
       ``RedisRateLimiterStore``.
     - Otherwise return an in-process ``MemoryRateLimiterStore``.
 

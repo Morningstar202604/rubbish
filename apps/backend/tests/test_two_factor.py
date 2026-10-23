@@ -36,7 +36,7 @@ async def _setup(client: AsyncClient, user: dict) -> str:
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["otpauth_uri"].startswith("otpauth://totp/")
-    assert "ScholarHUB" in body["otpauth_uri"]
+    assert "Rubbish" in body["otpauth_uri"]
     return body["secret"]
 
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# ScholarHUB database backup script.
+# Rubbish database backup script.
 #
 # Usage:
 #   ./backup.sh [--db-url URL] [--output-dir PATH]
 #
 # Defaults:
-#   --db-url      postgresql://scholarhub:scholarhub_dev@localhost:5432/scholarhub
+#   --db-url      postgresql://rubbish:rubbish_dev@localhost:5432/rubbish
 #   --output-dir  ./backups
 #
 # Behaviour:
@@ -17,7 +17,7 @@
 set -euo pipefail
 
 # --- defaults -----------------------------------------------------------
-DB_URL="postgresql://scholarhub:scholarhub_dev@localhost:5432/scholarhub"
+DB_URL="postgresql://rubbish:rubbish_dev@localhost:5432/rubbish"
 OUTPUT_DIR="./backups"
 RETENTION_DAYS=7
 
@@ -45,7 +45,7 @@ while [[ $# -gt 0 ]]; do
     --help|-h)
       echo "Usage: $0 [--db-url URL] [--output-dir PATH]"
       echo ""
-      echo "  --db-url URL      PostgreSQL connection URL (default: postgresql://scholarhub:scholarhub_dev@localhost:5432/scholarhub)"
+      echo "  --db-url URL      PostgreSQL connection URL (default: postgresql://rubbish:rubbish_dev@localhost:5432/rubbish)"
       echo "  --output-dir PATH Directory to store backups (default: ./backups)"
       exit 0
       ;;
@@ -62,7 +62,7 @@ mkdir -p "$OUTPUT_DIR"
 
 # --- run backup ---------------------------------------------------------
 TIMESTAMP="$(date '+%Y%m%d-%H%M%S')"
-BACKUP_FILE="${OUTPUT_DIR}/scholarhub-${TIMESTAMP}.dump"
+BACKUP_FILE="${OUTPUT_DIR}/rubbish-${TIMESTAMP}.dump"
 
 log "Starting backup → ${BACKUP_FILE}"
 
@@ -83,7 +83,7 @@ while IFS= read -r -d '' old; do
   log "Removing old backup: $(basename "$old")"
   rm -f "$old"
   DELETED=$((DELETED + 1))
-done < <(find "$OUTPUT_DIR" -maxdepth 1 -name 'scholarhub-*.dump' -mtime "+${RETENTION_DAYS}" -print0 2>/dev/null || true)
+done < <(find "$OUTPUT_DIR" -maxdepth 1 -name 'rubbish-*.dump' -mtime "+${RETENTION_DAYS}" -print0 2>/dev/null || true)
 
 if [[ $DELETED -eq 0 ]]; then
   log "No old backups to rotate"

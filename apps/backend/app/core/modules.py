@@ -1,6 +1,6 @@
 """Module registry — the spine of the modular base.
 
-A "module" in scholarhub is a self-contained package under
+A "module" in rubbish is a self-contained package under
 ``app.modules.<name>`` that contributes routers, models, alembic
 migrations, admin hooks, and UI chunks to the running application.
 
@@ -28,7 +28,7 @@ from app.core.logging import get_logger
 if TYPE_CHECKING:
     from fastapi import APIRouter
 
-logger = get_logger("scholarhub.modules")
+logger = get_logger("rubbish.modules")
 
 
 @dataclass(frozen=True)

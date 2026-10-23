@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { BrandMark } from '@/components/common/brand-mark'
 import { ModuleErrorBoundary } from '@/components/common/error-boundary'
+import { CookieBanner } from '@/components/common/cookie-banner'
 import { MOBILE_TABS, MOBILE_MORE, MOBILE_FAB_TO, type MobileTab } from './mobile-nav'
 
 // 底部抽屉：自带遮罩、ESC 关闭、打开时锁 body 滚动。移动原生交互，不依赖居中 Dialog。
@@ -107,6 +108,19 @@ export function MobileAppShell() {
     setSheetOpen(false)
   }, [location.pathname])
 
+  // 期刊门面模式：首页走独立的全宽 editorial 版式，不套移动端 Tab 壳（与桌面端一致）。
+  // 提前返回必须放在全部 hooks 之后（rules of hooks）。
+  if (location.pathname === '/') {
+    return (
+      <div className="min-h-screen bg-background">
+        <ModuleErrorBoundary name="页面" resetKeys={[location.pathname]}>
+          <Outlet />
+        </ModuleErrorBoundary>
+        <CookieBanner />
+      </div>
+    )
+  }
+
   const isActive = (to: string) =>
     to !== '/__more' && (location.pathname === to || location.pathname.startsWith(to + '/'))
 
@@ -132,7 +146,7 @@ export function MobileAppShell() {
       <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
           <BrandMark className="h-5 w-5 shrink-0" />
-          <span>ScholarHUB</span>
+          <span>Rubbish</span>
         </Link>
         <ThemeToggle />
       </header>

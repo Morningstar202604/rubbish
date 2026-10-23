@@ -24,30 +24,30 @@ import secrets
 # STRICT_PATHS 中 /api/auth/login 限 10/min，56 个 E2E 测试都用 admin 登录 + 注册
 # 新用户登录，几分钟内必然超 10 次，会触发 429 让 loginViaUi 的 waitForURL(/dashboard)
 # 超时。test 模式还让 email_backend 默认走 console（覆盖在 _mem_sender 之前）。
-os.environ["SCHOLARHUB_ENVIRONMENT"] = "test"
+os.environ["RUBBISH_ENVIRONMENT"] = "test"
 # F7：per-worker DB 分片。E2E_DB_PATH 让 CI 多 lane / 多 worker 各自持有独立
 # SQLite 文件，避免共享单库在并发写时锁竞争；默认路径保持原样（兼容单 lane）。
 _db_path = os.environ.get("E2E_DB_PATH", "./e2e_test.db")
-os.environ["SCHOLARHUB_DATABASE_URL"] = f"sqlite+aiosqlite:///{_db_path}"
+os.environ["RUBBISH_DATABASE_URL"] = f"sqlite+aiosqlite:///{_db_path}"
 # Use a strong random key (per-run) — required because development mode rejects weak keys.
-os.environ["SCHOLARHUB_SECRET_KEY"] = secrets.token_hex(32)
-os.environ["SCHOLARHUB_ADMIN_PASSWORD"] = "e2e_admin_pw_12345678"
-os.environ["SCHOLARHUB_ADMIN_EMAIL"] = "admin@e2e.test"
-os.environ["SCHOLARHUB_ADMIN_USERNAME"] = "admin"
-os.environ["SCHOLARHUB_CORS_ORIGINS"] = (
+os.environ["RUBBISH_SECRET_KEY"] = secrets.token_hex(32)
+os.environ["RUBBISH_ADMIN_PASSWORD"] = "e2e_admin_pw_12345678"
+os.environ["RUBBISH_ADMIN_EMAIL"] = "admin@e2e.test"
+os.environ["RUBBISH_ADMIN_USERNAME"] = "admin"
+os.environ["RUBBISH_CORS_ORIGINS"] = (
     "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173"
 )
-os.environ["SCHOLARHUB_ALLOWED_HOSTS"] = "localhost,127.0.0.1"
-os.environ["SCHOLARHUB_RATE_LIMIT_PER_MINUTE"] = "600"
-os.environ["SCHOLARHUB_DEBUG"] = "true"
-os.environ["SCHOLARHUB_LOG_LEVEL"] = "WARNING"
-os.environ["SCHOLARHUB_JSON_LOGS"] = "false"
-os.environ["SCHOLARHUB_EMAIL_BACKEND"] = "console"
+os.environ["RUBBISH_ALLOWED_HOSTS"] = "localhost,127.0.0.1"
+os.environ["RUBBISH_RATE_LIMIT_PER_MINUTE"] = "600"
+os.environ["RUBBISH_DEBUG"] = "true"
+os.environ["RUBBISH_LOG_LEVEL"] = "WARNING"
+os.environ["RUBBISH_JSON_LOGS"] = "false"
+os.environ["RUBBISH_EMAIL_BACKEND"] = "console"
 # 文件存储必须显式指到本目录：默认值 /data/uploads 在 CI runner（非 root）
 # 上不可写，权限拒绝会让上传接口 500，对应 E2E 用例等不到"文件已上传"。
 # 本地开发不炸只是因为 .env 恰好配置了可写路径。
-os.environ["SCHOLARHUB_STORAGE_BACKEND"] = "local"
-os.environ["SCHOLARHUB_STORAGE_PATH"] = "./storage"
+os.environ["RUBBISH_STORAGE_BACKEND"] = "local"
+os.environ["RUBBISH_STORAGE_PATH"] = "./storage"
 
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -200,7 +200,7 @@ if __name__ == "__main__":
     asyncio.run(_run_bootstrap_manual())
     _install_dev_routes()
     port = int(os.environ.get("E2E_PORT", "8000"))
-    print(f"[e2e] admin password: {os.environ['SCHOLARHUB_ADMIN_PASSWORD']}")
+    print(f"[e2e] admin password: {os.environ['RUBBISH_ADMIN_PASSWORD']}")
     print(f"[e2e] Starting uvicorn on http://localhost:{port} (DB: {_db_path})")
     uvicorn.run(
         "app.main:app",

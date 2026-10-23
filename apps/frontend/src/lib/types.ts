@@ -121,6 +121,15 @@ export interface HealthResponse {
   version: string
 }
 
+// --- Public capabilities ---
+export interface CapabilitiesResponse {
+  email_backend: string
+  email_delivery: boolean
+  email_verification_required: boolean
+  oidc_enabled: boolean
+  registration_open: boolean
+}
+
 // --- Catalog ---
 export type ResourceType = 'paper' | 'book' | 'dataset' | 'tutorial'
 export type PublicationStatus = 'published' | 'in_review' | 'draft'
@@ -162,6 +171,31 @@ export interface ResourceResponse extends ResourceBase {
   slug?: string | null
   created_at: string
   updated_at: string
+  /** Detail endpoint only: a downloadable manuscript exists. */
+  has_file?: boolean
+  /** R 指数互动指标（列表与详情都会返回） */
+  reads?: number | null
+  downloads?: number | null
+  saves?: number | null
+  r_index?: number | null
+  quartile?: string | null
+}
+
+export interface JournalMetrics {
+  published_total: number
+  by_type: Record<string, number>
+  by_discipline: Record<string, number>
+  discipline_count: number
+  downloads_total: number
+  reads_total: number
+  saves_total: number
+  decided_submissions: number
+  accepted_submissions: number
+  acceptance_rate: number | null
+  avg_review_days: number | null
+  median_review_days: number | null
+  open_access_rate: number | null
+  r_index_formula: string
 }
 
 export interface ResourceListResponse {
@@ -173,6 +207,8 @@ export interface ResourceStats {
   total: number
   by_type: Record<string, number>
   by_discipline: Record<string, number>
+  downloads_total?: number
+  reads_total?: number
 }
 
 export interface FacetBucket {

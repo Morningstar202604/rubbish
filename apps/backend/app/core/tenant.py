@@ -27,7 +27,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from app.core.config import settings
 from app.core.logging import get_logger
 
-logger = get_logger("scholarhub.tenant")
+logger = get_logger("rubbish.tenant")
 
 # ---------------------------------------------------------------------------
 # Host → tenant cache (in-memory, TTL-based)

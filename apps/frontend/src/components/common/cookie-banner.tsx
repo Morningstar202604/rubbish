@@ -11,16 +11,16 @@
  *     double-submit middleware can compare it to X-CSRF-Token header)
  *
  * Essential cookies (always on, not gated by this banner):
- *   - scholarhub_refresh_token (httpOnly, server-side)
- *   - scholarhub_csrf (when backend csrf middleware is enabled)
- *   - scholarhub_tenant (when tenancy middleware runs)
+ *   - rubbish_refresh_token (httpOnly, server-side)
+ *   - rubbish_csrf (when backend csrf middleware is enabled)
+ *   - rubbish_tenant (when tenancy middleware runs)
  */
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
 type ConsentValue = 'accepted' | 'essential'
 
-const CONSENT_KEY = 'scholarhub_cookie_consent'
+const CONSENT_KEY = 'rubbish_cookie_consent'
 
 function readConsent(): ConsentValue | null {
   if (typeof window === 'undefined') return null
@@ -73,23 +73,19 @@ export function CookieBanner() {
     <div
       role="dialog"
       aria-live="polite"
-      aria-label="Cookie consent"
+      aria-label="Cookie 使用同意"
       data-testid="cookie-banner"
       className="fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-3xl rounded-lg border bg-background/95 p-4 shadow-lg backdrop-blur sm:bottom-6 sm:left-auto sm:right-6 sm:p-5"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
         <div className="flex-1 text-sm text-foreground/90">
-          <p className="font-medium">We use cookies</p>
+          <p className="font-medium">本站使用 Cookie</p>
           <p className="mt-1 text-foreground/70">
-            Essential cookies keep you signed in. Optional cookies help with
-            CSRF protection. You can change your choice anytime in settings.{' '}
-            <a
-              href="/privacy"
-              className="underline hover:text-foreground"
-            >
-              Privacy policy
+            必要 Cookie 用于保持登录状态与防护跨站请求伪造，站点没有广告或第三方追踪
+            Cookie。你可以随时在设置中更改选择。
+            <a href="/privacy" className="ml-1 underline hover:text-foreground">
+              隐私政策
             </a>
-            .
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
@@ -100,7 +96,7 @@ export function CookieBanner() {
             onClick={essentialOnly}
             data-testid="cookie-banner-essential"
           >
-            Essential only
+            仅必要
           </Button>
           <Button
             type="button"
@@ -108,7 +104,7 @@ export function CookieBanner() {
             onClick={accept}
             data-testid="cookie-banner-accept"
           >
-            Accept all
+            全部接受
           </Button>
         </div>
       </div>

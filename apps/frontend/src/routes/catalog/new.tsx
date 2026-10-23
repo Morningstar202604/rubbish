@@ -87,7 +87,7 @@ function NewResourcePage() {
     pages: '',
     issn: '',
     isbn: '',
-    language: 'en',
+    language: 'zh',
     publication_status: 'published',
     slug: '',
   })

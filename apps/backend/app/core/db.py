@@ -25,7 +25,7 @@ from app.core.logging import get_logger
 from app.core.schemas import PaginationMeta
 from app.core.tenant import TENANT_CONTEXT_VAR
 
-logger = get_logger("scholarhub.db")
+logger = get_logger("rubbish.db")
 
 
 @event.listens_for(Session, "after_begin")

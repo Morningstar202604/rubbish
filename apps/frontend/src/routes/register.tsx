@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
 import { useRegister } from '@/hooks/api/use-auth'
+import { useCapabilities } from '@/hooks/use-capabilities'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,8 @@ export const Route = createFileRoute('/register')({
 function RegisterPage() {
   const navigate = useNavigate()
   const registerMut = useRegister()
+  const capabilities = useCapabilities()
+  const emailDelivery = capabilities.data?.email_delivery ?? false
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -32,8 +35,15 @@ function RegisterPage() {
     }
     try {
       await registerMut.mutateAsync({ email, username, password })
-      toast.success('注册成功，请查收邮件完成验证')
-      void navigate({ to: '/verify-email', search: { email } })
+      // 后端默认 console 邮件后端：验证链接只写进服务器日志，不会真的发信。
+      // 只有 SMTP 真的接通时才引导用户去收件箱，否则直接进工作台。
+      if (emailDelivery) {
+        toast.success('注册成功，请查收邮件完成验证')
+        void navigate({ to: '/verify-email', search: { email } })
+      } else {
+        toast.success('注册成功，已自动登录')
+        void navigate({ to: '/dashboard' })
+      }
     } catch (err) {
       const msg =
         err instanceof AxiosError
@@ -48,7 +58,15 @@ function RegisterPage() {
       <Card className="w-full">
         <CardHeader>
           <CardTitle className="text-2xl">注册</CardTitle>
-          <CardDescription>创建 ScholarHUB 账号，开始管理你的学术资源。</CardDescription>
+          <CardDescription>
+          创建 Rubbish 账号，即可投稿、审稿与在线阅读。
+          {capabilities.isFetched && !emailDelivery && (
+            <span className="mt-2 block text-xs text-muted-foreground">
+              当前站点未开通邮件服务：注册后直接登录，邮箱验证与找回密码暂不可用，
+              忘记密码请联系编辑部。
+            </span>
+          )}
+        </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">

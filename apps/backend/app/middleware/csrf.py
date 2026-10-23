@@ -31,7 +31,7 @@ from starlette.responses import Response
 from app.core.config import settings
 from app.core.logging import get_logger
 
-logger = get_logger("scholarhub.csrf")
+logger = get_logger("rubbish.csrf")
 
 # Methods that change state and need a CSRF check.
 _UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})

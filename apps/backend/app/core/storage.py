@@ -2,7 +2,7 @@
 
 Same opt-in philosophy as ``monitoring.py`` / ``search.py``: the default
 deployment writes to the local filesystem and pulls in zero extra
-dependencies. Setting ``SCHOLARHUB_STORAGE_BACKEND=s3`` switches every
+dependencies. Setting ``RUBBISH_STORAGE_BACKEND=s3`` switches every
 read/write to S3-compatible object storage (AWS S3, MinIO, Cloudflare R2,
 阿里云 OSS 的 S3 兼容端点等) via boto3.
 
@@ -119,7 +119,7 @@ class S3Storage:
                 "STORAGE_BACKEND=s3 requires boto3; run 'uv sync --extra s3'"
             ) from exc
         if not bucket:
-            raise StorageError("STORAGE_BACKEND=s3 requires SCHOLARHUB_S3_BUCKET")
+            raise StorageError("STORAGE_BACKEND=s3 requires RUBBISH_S3_BUCKET")
         self._bucket = bucket
         self._client: Any = boto3.client(
             "s3",

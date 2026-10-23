@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Production smoke test for a deployed ScholarHUB environment.
+# Production smoke test for a deployed Rubbish environment.
 #
 # Runs a handful of fast checks against BASE_URL to answer "is this
 # deployment actually serving users?" right after a release:
@@ -190,15 +190,15 @@ else
 fi
 
 head_ "Static frontend"
-# 5. Root path must serve the SPA (single-port mode: SCHOLARHUB_STATIC_DIR
+# 5. Root path must serve the SPA (single-port mode: RUBBISH_STATIC_DIR
 # set, index.html returned) or, in API-only mode, the API banner JSON.
 # A non-200 means the static mount points at a missing/wrong dist directory
 # and users see an error instead of the app.
 http GET /
-if [ "$CODE" = "200" ] && body_has_regex '<html|scholarhub api'; then
+if [ "$CODE" = "200" ] && body_has_regex '<html|rubbish api'; then
     ok "GET / -> 200 with HTML or API banner"
 else
-    bad "GET / -> $CODE without HTML — static serving broken (SCHOLARHUB_STATIC_DIR wrong or dist missing)"
+    bad "GET / -> $CODE without HTML — static serving broken (RUBBISH_STATIC_DIR wrong or dist missing)"
 fi
 
 printf '\n\033[36mSummary\033[0m  pass=%s skip=%s fail=%s\n' "$PASS" "$SKIP" "$FAIL"

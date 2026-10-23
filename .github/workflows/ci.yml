@@ -57,22 +57,22 @@ jobs:
       postgres:
         image: postgres:17.5
         env:
-          POSTGRES_USER: scholarhub
-          POSTGRES_PASSWORD: scholarhub
-          POSTGRES_DB: scholarhub_ci
+          POSTGRES_USER: rubbish
+          POSTGRES_PASSWORD: rubbish
+          POSTGRES_DB: rubbish_ci
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U scholarhub"
+          --health-cmd "pg_isready -U rubbish"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      SCHOLARHUB_DATABASE_URL: postgresql+asyncpg://scholarhub:scholarhub@localhost:5432/scholarhub_ci
+      RUBBISH_DATABASE_URL: postgresql+asyncpg://rubbish:rubbish@localhost:5432/rubbish_ci
       # Settings 对非 test 环境强校验三件套（secret_key / admin_password /
       # fernet_key），CI 无 .env（已 gitignore）无法满足。迁移 job 用 test 模式：
       # 配置层自动填充确定性测试密钥，与 e2e_run_server.py 同一套机制。
-      SCHOLARHUB_ENVIRONMENT: test
+      RUBBISH_ENVIRONMENT: test
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0

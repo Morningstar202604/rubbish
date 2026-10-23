@@ -1,6 +1,6 @@
 # Integrations guide
 
-ScholarHUB ships with pluggable integrations for the things every real
+Rubbish ships with pluggable integrations for the things every real
 deployment needs: transactional email (verification + password reset)
 and SSO (OIDC). The framework code is in place; you only need to provide
 credentials.
@@ -186,7 +186,7 @@ SCHOLARHUB_OIDC_USERINFO_URL=https://openidconnect.googleapis.com/v1/userinfo
 
 ### GitHub (OAuth 2.0, returns OpenID-shaped userinfo)
 
-GitHub does not implement full OIDC, but ScholarHUB's flow works with
+GitHub does not implement full OIDC, but Rubbish's flow works with
 GitHub's OAuth 2.0 endpoints because we read userinfo from the access
 token response.
 
@@ -226,7 +226,7 @@ SCHOLARHUB_OIDC_USERINFO_URL=https://keycloak.example.com/realms/myrealm/protoco
 
 ### Multi-provider (future)
 
-Today ScholarHUB supports one OIDC provider per deployment. Multi-provider
+Today Rubbish supports one OIDC provider per deployment. Multi-provider
 is a config-shape change rather than a code-shape change — the routes
 already accept `{provider}` as a path parameter. To add it, change
 `Settings.oidc_*` to be provider-keyed (e.g. `oidc_providers` as a JSON
@@ -293,5 +293,5 @@ curl -X POST https://api.yourdomain.com/api/ingest/parse \
 ```
 
 Both Crossref and arXiv have rate limits (Crossref: 50 req/s shared pool,
-arXiv: 1 req/3s). ScholarHUB does not retry on rate-limit responses —
+arXiv: 1 req/3s). Rubbish does not retry on rate-limit responses —
 the operator should batch imports during off-peak hours.

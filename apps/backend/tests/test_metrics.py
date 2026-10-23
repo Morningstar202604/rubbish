@@ -5,7 +5,7 @@ These tests verify:
 - ``GET /metrics`` returns Prometheus text exposition with the expected
   metric names.
 - ``GET /healthz`` and ``GET /readyz`` return 200 (DB reachable).
-- ``HTTPMetricsMiddleware`` records a ``scholarhub_http_requests_total``
+- ``HTTPMetricsMiddleware`` records a ``rubbish_http_requests_total``
   series for each request, labelled by the route template.
 - Status bucketing works (404 鈫?``4xx``, 500 鈫?``5xx``).
 """
@@ -24,10 +24,10 @@ async def test_metrics_endpoint_returns_prometheus_text(client: AsyncClient) -> 
     # Standard Prometheus content type.
     assert "text/plain" in response.headers["content-type"]
     # Custom metrics present.
-    assert "scholarhub_http_requests_total" in body
-    assert "scholarhub_http_request_duration_seconds" in body
+    assert "rubbish_http_requests_total" in body
+    assert "rubbish_http_request_duration_seconds" in body
     # DB pool gauges registered (zero-valued but present).
-    assert "scholarhub_db_pool_size" in body
+    assert "rubbish_db_pool_size" in body
 
 
 @pytest.mark.asyncio
@@ -83,5 +83,5 @@ async def test_metrics_status_bucketing_for_404(client: AsyncClient) -> None:
 async def test_metrics_db_pool_gauges_present(client: AsyncClient) -> None:
     """DB pool gauges should be exposed even before any DB request."""
     body = (await client.get("/metrics")).text
-    assert "scholarhub_db_pool_checked_out" in body
-    assert "scholarhub_db_pool_overflow" in body
+    assert "rubbish_db_pool_checked_out" in body
+    assert "rubbish_db_pool_overflow" in body

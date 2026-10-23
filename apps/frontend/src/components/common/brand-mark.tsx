@@ -1,32 +1,44 @@
 /**
- * 品牌图形标（书页之 S）。
+ * Rubbish 期刊印章标志。
  *
- * 与 docs/assets/logo-mark.svg 保持同一几何；内联为组件是为了让
- * `currentColor` 生效 —— SVG 通过 <img> 引入时无法继承页面的 text color，
- * 内联后侧边栏切换主题 / 折叠态都能自动跟随文字颜色。
- * 金色翻页角为品牌点缀色（#C7A24B），深浅主题下均与主色协调。
+ * 设计语言与刊头一致：印刷"印章"意象 —— 外粗内细双线方框 + 衬线 R 字，
+ * 右下角一枚金色（#C7A24B）菱形点缀，与旧版品牌金一脉相承。
+ * 内联 SVG 保证 currentColor 生效：侧边栏明暗主题、折叠态都自动跟随文字色。
+ * <text> 使用系统衬线栈，与全站 --font-serif 保持同一气质。
  */
 export function BrandMark({ className }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 240 240"
+      viewBox="0 0 64 64"
       className={className}
       role="img"
-      aria-label="ScholarHUB"
+      aria-label="Rubbish"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path
-        d="M 176 72 C 176 54 158 44 120 44 C 84 44 64 58 64 80 C 64 100 80 110 106 116 C 134 122 176 134 176 164 C 176 188 156 196 120 196 C 86 196 64 184 64 168"
+      <rect x="4" y="4" width="56" height="56" rx="7" stroke="currentColor" strokeWidth="3.5" />
+      <rect
+        x="10.5"
+        y="10.5"
+        width="43"
+        height="43"
+        rx="3.5"
         stroke="currentColor"
-        strokeWidth={25}
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        strokeWidth="1.1"
+        opacity="0.5"
       />
-      <path
-        d="M 132 184 C 152 176 168 160 172 140 C 164 164 148 176 124 180 Z"
-        fill="#C7A24B"
-      />
+      <text
+        x="32"
+        y="43.5"
+        textAnchor="middle"
+        fontFamily="Georgia, 'Noto Serif SC Variable', 'Noto Serif SC', 'Times New Roman', serif"
+        fontSize="33"
+        fontWeight="600"
+        fill="currentColor"
+      >
+        R
+      </text>
+      <path d="M50.5 44.5 L56 50 L50.5 55.5 L45 50 Z" fill="#C7A24B" />
     </svg>
   )
 }

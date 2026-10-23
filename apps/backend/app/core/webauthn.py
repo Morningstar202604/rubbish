@@ -12,8 +12,8 @@ Design notes:
   process deployments and the dev/test workflow.
 
 - RP (Relying Party) parameters come from settings:
-  ``SCHOLARHUB_WEBAUTHN_RP_ID``, ``SCHOLARHUB_WEBAUTHN_RP_NAME``,
-  ``SCHOLARHUB_WEBAUTHN_ORIGIN``.
+  ``RUBBISH_WEBAUTHN_RP_ID``, ``RUBBISH_WEBAUTHN_RP_NAME``,
+  ``RUBBISH_WEBAUTHN_ORIGIN``.
 
 - Credential storage format (per entry in ``webauthn_credentials``):
     {

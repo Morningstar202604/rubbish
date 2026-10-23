@@ -20,7 +20,7 @@ interface AuthState {
 // a 'logout' message; this tab clears its local state in response.
 const authChannel: BroadcastChannel | null =
   typeof window !== 'undefined' && 'BroadcastChannel' in window
-    ? new BroadcastChannel('scholarhub-auth')
+    ? new BroadcastChannel('rubbish-auth')
     : null
 
 if (authChannel) {
@@ -56,7 +56,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'scholarhub-auth',
+      name: 'rubbish-auth',
       storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({ token: state.token }),
     },

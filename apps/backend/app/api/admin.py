@@ -31,7 +31,7 @@ from app.schemas import (
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-logger = get_logger("scholarhub.admin")
+logger = get_logger("rubbish.admin")
 
 # Allowlist of assignable role names; mirrors Role.name values. Admin
 # privilege is governed by User.is_admin, not by role membership.
@@ -46,7 +46,7 @@ async def security_status(
 
     Operators call this to confirm a rotation landed: the
     ``active_keys`` count goes up by 1 immediately after a successful
-    ``POST /admin/security/reload`` if ``SCHOLARHUB_PREVIOUS_SECRET_KEYS``
+    ``POST /admin/security/reload`` if ``RUBBISH_PREVIOUS_SECRET_KEYS``
     was populated. The actual key material is NEVER returned — only
     the SHA-256 prefix (kid) so a dashboard can show which key signed
     a given token.
@@ -74,10 +74,10 @@ async def reload_security_settings(
     db: AsyncSession = Depends(get_db),
     current_admin: User = Depends(require_admin),
 ) -> None:
-    """Re-read ``SCHOLARHUB_*`` env vars without restarting the process.
+    """Re-read ``RUBBISH_*`` env vars without restarting the process.
 
-    Use this after rotating ``SCHOLARHUB_SECRET_KEY`` /
-    ``SCHOLARHUB_PREVIOUS_SECRET_KEYS`` / ``SCHOLARHUB_FERNET_KEYS``.
+    Use this after rotating ``RUBBISH_SECRET_KEY`` /
+    ``RUBBISH_PREVIOUS_SECRET_KEYS`` / ``RUBBISH_FERNET_KEYS``.
     New tokens use the new key immediately; tokens already in
     flight verify against the previous-key list until they expire.
 

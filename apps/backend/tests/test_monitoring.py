@@ -83,4 +83,4 @@ def test_init_succeeds_and_passes_settings(monkeypatch: pytest.MonkeyPatch) -> N
     assert captured["traces_sample_rate"] == 0.25
     # PII 默认关闭是隐私底线，不能被悄悄改掉
     assert captured["send_default_pii"] is False
-    assert captured["release"].startswith("scholarhub-backend@")
+    assert captured["release"].startswith("rubbish-backend@")

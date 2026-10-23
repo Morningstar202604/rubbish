@@ -50,7 +50,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """Sliding-window rate limiter keyed by client IP + path.
 
     Single-node deployments use the in-memory store. Multi-node
-    deployments should set ``SCHOLARHUB_REDIS_URL`` so the bucket is
+    deployments should set ``RUBBISH_REDIS_URL`` so the bucket is
     shared across replicas; the middleware doesn't need to change.
     """
 

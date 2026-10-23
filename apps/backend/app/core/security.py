@@ -15,8 +15,8 @@ Signing key rotation (M3 hardening): JWT signing + verification lives
 in ``app.core.key_rotation``. ``encode_jwt`` always signs with the
 *current* key (``settings.secret_key``); ``decode_jwt`` tries the
 current key then every entry in ``settings.previous_secret_keys``.
-Operators rotate by setting a new ``SCHOLARHUB_SECRET_KEY`` and the
-old one in ``SCHOLARHUB_PREVIOUS_SECRET_KEYS`` (comma-separated,
+Operators rotate by setting a new ``RUBBISH_SECRET_KEY`` and the
+old one in ``RUBBISH_PREVIOUS_SECRET_KEYS`` (comma-separated,
 newest first) and then calling ``POST /api/admin/security/reload``
 or ``app.core.key_rotation.reload_settings()``.
 """

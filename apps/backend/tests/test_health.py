@@ -25,6 +25,6 @@ async def test_root_returns_app_metadata(client: AsyncClient) -> None:
     response = await client.get("/")
     assert response.status_code == 200
     body = response.json()
-    assert body["name"] == "ScholarHUB API"
+    assert body["name"] == "Rubbish API"
     assert body["version"] == __version__
     assert body["docs"] == "/docs"

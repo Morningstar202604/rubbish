@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { createFileRoute, Link, redirect, useNavigate, useSearch } from '@tanstack/react-router'
 import { Bookmark } from 'lucide-react'
-import { toast } from 'sonner'
 import { getAuthState } from '@/lib/auth'
+import { recommendationReason } from '@/lib/resource-labels'
 import { useMyRecommendations } from '@/hooks/api/use-modules'
+import { AddToListDialog } from '@/components/common/add-to-list-dialog'
 import { PageHeader } from '@/components/common/page-header'
 import { EmptyState, ErrorState, Loading } from '@/components/common/state'
 import { Badge } from '@/components/ui/badge'
@@ -34,6 +36,7 @@ function RecommendationsPage() {
   const navigate = useNavigate()
   const search = useSearch({ strict: false }) as RecSearch
   const limit = search.limit ?? DEFAULT_LIMIT
+  const [listResourceId, setListResourceId] = useState<number | null>(null)
 
   const { data, isLoading, isError, refetch } = useMyRecommendations(limit)
 
@@ -109,7 +112,7 @@ function RecommendationsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => toast('加入阅读列表功能敬请期待')}
+                      onClick={() => setListResourceId(r.id)}
                     >
                       <Bookmark className="h-4 w-4" />
                       加入阅读列表
@@ -121,7 +124,9 @@ function RecommendationsPage() {
                     variant="secondary"
                     className="bg-amber-500/15 text-amber-700"
                   >
-                    {isFallback ? '最新收录 · 阅读后可获得个性化推荐' : r.reason}
+                    {isFallback
+                      ? '最新收录 · 阅读后可获得个性化推荐'
+                      : recommendationReason(r.reason)}
                   </Badge>
 
                   {/* 匹配度进度条 */}
@@ -162,6 +167,16 @@ function RecommendationsPage() {
             )
           })}
         </div>
+      )}
+
+      {listResourceId !== null && (
+        <AddToListDialog
+          resourceId={listResourceId}
+          open={listResourceId !== null}
+          onOpenChange={(open) => {
+            if (!open) setListResourceId(null)
+          }}
+        />
       )}
     </div>
   )

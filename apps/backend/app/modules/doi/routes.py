@@ -47,7 +47,7 @@ async def register_doi(
     if not datacite_enabled():
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="DOI registration is not configured. Set SCHOLARHUB_DATACITE_API_URL and SCHOLARHUB_DATACITE_PREFIX.",
+            detail="DOI registration is not configured. Set RUBBISH_DATACITE_API_URL and RUBBISH_DATACITE_PREFIX.",
         )
 
     tenant_id = require_tenant_id()

@@ -4,6 +4,7 @@ import {
   Bookmark,
   BookOpen,
   ChevronLeft,
+  Download,
   ExternalLink,
   Heart,
   MoreVertical,
@@ -28,6 +29,7 @@ import {
 } from '@/hooks/api/use-modules'
 import type { ResourceUpdate } from '@/lib/types'
 import { extractError, formatDateTime, parseListField } from '@/lib/utils'
+import { languageLabel, statusLabel, typeLabel } from '@/lib/resource-labels'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -47,6 +49,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { AddToListDialog } from '@/components/common/add-to-list-dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { MetaItem } from '@/components/common/meta-item'
 import { EmptyState, ErrorState, Loading } from '@/components/common/state'
@@ -88,6 +91,7 @@ function CatalogDetailPage() {
 
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [listOpen, setListOpen] = useState(false)
 
   if (isLoading) return <Loading />
   if (isError || !data) {
@@ -122,9 +126,9 @@ function CatalogDetailPage() {
       <div className="mb-6 flex items-start justify-between gap-4">
         <div className="flex-1">
           <div className="mb-2 flex items-center gap-2">
-            <Badge variant="secondary">{data.type}</Badge>
+            <Badge variant="secondary">{typeLabel(data.type)}</Badge>
             {data.publication_status !== 'published' && (
-              <Badge variant="outline">{data.publication_status}</Badge>
+              <Badge variant="outline">{statusLabel(data.publication_status)}</Badge>
             )}
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">{data.title}</h1>
@@ -155,9 +159,31 @@ function CatalogDetailPage() {
                     .join(' / ') || null
                 }
               />
-              <MetaItem label="语言" value={data.language} />
+              <MetaItem label="语言" value={languageLabel(data.language)} />
               <MetaItem label="ISSN" value={data.issn} />
               <MetaItem label="ISBN" value={data.isbn} />
+            </CardContent>
+          </Card>
+
+          {/* R 指数：只有真实事件才算数；分区样本不足时明确写出来，
+              不用一个看着漂亮的字母糊弄读者。 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">阅读与影响</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MetaItem label="R 指数" value={data.r_index != null ? String(data.r_index) : '—'} />
+              <MetaItem
+                label="学科分区"
+                value={data.quartile ?? '样本不足'}
+              />
+              <MetaItem label="阅读次数" value={String(data.reads ?? 0)} />
+              <MetaItem label="下载次数" value={String(data.downloads ?? 0)} />
+              <MetaItem label="收藏次数" value={String(data.saves ?? 0)} />
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                R 指数由本刊阅读、下载、收藏事件计算，按学科内最大值归一；
+                它衡量站内注意力，不等同于影响因子。
+              </p>
             </CardContent>
           </Card>
 
@@ -220,21 +246,27 @@ function CatalogDetailPage() {
                         在线阅读
                       </Link>
                     </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-full">
-                          加入阅读列表
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuItem disabled>敬请期待</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {data.has_file && (
+                      <Button asChild variant="outline" className="w-full">
+                        <a href={`/api/catalog/${id}/file`} download>
+                          <Download className="h-4 w-4" />
+                          下载 PDF
+                        </a>
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setListOpen(true)}
+                    >
+                      <Bookmark className="h-4 w-4" />
+                      加入阅读列表
+                    </Button>
                   </>
                 ) : (
                   <>
                     <Button asChild className="w-full">
-                      <Link to="/login">
+                      <Link to="/login" search={{ redirect: `/catalog/${id}` }}>
                         <BookOpen className="h-4 w-4" />
                         登录后阅读全文
                       </Link>
@@ -257,24 +289,27 @@ function CatalogDetailPage() {
                   </Button>
                 )}
                 {isAdmin && (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => setEditOpen(true)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      编辑
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      className="w-full"
-                      onClick={() => setDeleteOpen(true)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      删除
-                    </Button>
-                  </>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="w-full text-muted-foreground">
+                        <MoreVertical className="h-4 w-4" />
+                        管理此条
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                        <Pencil className="h-4 w-4" />
+                        编辑题录
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => setDeleteOpen(true)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        删除资源
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </CardContent>
             </Card>
@@ -358,6 +393,10 @@ function CatalogDetailPage() {
             }
           }}
         />
+      )}
+
+      {isAuthenticated && (
+        <AddToListDialog resourceId={id} open={listOpen} onOpenChange={setListOpen} />
       )}
 
       <ConfirmDialog

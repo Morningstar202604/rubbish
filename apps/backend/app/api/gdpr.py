@@ -69,7 +69,7 @@ from app.schemas import UserResponse
 
 router = APIRouter(prefix="/users", tags=["users-gdpr"])
 
-logger = get_logger("scholarhub.gdpr")
+logger = get_logger("rubbish.gdpr")
 
 # 30-day grace period between soft delete and hard delete. Operators
 # can tune this via env if their jurisdiction requires a different

@@ -69,7 +69,10 @@ test.describe('admin: create resource', () => {
     // 选填
     await page.getByLabel('出版物').fill('Springer')
     await page.getByLabel('ISBN').fill('978-3-16-148410-0')
-    await page.getByLabel('DOI').fill('10.1000/e2e-book')
+    // DOI 有唯一约束：固定值在复用同一 SQLite 文件的二次运行里会 409，
+    // 加时间戳让每个用例运行都拿到新 DOI（断言仍然直接引用同一个变量）。
+    const doi = `10.1000/e2e-book-${Date.now()}`
+    await page.getByLabel('DOI').fill(doi)
     await page.getByLabel('标签（逗号分隔）').fill('algebra, geometry')
     await page.getByRole('button', { name: '创建' }).click()
 
@@ -78,7 +81,7 @@ test.describe('admin: create resource', () => {
     await expect(page.getByRole('heading', { name: title })).toBeVisible()
     // 详情页元数据区显示 ISBN / DOI / 标签
     await expect(page.getByText('978-3-16-148410-0')).toBeVisible()
-    await expect(page.getByText('10.1000/e2e-book')).toBeVisible()
+    await expect(page.getByText(doi)).toBeVisible()
     await expect(page.getByText('algebra')).toBeVisible()
     await expect(page.getByText('geometry')).toBeVisible()
   })
@@ -110,8 +113,9 @@ test.describe('admin: create resource', () => {
     await page.getByRole('button', { name: '创建' }).click()
     await expect(page).toHaveURL(/\/catalog\/\d+/, { timeout: 10_000 })
 
-    // 点编辑
-    await page.getByRole('button', { name: '编辑' }).click()
+    // 点编辑（管理员操作收在「管理此条」菜单里，避免误触删除）
+    await page.getByRole('button', { name: '管理此条' }).click()
+    await page.getByRole('menuitem', { name: '编辑题录' }).click()
     await expect(page.getByText('编辑资源')).toBeVisible()
     // 改标题
     const newTitle = `${title} (v2)`
@@ -133,8 +137,9 @@ test.describe('admin: create resource', () => {
     await page.getByRole('button', { name: '创建' }).click()
     await expect(page).toHaveURL(/\/catalog\/\d+/, { timeout: 10_000 })
 
-    // 点删除
-    await page.getByRole('button', { name: '删除' }).click()
+    // 点删除（同上，先展开管理菜单）
+    await page.getByRole('button', { name: '管理此条' }).click()
+    await page.getByRole('menuitem', { name: '删除资源' }).click()
     // ConfirmDialog 出现
     await page.getByRole('button', { name: '删除', exact: true }).click()
     await expect(page.getByText('已删除')).toBeVisible({ timeout: 5_000 })

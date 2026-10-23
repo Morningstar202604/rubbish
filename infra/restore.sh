@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# ScholarHUB database restore script.
+# Rubbish database restore script.
 #
 # Usage:
 #   ./restore.sh <backup-file> [--db-url URL]
 #
 # Defaults:
-#   --db-url  postgresql://scholarhub:scholarhub_dev@localhost:5432/scholarhub
+#   --db-url  postgresql://rubbish:rubbish_dev@localhost:5432/rubbish
 #
 # Behaviour:
 #   - Validates the backup file exists and is a pg_dump custom-format archive.
@@ -16,7 +16,7 @@
 set -euo pipefail
 
 # --- defaults -----------------------------------------------------------
-DB_URL="postgresql://scholarhub:scholarhub_dev@localhost:5432/scholarhub"
+DB_URL="postgresql://rubbish:rubbish_dev@localhost:5432/rubbish"
 
 # --- helpers ------------------------------------------------------------
 log() {
@@ -50,7 +50,7 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: $0 <backup-file> [--db-url URL]"
       echo ""
       echo "  backup-file  Path to a pg_dump custom-format backup (produced by backup.sh)"
-      echo "  --db-url URL Target PostgreSQL connection URL (default: postgresql://scholarhub:scholarhub_dev@localhost:5432/scholarhub)"
+      echo "  --db-url URL Target PostgreSQL connection URL (default: postgresql://rubbish:rubbish_dev@localhost:5432/rubbish)"
       exit 0
       ;;
     *)

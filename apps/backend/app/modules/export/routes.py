@@ -83,7 +83,7 @@ async def export_endpoint(
 
     extension = FILE_EXTENSIONS[format]
     media_type = MIME_TYPES[format]
-    filename = f"scholarhub-export.{extension}"
+    filename = f"rubbish-export.{extension}"
     return Response(
         content=body,
         media_type=media_type,

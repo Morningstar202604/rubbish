@@ -22,7 +22,7 @@ from app.schemas import (
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-logger = get_logger("scholarhub.users")
+logger = get_logger("rubbish.users")
 
 
 class ChangePasswordRequest(BaseModel):

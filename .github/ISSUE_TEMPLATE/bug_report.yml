@@ -7,7 +7,7 @@ body:
       value: |
         Thanks for taking the time to file a bug. Please fill in the
         details below — the version and environment questions matter
-        because ScholarHUB behaves differently across dev/test/production
+        because Rubbish behaves differently across dev/test/production
         modes (RLS is bypassed in test, weak-secret rejection is
         dev/production only, etc.).
 
@@ -50,7 +50,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: ScholarHUB version
+      label: Rubbish version
       description: "`GET /api/health` → `version`, or the git tag you deployed."
       placeholder: "0.2.0"
     validations:

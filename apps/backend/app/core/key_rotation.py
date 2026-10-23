@@ -7,8 +7,8 @@ The M3 hardening milestone implements OAuth-style "kid" rotation:
   keys (newest first) that are still trusted for **verification only**.
   Tokens minted before the rotation are still accepted until they
   expire or until the operator removes them from this list.
-- During rotation the operator sets ``SCHOLARHUB_SECRET_KEY`` to the
-  new value and ``SCHOLARHUB_PREVIOUS_SECRET_KEYS`` to the comma-
+- During rotation the operator sets ``RUBBISH_SECRET_KEY`` to the
+  new value and ``RUBBISH_PREVIOUS_SECRET_KEYS`` to the comma-
   separated list of old keys (newest first). New tokens use the new
   key; old tokens verify against the legacy list until they expire.
 - Once all pre-rotation tokens have aged out, the operator clears
@@ -50,8 +50,8 @@ def reload_settings() -> None:
     """Clear the cached Settings so the next ``get_settings()`` re-reads env.
 
     Safe to call from any thread. Idempotent. Use after editing
-    ``SCHOLARHUB_SECRET_KEY`` / ``SCHOLARHUB_PREVIOUS_SECRET_KEYS`` /
-    ``SCHOLARHUB_FERNET_KEYS`` while the process is running.
+    ``RUBBISH_SECRET_KEY`` / ``RUBBISH_PREVIOUS_SECRET_KEYS`` /
+    ``RUBBISH_FERNET_KEYS`` while the process is running.
     """
     with _reload_lock:
         get_settings.cache_clear()

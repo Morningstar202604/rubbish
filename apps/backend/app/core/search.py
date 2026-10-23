@@ -57,7 +57,7 @@ async def _get_client() -> Any | None:
         from meilisearch_python_sdk import AsyncClient
     except ImportError:
         logger.warning(
-            "SCHOLARHUB_MEILISEARCH_URL is set but the SDK is not installed; "
+            "RUBBISH_MEILISEARCH_URL is set but the SDK is not installed; "
             "run 'uv sync --extra search'. Falling back to DB search."
         )
         _init_failed = True

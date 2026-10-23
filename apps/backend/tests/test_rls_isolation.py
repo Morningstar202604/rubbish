@@ -1,11 +1,11 @@
 """RLS isolation tests — must run against real PostgreSQL.
 
 The main test suite uses SQLite in-memory (which has no Row Level
-Security), so ScholarHUB's two-layer isolation claim is verified only
+Security), so Rubbish's two-layer isolation claim is verified only
 at the application-filter layer there. This file verifies the RLS layer
 against a real PostgreSQL instance.
 
-Skipped automatically when ``SCHOLARHUB_DATABASE_URL`` does not
+Skipped automatically when ``RUBBISH_DATABASE_URL`` does not
 point to PostgreSQL. In CI, this is run as a separate job (see
 ``.github/workflows/ci.yml`` ``rls`` job) with a Postgres 17 service
 container.
@@ -36,10 +36,10 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Skip the entire module when not on PostgreSQL.
-DB_URL = os.environ.get("SCHOLARHUB_DATABASE_URL", "")
+DB_URL = os.environ.get("RUBBISH_DATABASE_URL", "")
 if not DB_URL.startswith("postgresql"):
     pytest.skip(
-        "RLS tests require PostgreSQL; set SCHOLARHUB_DATABASE_URL=postgresql+asyncpg://...",
+        "RLS tests require PostgreSQL; set RUBBISH_DATABASE_URL=postgresql+asyncpg://...",
         allow_module_level=True,
     )
 

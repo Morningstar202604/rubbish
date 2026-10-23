@@ -2,7 +2,7 @@
 
 Design goals:
 
-* **Zero cost when disabled** — if ``SCHOLARHUB_SENTRY_DSN`` is empty the
+* **Zero cost when disabled** — if ``RUBBISH_SENTRY_DSN`` is empty the
   SDK is never imported. Self-hosters who don't want a third-party
   monitoring service pay nothing (no import time, no runtime hooks).
 * **Graceful degradation** — a missing ``sentry-sdk`` package or a bad
@@ -22,7 +22,7 @@ from __future__ import annotations
 from app.core.config import settings
 from app.core.logging import get_logger
 
-logger = get_logger("scholarhub.monitoring")
+logger = get_logger("rubbish.monitoring")
 
 
 def init_monitoring() -> bool:
@@ -62,4 +62,4 @@ def init_monitoring() -> bool:
 def _release() -> str:
     from app import __version__
 
-    return f"scholarhub-backend@{__version__}"
+    return f"rubbish-backend@{__version__}"

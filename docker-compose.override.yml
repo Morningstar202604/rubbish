@@ -1,0 +1,6 @@
+# 本地覆盖配置：使用国内网络版 Dockerfile（不覆盖仓库原有文件，git pull 不受影响）
+services:
+  app:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile.cn

@@ -78,7 +78,7 @@ _REGISTER_DUPLICATE_MESSAGE = (
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-logger = get_logger("scholarhub.auth")
+logger = get_logger("rubbish.auth")
 
 _REFRESH_COOKIE_KEY = settings.refresh_token_cookie_name
 
@@ -523,14 +523,14 @@ async def _send_verification_email(user: User) -> None:
     token = create_email_verification_token(user.id, user.token_version)
     link = _verify_link(token)
     body = (
-        f"Welcome to ScholarHUB, {user.username}.\n\n"
+        f"Welcome to Rubbish, {user.username}.\n\n"
         f"Verify your email by visiting:\n  {link}\n\n"
         f"This link expires in {settings.email_verification_expire_hours} hours.\n"
         f"If you did not create an account, ignore this email.\n"
     )
     await get_email_sender().send(
         to=user.email,
-        subject="Verify your ScholarHUB email",
+        subject="Verify your Rubbish email",
         body=body,
     )
 
@@ -540,13 +540,13 @@ async def _send_password_reset_email(user: User) -> None:
     token = create_password_reset_token(user.id, user.token_version)
     link = _reset_link(token)
     body = (
-        f"Reset your ScholarHUB password by visiting:\n  {link}\n\n"
+        f"Reset your Rubbish password by visiting:\n  {link}\n\n"
         f"This link expires in {settings.password_reset_expire_minutes} minutes.\n"
         f"If you did not request a reset, ignore this email.\n"
     )
     await get_email_sender().send(
         to=user.email,
-        subject="Reset your ScholarHUB password",
+        subject="Reset your Rubbish password",
         body=body,
     )
 
@@ -575,7 +575,7 @@ async def _notify_duplicate_registration(
     if existing is None:
         return
     body = (
-        "Someone attempted to register a ScholarHUB account using your"
+        "Someone attempted to register a Rubbish account using your"
         " email address.\n\n"
         "If this was you, you can ignore this email; your existing account"
         " is unaffected.\n"
@@ -585,7 +585,7 @@ async def _notify_duplicate_registration(
     try:
         await get_email_sender().send(
             to=existing.email,
-            subject="ScholarHUB registration attempt",
+            subject="Rubbish registration attempt",
             body=body,
         )
     except Exception:

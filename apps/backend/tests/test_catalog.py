@@ -399,3 +399,158 @@ async def test_file_endpoint_404_when_no_submission_file(client: AsyncClient, ad
     resource_id = response.json()["id"]
     response = await client.get(f"/api/catalog/{resource_id}/file")
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# P1: unpublished records must not leak through public read surfaces
+# ---------------------------------------------------------------------------
+
+
+async def test_list_hides_draft_from_anonymous(client: AsyncClient, admin_user: dict) -> None:
+    published = await client.post(
+        "/api/catalog",
+        json={**_SAMPLE, "title": "Public Paper"},
+        headers={"Authorization": f"Bearer {admin_user['token']}"},
+    )
+    draft = await client.post(
+        "/api/catalog",
+        json={**_SAMPLE, "title": "Hidden Draft", "publication_status": "draft"},
+        headers={"Authorization": f"Bearer {admin_user['token']}"},
+    )
+    assert published.status_code == draft.status_code == 201
+
+    anonymous = await client.get("/api/catalog")
+    titles = [row["title"] for row in anonymous.json()["data"]]
+    assert "Public Paper" in titles
+    assert "Hidden Draft" not in titles
+
+    # Admin still sees everything (it is their working set).
+    as_admin = await client.get(
+        "/api/catalog", headers={"Authorization": f"Bearer {admin_user['token']}"}
+    )
+    titles = [row["title"] for row in as_admin.json()["data"]]
+    assert "Hidden Draft" in titles
+
+
+async def test_detail_404s_for_draft_to_anonymous(client: AsyncClient, admin_user: dict) -> None:
+    draft = await client.post(
+        "/api/catalog",
+        json={**_SAMPLE, "title": "Detail Draft", "publication_status": "draft"},
+        headers={"Authorization": f"Bearer {admin_user['token']}"},
+    )
+    rid = draft.json()["id"]
+
+    assert (await client.get(f"/api/catalog/{rid}")).status_code == 404
+    as_admin = await client.get(
+        f"/api/catalog/{rid}", headers={"Authorization": f"Bearer {admin_user['token']}"}
+    )
+    assert as_admin.status_code == 200
+
+
+async def test_stats_and_facets_exclude_drafts(client: AsyncClient, admin_user: dict) -> None:
+    await client.post(
+        "/api/catalog",
+        json={**_SAMPLE, "title": "Stats Public", "year": 2024},
+        headers={"Authorization": f"Bearer {admin_user['token']}"},
+    )
+    await client.post(
+        "/api/catalog",
+        json={**_SAMPLE, "title": "Stats Draft", "year": 1999, "publication_status": "draft"},
+        headers={"Authorization": f"Bearer {admin_user['token']}"},
+    )
+    stats = (await client.get("/api/catalog/stats")).json()
+    assert stats["total"] == 1
+
+    facets = (await client.get("/api/catalog/facets")).json()
+    years = {bucket["value"] for bucket in facets["years"]}
+    assert "2024" in years
+    assert "1999" not in years
+
+
+# ---------------------------------------------------------------------------
+# R 指数：公开指标必须可解释、可复算，且不伪造引用数据
+# ---------------------------------------------------------------------------
+
+
+async def test_journal_metrics_are_public_and_empty_safe(client: AsyncClient) -> None:
+    r = await client.get("/api/catalog/journal-metrics")
+    assert r.status_code == 200
+    body = r.json()
+    # 空库：计数为 0，但比率必须为 null（"样本不足"），不能伪装成 0%。
+    assert body["published_total"] == 0
+    assert body["acceptance_rate"] is None
+    assert body["avg_review_days"] is None
+    assert body["open_access_rate"] is None
+    assert "read_norm" in body["r_index_formula"]
+
+
+async def test_journal_metrics_counts_published_only(client: AsyncClient, admin_user: dict) -> None:
+    await client.post(
+        "/api/catalog",
+        json={**_SAMPLE, "title": "Metrics Public"},
+        headers={"Authorization": f"Bearer {admin_user['token']}"},
+    )
+    await client.post(
+        "/api/catalog",
+        json={**_SAMPLE, "title": "Metrics Draft", "publication_status": "draft"},
+        headers={"Authorization": f"Bearer {admin_user['token']}"},
+    )
+    body = (await client.get("/api/catalog/journal-metrics")).json()
+    assert body["published_total"] == 1
+    assert body["open_access_rate"] == 100.0
+
+
+async def test_quartile_needs_minimum_sample(client: AsyncClient, admin_user: dict) -> None:
+    """样本不足时不发明分区：quartile 为 null 而不是默认 R4。"""
+    rid = (
+        await client.post(
+            "/api/catalog",
+            json={**_SAMPLE, "title": "Lonely Paper"},
+            headers={"Authorization": f"Bearer {admin_user['token']}"},
+        )
+    ).json()["id"]
+    body = (await client.get(f"/api/catalog/{rid}")).json()
+    assert body["quartile"] is None
+    assert body["r_index"] == 0.0
+    assert body["reads"] == 0
+    assert body["downloads"] == 0
+
+
+async def test_r_index_uses_adjusted_events(
+    client: AsyncClient, admin_user: dict, test_user: dict
+) -> None:
+    """四条同刊记录 → 达到最小样本；被收藏/阅读过的那条 R 指数更高。"""
+    ids = []
+    for i in range(4):
+        ids.append(
+            (
+                await client.post(
+                    "/api/catalog",
+                    json={**_SAMPLE, "title": f"Quartile Paper {i}"},
+                    headers={"Authorization": f"Bearer {admin_user['token']}"},
+                )
+            ).json()["id"]
+        )
+    target = ids[0]
+    # 阅读一次 + 加入阅读列表一次
+    await client.post(
+        f"/api/reader/history/{target}", headers={"Authorization": f"Bearer {test_user['token']}"}
+    )
+    lst = (
+        await client.post(
+            "/api/reading-lists",
+            json={"name": "R index list"},
+            headers={"Authorization": f"Bearer {test_user['token']}"},
+        )
+    ).json()
+    await client.post(
+        f"/api/reading-lists/{lst['id']}/items",
+        json={"resource_id": target},
+        headers={"Authorization": f"Bearer {test_user['token']}"},
+    )
+
+    body = (await client.get(f"/api/catalog/{target}")).json()
+    assert body["reads"] == 1
+    assert body["saves"] == 1
+    assert body["r_index"] > 0
+    assert body["quartile"] == "R1"

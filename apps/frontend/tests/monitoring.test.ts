@@ -33,7 +33,7 @@ describe('reportError', () => {
 
     reportError(err, { source: 'test' })
 
-    expect(spy).toHaveBeenCalledWith('[scholarhub] unhandled error', err, { source: 'test' })
+    expect(spy).toHaveBeenCalledWith('[rubbish] unhandled error', err, { source: 'test' })
     spy.mockRestore()
   })
 

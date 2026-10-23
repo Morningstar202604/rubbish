@@ -73,7 +73,7 @@ class OIDCProvidersResponse(BaseModel):
     providers: list[OIDCProviderInfo]
 
 
-logger = get_logger("scholarhub.oidc")
+logger = get_logger("rubbish.oidc")
 
 router = APIRouter(prefix="/auth/oidc", tags=["auth", "oidc"])
 

@@ -114,7 +114,7 @@ class ResourceBase(BaseModel):
     publisher: str | None = Field(default=None, max_length=500)
     short_container_title: str | None = Field(default=None, max_length=200)
     keywords: list[str] | None = Field(default=None, max_length=50)
-    language: str = Field(default="en", max_length=10)
+    language: str = Field(default="zh", max_length=10)
     publication_status: PublicationStatus = "published"
 
     @model_validator(mode="after")
@@ -165,7 +165,12 @@ class ResourceUpdate(BaseModel):
 
 
 class ResourceResponse(ResourceBase):
-    """Response body for read endpoints."""
+    """Response body for read endpoints.
+
+    ``has_file`` is filled only by the detail endpoint (list responses keep
+    the default false): it drives the "下载 PDF" action without forcing the
+    browser to probe a 404 for records that were imported without a file.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -173,6 +178,13 @@ class ResourceResponse(ResourceBase):
     slug: str | None = None
     created_at: datetime
     updated_at: datetime
+    has_file: bool = False
+    # 互动指标（R 指数）：列表与详情都返回，未取到时为 None
+    reads: int | None = None
+    downloads: int | None = None
+    saves: int | None = None
+    r_index: float | None = None
+    quartile: str | None = None
 
 
 class ResourceListResponse(BaseModel):
@@ -184,6 +196,33 @@ class ResourceStats(BaseModel):
     total: int
     by_type: dict[str, int]
     by_discipline: dict[str, int]
+    downloads_total: int = 0
+    reads_total: int = 0
+
+
+class JournalMetrics(BaseModel):
+    """Public journal-level metrics (``GET /api/catalog/journal-metrics``).
+
+    Everything here is computed from the platform's own event tables.
+    Fields that need a minimum sample (acceptance rate, review turnaround)
+    are Optional: ``None`` means "not enough data yet", which the UI must
+    render as such instead of showing 0.
+    """
+
+    published_total: int
+    by_type: dict[str, int]
+    by_discipline: dict[str, int]
+    discipline_count: int
+    downloads_total: int
+    reads_total: int
+    saves_total: int
+    decided_submissions: int
+    accepted_submissions: int
+    acceptance_rate: float | None = None
+    avg_review_days: float | None = None
+    median_review_days: float | None = None
+    open_access_rate: float | None = None
+    r_index_formula: str
 
 
 class FacetBucket(BaseModel):
@@ -199,6 +238,7 @@ class ResourceFacets(BaseModel):
 __all__ = [
     "AuthorMeta",
     "FacetBucket",
+    "JournalMetrics",
     "PaginationMeta",
     "PublicationStatus",
     "ResourceBase",

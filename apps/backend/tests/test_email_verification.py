@@ -39,7 +39,7 @@ async def test_register_sends_verification_email(client: AsyncClient, fake_email
     assert len(fake_email_sender.outbox) == 1
     mail = fake_email_sender.last()
     assert mail["to"] == "verify@example.com"
-    assert mail["subject"] == "Verify your ScholarHUB email"
+    assert mail["subject"] == "Verify your Rubbish email"
     # The deep-link must contain a non-empty token.
     assert _extract_token(mail["body"])
 
@@ -134,7 +134,7 @@ async def test_forgot_password_sends_reset_email(
     assert response.status_code == 200
     assert len(fake_email_sender.outbox) == 1
     mail = fake_email_sender.last()
-    assert mail["subject"] == "Reset your ScholarHUB password"
+    assert mail["subject"] == "Reset your Rubbish password"
     assert _extract_token(mail["body"])
 
 

@@ -8,6 +8,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { getAuthState } from '@/lib/auth'
+import { recommendationReason } from '@/lib/resource-labels'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import {
   useCatalogStats,
@@ -91,7 +92,7 @@ function DashboardPage() {
     <div>
       <PageHeader
         title="概览"
-        description="你的 ScholarHUB 工作台一览。"
+        description="你的 Rubbish 工作台一览。"
       />
       {/* 移动端：2 列大数据块 + 快捷操作；桌面端：5 列小卡 */}
       {isMobile ? (
@@ -188,7 +189,7 @@ function DashboardPage() {
                     >
                       <p className="line-clamp-1 text-sm font-medium">{r.title}</p>
                       <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                        {r.authors.join(', ')} · {r.reason}
+                        {r.authors.join(', ')} · {recommendationReason(r.reason)}
                       </p>
                     </Link>
                   </li>

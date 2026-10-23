@@ -338,7 +338,7 @@
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["scholarhub", "api", "database"],
+  "tags": ["rubbish", "api", "database"],
   "templating": {
     "list": [
       {
@@ -383,8 +383,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "ScholarHUB",
-  "uid": "scholarhub",
+  "title": "Rubbish",
+  "uid": "rubbish",
   "version": 1,
   "weekStart": ""
 }
