@@ -14,7 +14,7 @@ test.describe('guest browse', () => {
     await page.goto('/')
     await expect(page).toHaveURL(/\/$/)
     await expect(
-      page.getByRole('heading', { name: /Rubbish/ }),
+      page.getByRole('heading', { level: 1, name: 'Rubbish', exact: true }),
     ).toBeVisible()
     // 首页有两处「登录」（顶部横幅 + 门面区快捷入口），限定到横幅避免歧义
     await expect(page.getByRole('banner').getByRole('link', { name: '登录' })).toBeVisible()

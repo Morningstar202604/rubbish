@@ -51,9 +51,15 @@ test.describe('reader + library + follows', () => {
     // 等 progress query 加载完成，避免 useEffect 把 page 覆盖回 1
     await expect(page.getByLabel('页码')).toHaveValue('1')
 
-    // 改页码 + 进度
-    await page.getByLabel('页码').fill('5')
-    await page.getByLabel('进度：0%').fill('42')
+    // 改页码 + 进度。PDF 以 iframe 加载（E2E 里是远端 arXiv，CI 网络时好时坏），
+    // 文档加载完成回调可能把页码钳回真实页数；因此填写改为「填完即断言」，
+    // 若被钳回则重填一次，避免把外部网络抖动当成进度功能坏掉。
+    const pageInput = page.getByLabel('页码')
+    await pageInput.fill('5')
+    if ((await pageInput.inputValue()) !== '5') {
+      await pageInput.fill('5')
+    }
+    await page.getByLabel(/进度：/).fill('42')
     // 等自动 flush（每 30s）太慢,直接点保存进度按钮
     await page.getByRole('button', { name: '保存进度' }).click()
     await expect(page.getByText('进度已保存')).toBeVisible({ timeout: 5_000 })

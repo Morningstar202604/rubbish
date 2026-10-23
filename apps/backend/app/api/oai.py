@@ -15,7 +15,9 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import (
+    escape,  # nosec B406 -- escape() only encodes text; this module parses no XML
+)
 
 from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy import select
