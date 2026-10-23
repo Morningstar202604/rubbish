@@ -97,6 +97,10 @@ class SubmissionDecision(BaseModel):
     decision: EditorDecision
     editor_note: str | None = Field(default=None, max_length=5000)
     resource_id: int | None = Field(default=None, ge=1)
+    # accept 且新建物化时生效：published（默认，录用即刊，兼容旧行为）或
+    # draft（暂存草稿——刊前整理阶段，之后由 admin PATCH /catalog/{id} 刊出）。
+    # 指定现有 resource_id 时不改动该条目的刊出状态。
+    publication_status: Literal["published", "draft"] = "published"
 
 
 class AnonymizedFileUpdate(BaseModel):
@@ -134,6 +138,9 @@ class SubmissionResponse(BaseModel):
     status: SubmissionStatus
     admin_note: str | None = None
     editor_note: str | None = None
+    # 关联目录条目的刊出状态（published/draft/in_review）；无关联时为 None。
+    # 前端据此区分「已发表」与「刊前预览（暂存草稿）」。
+    resource_publication_status: str | None = None
     resource_id: int | None = None
     file_path: str | None = None
     # 双盲评审下审稿人视角会被抹掉，因此可空

@@ -79,7 +79,7 @@ async def _get_or_404(db: AsyncSession, submission_id: int) -> Submission:
 
 
 async def _materialize_resource_from_submission(
-    db: AsyncSession, submission: Submission
+    db: AsyncSession, submission: Submission, *, publication_status: str = "published"
 ) -> ResourceORM:
     """Create a catalog Resource from a submission payload.
 
@@ -88,6 +88,9 @@ async def _materialize_resource_from_submission(
     Resource creation belongs. We construct the ORM Resource directly
     rather than re-routing through the HTTP layer to keep it
     transactional with the review commit.
+
+    ``publication_status`` 支持录用即刊（默认 published，兼容旧行为）或
+    暂存草稿（draft）——后者进入刊前整理阶段，由 admin 刊出。
     """
     # 本地稿件文件：不再使用 /uploads 静态路径（该挂载无鉴权，任何人都能
     # 下载在审稿件，见 app/main.py 的说明）。改为物化后在下方写入指向
@@ -95,6 +98,7 @@ async def _materialize_resource_from_submission(
     # 资源才能读到文件，未公开的投稿仍然只走鉴权端点。
     resource = ResourceORM(
         tenant_id=submission.tenant_id,
+        publication_status=publication_status,
         type=submission.type,
         title=submission.title,
         authors=submission.authors,

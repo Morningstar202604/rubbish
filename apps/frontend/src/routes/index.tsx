@@ -79,15 +79,6 @@ const FAQ = [
   },
 ]
 
-const GALLERY = [
-  { src: '/shots/home.webp', title: '期刊门面', note: '首页', alt: 'Rubbish 期刊首页' },
-  { src: '/shots/catalog.webp', title: '资源目录', note: '检索与筛选', alt: 'Rubbish 资源目录页' },
-  { src: '/shots/detail.webp', title: '文章详情', note: '元数据与下载', alt: 'Rubbish 文章详情页' },
-  { src: '/shots/reader.webp', title: '在线阅读', note: 'pdf.js 阅读器', alt: 'Rubbish 在线阅读器' },
-  { src: '/shots/dashboard.webp', title: '作者工作台', note: '投稿与进度', alt: 'Rubbish 作者工作台' },
-  { src: '/shots/editor.webp', title: '编辑工作台', note: '送审与裁决', alt: 'Rubbish 编辑工作台' },
-]
-
 const rise: Variants = {
   hidden: { opacity: 0, y: 18 },
   show: (i: number) => ({
@@ -241,12 +232,6 @@ function HomePage() {
                     className="text-muted-foreground transition-colors hover:text-foreground"
                   >
                     期刊指标
-                  </a>
-                  <a
-                    href="#gallery"
-                    className="text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    平台图集
                   </a>
                   <a
                     href="/help.html"
@@ -730,49 +715,6 @@ function HomePage() {
                   )}
                 </ul>
               </div>
-            </div>
-          </div>
-        </motion.section>
-
-        {/* ── 平台图集：蒙太奇 + 悬停动效 ─────────────────── */}
-        <motion.section
-          id="gallery"
-          variants={rise}
-          custom={12}
-          initial="hidden"
-          animate="show"
-          className="scroll-mt-16 border-t bg-muted/30"
-        >
-          <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-            <SectionHeading title="平台图集" label="Inside Rubbish" />
-            <p className="mb-8 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              从投稿到阅读的全部界面，均为本站在线运行的真实截图。
-            </p>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {GALLERY.map((shot, i) => (
-                <motion.figure
-                  key={shot.src}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: '-80px' }}
-                  transition={{ duration: 0.45, delay: (i % 3) * 0.06 }}
-                  className="group relative overflow-hidden border bg-card"
-                >
-                  <img
-                    src={shot.src}
-                    alt={shot.alt}
-                    loading="lazy"
-                    decoding="async"
-                    width={1400}
-                    height={875}
-                    className="aspect-[16/10] w-full object-cover object-top transition-transform duration-500 ease-out group-hover:scale-[1.03]"
-                  />
-                  <figcaption className="flex items-center justify-between border-t px-3 py-2 text-xs">
-                    <span className="font-medium">{shot.title}</span>
-                    <span className="text-muted-foreground">{shot.note}</span>
-                  </figcaption>
-                </motion.figure>
-              ))}
             </div>
           </div>
         </motion.section>

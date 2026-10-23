@@ -389,6 +389,73 @@ async def test_file_endpoint_blocks_in_review_resource(
     assert response.status_code == 404
 
 
+def _auth(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
+
+
+async def _grant_editor_role(client: AsyncClient, admin_user: dict, user_id: int) -> None:
+    response = await client.post(
+        f"/api/admin/users/{user_id}/roles",
+        json={"role": "editor"},
+        headers=_auth(admin_user["token"]),
+    )
+    response.raise_for_status()
+
+
+async def test_draft_preview_editor_can_read_detail_and_file(
+    client: AsyncClient, db_session, admin_user, test_user
+) -> None:
+    """刊前预览：editor 角色可读 draft 详情与稿件文件；匿名仍 404。"""
+    await _grant_editor_role(client, admin_user, test_user["user_id"])
+    resource_id = await _create_draft_resource_with_submission(
+        client, db_session, admin_user, status="draft"
+    )
+    # 匿名仍不确认存在
+    assert (await client.get(f"/api/catalog/{resource_id}")).status_code == 404
+    headers = _auth(test_user["token"])
+    detail = await client.get(f"/api/catalog/{resource_id}", headers=headers)
+    assert detail.status_code == 200
+    assert detail.json()["publication_status"] == "draft"
+    file = await client.get(f"/api/catalog/{resource_id}/file", headers=headers)
+    assert file.status_code == 200
+    assert file.content.startswith(b"%PDF")
+
+
+async def test_draft_hidden_from_unrelated_regular_user(
+    client: AsyncClient, db_session, admin_user, test_user
+) -> None:
+    """无角色、非关联作者的普通用户：draft 详情与稿件均 404（不确认存在）。"""
+    resource_id = await _create_draft_resource_with_submission(
+        client, db_session, admin_user, status="draft"
+    )
+    headers = _auth(test_user["token"])
+    assert (await client.get(f"/api/catalog/{resource_id}", headers=headers)).status_code == 404
+    assert (
+        await client.get(f"/api/catalog/{resource_id}/file", headers=headers)
+    ).status_code == 404
+
+
+async def test_draft_preview_does_not_inflate_download_count(
+    client: AsyncClient, db_session, admin_user, test_user
+) -> None:
+    """刊前预览不得污染 R 指数下载量：draft 取稿后 download_count 仍为 0。"""
+    await _grant_editor_role(client, admin_user, test_user["user_id"])
+    resource_id = await _create_draft_resource_with_submission(
+        client, db_session, admin_user, status="draft"
+    )
+    file = await client.get(f"/api/catalog/{resource_id}/file", headers=_auth(test_user["token"]))
+    assert file.status_code == 200
+    # download_count 不在响应 schema 中，直接查库断言（预览不计入指标）。
+    from app.modules.catalog.models import Resource
+
+    count = (
+        await db_session.execute(
+            sa_select(Resource.download_count).where(Resource.id == resource_id)
+        )
+    ).scalar_one()
+    assert count == 0
+
+
 async def test_file_endpoint_404_when_no_submission_file(client: AsyncClient, admin_user) -> None:
     """没有关联 submission 文件时 404（不暴露内部差异）。"""
     response = await client.post(

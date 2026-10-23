@@ -137,7 +137,20 @@ async def get_submission(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
-    return _to_response(entry)
+    response = _to_response(entry)
+    if entry.resource_id is not None:
+        # 刊出状态随详情下发：前端据此区分「已发表」与「刊前预览」。
+        from app.modules.catalog.models import Resource
+
+        response.resource_publication_status = (
+            await db.execute(
+                select(Resource.publication_status).where(
+                    Resource.id == entry.resource_id,
+                    Resource.tenant_id == entry.tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+    return response
 
 
 @router.patch("/{submission_id}", response_model=SubmissionResponse)

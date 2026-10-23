@@ -29,6 +29,13 @@
 
 ---
 
+## Positioning: open-source example vs. production service
+
+| | What it is | Where showcase content lives |
+| --- | --- | --- |
+| **Open-source example** (this repo) | Reference implementation of the Rubbish journal platform — clone it, self-host it, adapt it. | `site/` marketing pages, `docs/assets/`, README screenshots |
+| **Production service** ([rubbish.argjiemi.cn](https://rubbish.argjiemi.cn)) | A **live journal**, not a demo. The running app carries no screenshot galleries or promo material — every page exists to submit, review, publish and read. | nowhere — de-showcased by design |
+
 ## Features
 
 | Role | Capability |

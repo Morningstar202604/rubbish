@@ -279,6 +279,8 @@ export interface SubmissionDecision {
   decision: EditorDecision
   editor_note?: string | null
   resource_id?: number | null
+  /** accept 且新建物化时生效：published（默认，录用即刊）或 draft（暂存草稿，刊前整理） */
+  publication_status?: 'published' | 'draft'
 }
 
 export interface SubmissionResponse {
@@ -302,6 +304,8 @@ export interface SubmissionResponse {
   status: SubmissionStatus
   admin_note?: string | null
   editor_note?: string | null
+  /** 关联目录条目的刊出状态（published/draft/in_review）；无关联时为 null。前端据此区分「已发表」与「刊前预览」 */
+  resource_publication_status?: string | null
   resource_id?: number | null
   file_path?: string | null
   /**

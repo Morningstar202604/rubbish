@@ -289,6 +289,60 @@ async def test_approve_links_to_existing_resource(
     assert body["resource_id"] == existing_rid
 
 
+async def test_accept_hold_draft_gates_public_visibility(
+    client: AsyncClient, admin_user: dict, test_user: dict
+) -> None:
+    """录用暂存（publication_status='draft'）：物化条目对外 404，编辑与
+    作者本人可刊前预览；admin 刊出后对公众开放——补齐录用→刊出之间的
+    刊前整理环节。"""
+    created = await _create_submission(client, test_user)
+    decision = await client.patch(
+        f"/api/submissions/{created['id']}/decision",
+        json={"decision": "accept", "publication_status": "draft"},
+        headers=auth_headers(admin_user),
+    )
+    assert decision.status_code == 200
+    body = decision.json()
+    assert body["status"] == "accepted"
+    rid = body["resource_id"]
+    assert rid is not None
+
+    # 匿名：不确认存在；作者本人：可预览草稿详情。
+    # （文件端点此处 404 属预期——该 helper 的投稿未上传稿件文件，
+    #   "no downloadable file"；带文件的刊前预览由 test_catalog 的
+    #   editor 用例覆盖。）
+    assert (await client.get(f"/api/catalog/{rid}")).status_code == 404
+    author_detail = await client.get(f"/api/catalog/{rid}", headers=auth_headers(test_user))
+    assert author_detail.status_code == 200
+    assert author_detail.json()["publication_status"] == "draft"
+
+    # admin 刊出：PATCH catalog 后对公众开放。
+    publish = await client.patch(
+        f"/api/catalog/{rid}",
+        json={"publication_status": "published"},
+        headers=auth_headers(admin_user),
+    )
+    assert publish.status_code == 200
+    assert (await client.get(f"/api/catalog/{rid}")).status_code == 200
+
+
+async def test_accept_default_publishes_immediately(
+    client: AsyncClient, admin_user: dict, test_user: dict
+) -> None:
+    """默认录用即刊（兼容旧行为）：不带 publication_status 时物化条目
+    立即对公众可见。"""
+    created = await _create_submission(client, test_user)
+    decision = await client.patch(
+        f"/api/submissions/{created['id']}/decision",
+        json={"decision": "accept"},
+        headers=auth_headers(admin_user),
+    )
+    assert decision.status_code == 200
+    rid = decision.json()["resource_id"]
+    assert rid is not None
+    assert (await client.get(f"/api/catalog/{rid}")).status_code == 200
+
+
 async def test_approve_with_nonexistent_resource_id_400(
     client: AsyncClient, admin_user: dict, test_user: dict
 ) -> None:

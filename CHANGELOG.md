@@ -7,6 +7,28 @@
 `apps/backend/pyproject.toml`、`apps/frontend/package.json`、`apps/backend/app/__init__.py`
 四处完全一致，由 `scripts/check-version.sh` 守门。
 
+## [0.4.0] — 2026-10-23
+
+### Added
+
+- 刊前预览授权：`draft`/`in_review` 条目的详情与稿件文件向 editor 角色
+  （含 admin）与关联投稿的作者本人开放；对其他访问者（含匿名）仍 404、
+  不确认存在性；刊前预览不计入 R 指数下载量
+  （`app/modules/catalog/routes.py`，tests/test_catalog.py 新增 3 例）。
+- 录用暂存环节：`PATCH /submissions/{id}/decision` 新增可选
+  `publication_status`（`published` 默认＝录用即刊，兼容旧行为；`draft`
+  ＝暂存草稿）。录用→刊出之间出现「刊前整理」阶段，由 admin
+  `PATCH /catalog/{id}` 刊出。投稿详情响应新增
+  `resource_publication_status`，前端据实区分「已发表 / 刊前预览」
+  （tests/test_submission.py 新增 2 例）。
+
+### Changed
+
+- 应用去展示化：明确「开源示例仓库 vs 正式上线生产服务」双定位——
+  移除运行中应用内的「平台图集」板块、导航入口与截图资产
+  （`public/shots/`，268K，仅图集引用）；展示性内容只保留在仓库
+  `site/` 宣传页。README（中英）与 DEPLOY.md 按双定位重写陈述。
+
 ## [0.3.4] — 2026-10-23
 
 ### Added

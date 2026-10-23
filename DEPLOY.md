@@ -4,6 +4,10 @@
 > CI 7 jobs（backend / migrations / frontend / e2e / precommit / security / docker-build 镜像门禁）。
 > 安全加固（TOTP 重放防线、GDPR 恢复可达性、2FA 租户过滤）见 CHANGELOG，commit `114f8d1`。
 
+> **本文档定位**：面向「自建一套」的部署者（开源示例用途），从零拉起一套属于你自己的
+> Rubbish 实例。生产实例 rubbish.argjiemi.cn 的日常运维（备份/恢复/看门狗/更新）有独立的
+> 运维手册，不在本文展开；两者共用同一套 compose 编排与镜像。
+
 ## 架构总览（推荐方案）
 
 | 组件 | 推荐服务 | 说明 |

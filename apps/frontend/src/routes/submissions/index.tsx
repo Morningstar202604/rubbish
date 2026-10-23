@@ -591,27 +591,46 @@ function SubmissionsPage() {
                   {detail.editor_note}
                 </div>
               )}
-              {/* 已发表：录用后物化出的目录条目对访客也公开可见，
-                  给作者一个可直接分享的公开链接 */}
-              {detail.resource_id != null && (
-                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3">
-                  <div className="mb-2 flex items-center gap-2">
-                    <ExternalLink className="h-4 w-4" />
-                    <span className="font-medium">已发表</span>
+              {/* 录用后物化出的目录条目：已刊出对访客公开；暂存草稿则
+                  处于刊前阶段，仅编辑与作者本人可预览（对外 404） */}
+              {detail.resource_id != null &&
+                (detail.resource_publication_status === 'published' ? (
+                  <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3">
+                    <div className="mb-2 flex items-center gap-2">
+                      <ExternalLink className="h-4 w-4" />
+                      <span className="font-medium">已发表</span>
+                    </div>
+                    <p className="mb-2 text-xs text-muted-foreground">
+                      本文已收录进公开目录，任何人无需登录即可查看。
+                    </p>
+                    <Button size="sm" variant="outline" asChild>
+                      <Link
+                        to="/catalog/$resourceId"
+                        params={{ resourceId: String(detail.resource_id) }}
+                      >
+                        查看发表页面
+                      </Link>
+                    </Button>
                   </div>
-                  <p className="mb-2 text-xs text-muted-foreground">
-                    本文已收录进公开目录，任何人无需登录即可查看。
-                  </p>
-                  <Button size="sm" variant="outline" asChild>
-                    <Link
-                      to="/catalog/$resourceId"
-                      params={{ resourceId: String(detail.resource_id) }}
-                    >
-                      查看发表页面
-                    </Link>
-                  </Button>
-                </div>
-              )}
+                ) : (
+                  <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+                    <div className="mb-2 flex items-center gap-2">
+                      <ExternalLink className="h-4 w-4" />
+                      <span className="font-medium">刊前预览</span>
+                    </div>
+                    <p className="mb-2 text-xs text-muted-foreground">
+                      录用后暂存为草稿，尚未公开：刊出前仅编辑与作者本人可查看，刊出后对所有人开放。
+                    </p>
+                    <Button size="sm" variant="outline" asChild>
+                      <Link
+                        to="/catalog/$resourceId"
+                        params={{ resourceId: String(detail.resource_id) }}
+                      >
+                        预览目录条目
+                      </Link>
+                    </Button>
+                  </div>
+                ))}
               <div className="rounded-md border p-3">
                 <div className="mb-2 flex items-center gap-2">
                   <FileText className="h-4 w-4" />

@@ -479,7 +479,9 @@ async def editor_decision(
     """编辑最终决定（4 元）。
 
     accept: 自动物化 catalog Resource（除非 resource_id 指定现有资源），
-            submission.status = 'accepted'
+            submission.status = 'accepted'。默认录用即刊（published）；
+            body.publication_status='draft' 时暂存为草稿，进入刊前整理
+            阶段（编辑/作者可预览，admin 刊出）。
     minor_revision / major_revision: status = 对应值，等作者 resubmit
     reject: status = 'rejected'（终态）
 
@@ -522,7 +524,9 @@ async def editor_decision(
                 )
             entry.resource_id = existing.id
         else:
-            new_resource = await _materialize_resource_from_submission(db, entry)
+            new_resource = await _materialize_resource_from_submission(
+                db, entry, publication_status=body.publication_status
+            )
             entry.resource_id = new_resource.id
         entry.status = "accepted"
     elif decision in ("major_revision", "minor_revision"):

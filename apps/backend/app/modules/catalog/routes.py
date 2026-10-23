@@ -16,7 +16,13 @@ from sqlalchemy import desc, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user_optional, require_admin, require_tenant_id
+from app.api.deps import (
+    ROLE_EDITOR,
+    get_current_user_optional,
+    require_admin,
+    require_tenant_id,
+    user_has_role,
+)
 from app.core import search as fulltext
 from app.core.db import get_db, paginate
 from app.core.schemas import PaginationMeta
@@ -43,6 +49,35 @@ router.include_router(ontology_router)
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
+
+
+async def _can_preview_unpublished(
+    db: AsyncSession, viewer: User | None, resource_id: int, tenant_id: int
+) -> bool:
+    """Whether ``viewer`` may see an unpublished (draft/in_review) record.
+
+    刊前预览授权边界：editor 角色（deps 对 admin 直接放行）可预览全部
+    未刊稿；与该条目关联投稿的作者本人可预览自己的稿子。其余访问者
+    （含匿名）返回 False，调用方以 404 拒绝——不向公众确认未刊条目的
+    存在。
+    """
+    if viewer is None:
+        return False
+    if viewer.is_admin:
+        return True
+    if await user_has_role(db, viewer, ROLE_EDITOR):
+        return True
+    from app.modules.submission.models import Submission
+
+    submitter_id = (
+        await db.execute(
+            select(Submission.submitted_by).where(
+                Submission.resource_id == resource_id,
+                Submission.tenant_id == tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
+    return submitter_id is not None and submitter_id == viewer.id
 
 
 def _conflict_detail(exc: IntegrityError) -> str:
@@ -284,14 +319,17 @@ async def download_resource_file(
     resource_id: int,
     request: Request,
     db: AsyncSession = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
 ) -> Response:
-    """流式返回**已发表**资源的文件（公开可读，无需登录）。
+    """流式返回资源文件：published 公开可读；draft/in_review 仅限刊前
+    预览（编辑角色或关联投稿作者本人）。
 
     这是替代原 `/uploads` 静态挂载的通道。区别是：
-    - 只有已经进入公开目录（catalog）的资源才能在这里读到文件；
-    - 尚未公开的在审稿件，仍然只能走鉴权端点 `GET /api/submissions/{id}/files`。
+    - 已刊出（published）的资源任何人都可在这里读到文件；
+    - 未刊出的稿件对无权限者一律 404（不确认存在性），不再能经此端点
+      流出；在审稿件作者/审稿人仍可走鉴权端点 `GET /api/submissions/{id}/files`。
 
-    换句话说，"发表"这个文件动作本身就是授权边界：物化进目录才公开。
+    换句话说，公开取稿的授权边界是刊出状态本身；未刊稿仅对编辑与作者开放刊前预览。
     """
     import mimetypes
 
@@ -304,15 +342,17 @@ async def download_resource_file(
         select(Resource).where(
             Resource.id == resource_id,
             Resource.tenant_id == tenant_id,
-            # 纵深防御：只有物化为 published 的资源才允许公开取稿。编辑在
-            # "接受"决定里可以把投稿对接到任一带 resource_id 的现有条目
-            # （submission/routes.py accept 分支），若那条目处于 draft/
-            # in_review，稿件仍处于未公开状态，不得经此公开端点流出。
-            Resource.publication_status == "published",
         )
     )
     resource = result.scalar_one_or_none()
-    if resource is None:
+    # 纵深防御：published 公开取稿；draft/in_review 仅限编辑（含 admin）
+    # 与关联投稿的作者本人（刊前预览），无权限者（含匿名）404，不确认
+    # 未刊条目存在。编辑在 "接受" 决定里可把投稿对接到任一带 resource_id
+    # 的现有条目（submission/routes.py accept 分支），此时预览走同一端点。
+    is_published = resource is not None and resource.publication_status == "published"
+    if resource is None or (
+        not is_published and not await _can_preview_unpublished(db, viewer, resource_id, tenant_id)
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
 
     # 延迟导入避免与 submission 模块形成循环依赖（submission 依赖 catalog）。
@@ -336,14 +376,16 @@ async def download_resource_file(
             detail="This resource has no downloadable file",
         )
 
-    # 下载计数（R 指数的 0.3 权重项）：只在真正返回内容前自增一次，
-    # 404/302 预签名跳转都不算，避免把外部存储的鉴权失败算成一次下载。
-    await db.execute(
-        update(Resource)
-        .where(Resource.id == resource_id)
-        .values(download_count=Resource.download_count + 1)
-    )
-    await db.commit()
+    # 下载计数（R 指数的 0.3 权重项）：仅 published 资源计数——刊前预览
+    # 不得污染指标；且只在真正返回内容前自增一次，404/302 预签名跳转
+    # 都不算，避免把外部存储的鉴权失败算成一次下载。
+    if is_published:
+        await db.execute(
+            update(Resource)
+            .where(Resource.id == resource_id)
+            .values(download_count=Resource.download_count + 1)
+        )
+        await db.commit()
 
     storage = get_storage()
     url = storage.presigned_url(submission.file_path)
@@ -401,16 +443,19 @@ async def get_resource(
     db: AsyncSession = Depends(get_db),
     viewer: User | None = Depends(get_current_user_optional),
 ) -> ResourceResponse:
-    """Get a single resource by id (published-only for non-admin callers)."""
+    """Get a single resource by id (published-only for the public; editors
+    and the linked submission's author may preview unpublished records)."""
     tenant_id = require_tenant_id()
     stmt = select(Resource).where(
         Resource.id == resource_id,
         Resource.tenant_id == tenant_id,
     )
-    if not (viewer and viewer.is_admin):
+    if viewer is None or not viewer.is_admin:
         # 404 rather than 403: an unpublished record should not even
-        # confirm its existence to the public.
-        stmt = stmt.where(Resource.publication_status == "published")
+        # confirm its existence to the public. Editors and the linked
+        # submission's author may preview drafts (刊前预览).
+        if not await _can_preview_unpublished(db, viewer, resource_id, tenant_id):
+            stmt = stmt.where(Resource.publication_status == "published")
     result = await db.execute(stmt)
     resource = result.scalar_one_or_none()
     if resource is None:
