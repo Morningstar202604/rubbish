@@ -47,11 +47,11 @@
 
 | 公开门户 | 资源目录 | 在线阅读 |
 | --- | --- | --- |
-| ![home](docs/assets/screenshots/01-home.png) | ![catalog](docs/assets/screenshots/02-catalog.png) | ![reader](docs/assets/screenshots/17-reader.png) |
+| ![home](docs/assets/screenshots/rubbish-home.png) | ![catalog](docs/assets/screenshots/rubbish-catalog.png) | ![reader](docs/assets/screenshots/rubbish-reader.png) |
 
 | 工作台概览 | 我的投稿 | 编辑工作台 |
 | --- | --- | --- |
-| ![dashboard](docs/assets/screenshots/04-dashboard.png) | ![submissions](docs/assets/screenshots/07-my-submissions.png) | ![editor](docs/assets/screenshots/05-editor-workbench.png) |
+| ![dashboard](docs/assets/screenshots/rubbish-dashboard.png) | ![submissions](docs/assets/screenshots/07-my-submissions.png) | ![editor](docs/assets/screenshots/rubbish-editor.png) |
 
 | 移动端目录 | 移动端详情 | 审稿工作台 |
 | --- | --- | --- |

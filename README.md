@@ -47,11 +47,11 @@
 
 | Public portal | Resource catalog | Online reading |
 | --- | --- | --- |
-| ![home](docs/assets/screenshots/01-home.png) | ![catalog](docs/assets/screenshots/02-catalog.png) | ![reader](docs/assets/screenshots/17-reader.png) |
+| ![home](docs/assets/screenshots/rubbish-home.png) | ![catalog](docs/assets/screenshots/rubbish-catalog.png) | ![reader](docs/assets/screenshots/rubbish-reader.png) |
 
 | Workbench overview | My submissions | Editor workbench |
 | --- | --- | --- |
-| ![dashboard](docs/assets/screenshots/04-dashboard.png) | ![submissions](docs/assets/screenshots/07-my-submissions.png) | ![editor](docs/assets/screenshots/05-editor-workbench.png) |
+| ![dashboard](docs/assets/screenshots/rubbish-dashboard.png) | ![submissions](docs/assets/screenshots/07-my-submissions.png) | ![editor](docs/assets/screenshots/rubbish-editor.png) |
 
 | Mobile catalog | Mobile detail | Reviewer workbench |
 | --- | --- | --- |

@@ -7,6 +7,22 @@
 `apps/backend/pyproject.toml`、`apps/frontend/package.json`、`apps/backend/app/__init__.py`
 四处完全一致，由 `scripts/check-version.sh` 守门。
 
+## [0.3.2] — 2026-10-23
+
+### Security
+
+- `certifi` 由 2026.10.18 升级并显式钉住到 **2026.10.19**（PYSEC-2026-4320，CI
+  `pip-audit` 报出）。此前它只作为 httpx 的传递依赖被间接锁住，升级会被动落后。
+
+## [0.3.1] — 2026-10-23
+
+### Fixed
+
+- CI：`bandit` 对 `xml.sax.saxutils.escape` 的 B406 误报加 `nosec` 说明（本模块
+  只做文本编码，不解析任何 XML）；E2E 首页标题断言固定到 `h1`（「期刊指标」
+  板块上线后页面出现第二个含 Rubbish 的标题）；阅读进度用例规避远端 PDF 加载
+  回调把页码钳回 1 的竞态。
+
 ## [0.3.0] — 2026-10-23
 
 项目更名为 **Rubbish**，定位收敛为"收录全球学术垃圾的开放获取期刊"，
