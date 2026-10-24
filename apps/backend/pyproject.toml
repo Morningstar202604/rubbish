@@ -1,6 +1,6 @@
 [project]
 name = "rubbish-backend"
-version = "0.6.1"
+version = "0.6.2"
 description = "Rubbish backend — modular multi-tenant academic platform base"
 # Python 版本锁定在 3.12 系列：与 .python-version、Dockerfile、CI 完全一致
 requires-python = ">=3.12,<3.13"
@@ -36,6 +36,10 @@ dependencies = [
     # 传递依赖下限：uv.lock 里 botocore/requests 会带 urllib3，
     # 2.7.x 有 3 条 PYSEC 通告（PYSEC-2026-4175/4176/4177），锁到 2.8+。
     "urllib3>=2.8.0",
+    "pymupdf>=1.25",
+    "pymupdf4llm>=0.0.20",
+    "mammoth>=1.9",
+    "markdownify>=0.14",
 ]
 
 [project.optional-dependencies]
@@ -77,6 +81,10 @@ dev = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
@@ -135,6 +143,7 @@ ignore = ["E501", "B008", "RUF001", "RUF002", "RUF003"]
 "e2e_run_server.py" = ["E402"]
 
 [tool.mypy]
+untyped_calls_exclude = ["pymupdf", "pymupdf4llm", "mammoth", "markdownify"]
 python_version = "3.12"
 strict = true
 warn_unused_ignores = true
@@ -151,6 +160,12 @@ ignore_missing_imports = true
 # 且均无 py.typed 类型标注，允许缺失 stub 并放宽其返回类型
 [[tool.mypy.overrides]]
 module = ["redis", "redis.*", "boto3", "boto3.*", "meilisearch_python_sdk", "meilisearch_python_sdk.*", "defusedxml"]
+ignore_missing_imports = true
+follow_untyped_imports = true
+
+# 稿件转换依赖（0.6.2）：均无 py.typed；其未标注函数不触发严格调用检查
+[[tool.mypy.overrides]]
+module = ["pymupdf4llm", "pymupdf4llm.*", "mammoth", "mammoth.*", "markdownify", "markdownify.*"]
 ignore_missing_imports = true
 follow_untyped_imports = true
 

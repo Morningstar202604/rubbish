@@ -183,6 +183,8 @@ class ResourceResponse(ResourceBase):
     created_at: datetime
     updated_at: datetime
     has_file: bool = False
+    # 是否有在线阅读用 Markdown 稿件（列表与详情都返回）
+    has_markdown: bool = False
     # 互动指标（R 指数）：列表与详情都返回，未取到时为 None
     reads: int | None = None
     downloads: int | None = None

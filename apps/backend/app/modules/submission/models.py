@@ -118,6 +118,9 @@ class Submission(Base, TenantScopedMixin):
     # 区别于 admin_note（兼容旧 review 端点的备注字段）
     editor_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # 在线阅读用 Markdown 稿件（上传 PDF/Word 后服务端转换，见
+    # manuscript.py）；可空 = 未转换或转换失败，阅读器回退 PDF 视图。
+    markdown_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     submitted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False

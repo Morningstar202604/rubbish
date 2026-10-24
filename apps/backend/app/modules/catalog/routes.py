@@ -306,19 +306,28 @@ async def _with_engagement(db: AsyncSession, rows: Any) -> list[ResourceResponse
         from app.modules.submission.models import Submission
 
         tenant_id = require_tenant_id()
-        with_file = set(
-            (
-                await db.execute(
-                    select(Submission.resource_id).where(
-                        Submission.tenant_id == tenant_id,
-                        Submission.resource_id.in_([r.id for r in responses]),
-                        Submission.file_path.is_not(None),
-                    )
+        rows = (
+            await db.execute(
+                select(
+                    Submission.resource_id,
+                    Submission.file_path,
+                    Submission.markdown_path,
+                ).where(
+                    Submission.tenant_id == tenant_id,
+                    Submission.resource_id.in_([r.id for r in responses]),
                 )
-            ).scalars()
-        )
+            )
+        ).all()
+        with_file: set[int] = set()
+        with_md: set[int] = set()
+        for resource_id, file_path, markdown_path in rows:
+            if file_path:
+                with_file.add(resource_id)
+            if markdown_path:
+                with_md.add(resource_id)
         for response in responses:
             response.has_file = response.id in with_file
+            response.has_markdown = response.id in with_md
     return responses
 
 
@@ -327,8 +336,8 @@ async def get_journal_metrics(db: AsyncSession = Depends(get_db)) -> JournalMetr
     """Public, self-computed journal metrics (see /journal-metrics page).
 
     Deliberately NOT an impact factor: no citation data exists here, so
-    every number comes from this deployment's own event tables and the
-    formula is published alongside it.
+    every number comes from this deployment's own event tables; the
+    formulas are editorial methodology and deliberately not published.
     """
     tenant_id = require_tenant_id()
     return JournalMetrics(**await journal_metrics(db, tenant_id))
@@ -457,6 +466,67 @@ async def download_resource_file(
     )
 
 
+@router.get("/{resource_id}/manuscript")
+async def get_resource_manuscript(
+    resource_id: int,
+    db: AsyncSession = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
+) -> Response:
+    """在线阅读用 Markdown 稿件（0.6.2）：可见性边界与 /file 完全一致
+    （published 公开；未刊稿仅刊前预览者，无权限 404）。无 md 的资源
+    返回 404，前端回退 PDF 视图。
+    """
+    from fastapi.responses import Response
+
+    from app.core.storage import get_storage
+
+    tenant_id = require_tenant_id()
+    result = await db.execute(
+        select(Resource).where(
+            Resource.id == resource_id,
+            Resource.tenant_id == tenant_id,
+        )
+    )
+    resource = result.scalar_one_or_none()
+    is_published = resource is not None and resource.publication_status == "published"
+    if resource is None or (
+        not is_published and not await _can_preview_unpublished(db, viewer, resource_id, tenant_id)
+    ):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+
+    from app.modules.submission.models import Submission
+
+    submission = (
+        (
+            await db.execute(
+                select(Submission).where(
+                    Submission.resource_id == resource_id,
+                    Submission.tenant_id == tenant_id,
+                )
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if submission is None or not submission.markdown_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="This resource has no online manuscript",
+        )
+
+    try:
+        data = await get_storage().load(submission.markdown_path)
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Stored manuscript is missing"
+        ) from exc
+    return Response(
+        content=data,
+        media_type="text/markdown; charset=utf-8",
+        headers={"X-Content-Type-Options": "nosniff"},
+    )
+
+
 @router.get("/{resource_id}", response_model=ResourceResponse)
 async def get_resource(
     resource_id: int,
@@ -498,6 +568,18 @@ async def get_resource(
         )
     ).scalar_one_or_none()
     response.has_file = has_file is not None
+    has_markdown = (
+        await db.execute(
+            select(Submission.id)
+            .where(
+                Submission.resource_id == resource.id,
+                Submission.tenant_id == tenant_id,
+                Submission.markdown_path.is_not(None),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    response.has_markdown = has_markdown is not None
     engagement = (await compute_engagement(db, [resource])).get(resource.id)
     if engagement is not None:
         response.reads = engagement.reads

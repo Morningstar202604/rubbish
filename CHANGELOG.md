@@ -7,6 +7,26 @@
 `apps/backend/pyproject.toml`、`apps/frontend/package.json`、`apps/backend/app/__init__.py`
 四处完全一致，由 `scripts/check-version.sh` 守门。
 
+## [0.6.2] — 2026-10-24
+
+### Added
+
+- **在线阅读改版：Markdown 富文本**（替代浏览器端 PDF 渲染）。
+  上传稿件（PDF/docx/txt/md）时服务端自动转换为 Markdown
+  （`pymupdf4llm` 版面感知抽取 + 图片 data URI 内嵌；`mammoth` +
+  `markdownify` 处理 docx；失败静默降级，绝不阻断上传）。新增
+  `submissions.markdown_path`（迁移 008）与公开端点
+  `GET /api/catalog/{id}/manuscript`（可见性边界与 PDF 下载一致）。
+  阅读器默认富文本视图：学术排版（衬线标题/三线表/图注/KaTeX 公式）、
+  图片与表格完整呈现、滚动进度复用原管道；"原稿 PDF"一键切换兜底，
+  PDF 下载通道不变。列表与详情新增 `has_markdown`。
+- 存量 7 篇论文从排版源生成 Markdown 版（图表 PNG 内嵌），线上补齐。
+
+### Changed
+
+- mypy：新增稿件转换依赖的 `untyped_calls_exclude` 与 overrides
+  （pymupdf/pymupdf4llm/mammoth/markdownify 均无 py.typed）。
+
 ## [0.6.1] — 2026-10-24
 
 ### Fixed

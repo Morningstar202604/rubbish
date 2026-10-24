@@ -111,10 +111,24 @@ async def upload_submission_file(
         old_path = None
     await get_storage().save(rel_path, contents, content_type=file.content_type)
     entry.file_path = rel_path
+
+    # 在线阅读用 Markdown：尽力转换，失败静默（阅读器回退 PDF 视图）。
+    from app.modules.submission.manuscript import convert_to_markdown, markdown_storage_key
+
+    old_md = entry.markdown_path
+    md_text = convert_to_markdown(contents, original_filename)
+    if md_text and old_path != rel_path:
+        md_key = markdown_storage_key(rel_path)
+        await get_storage().save(md_key, md_text.encode("utf-8"), content_type="text/markdown")
+        entry.markdown_path = md_key
+    else:
+        entry.markdown_path = None
+
     await db.commit()
     await db.refresh(entry)
-    # 替换式上传会覆盖 file_path，被替换的旧文件若不清会被丢成孤儿对象。
+    # 替换式上传会覆盖 file_path，被替换的旧文件（及旧 md）若不清会变成孤儿对象。
     await _try_delete_storage(old_path)
+    await _try_delete_storage(old_md)
     return _to_response(entry)
 
 

@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { EmptyState, ErrorState, Loading } from '@/components/common/state'
 import PdfViewer from '@/components/pdf-viewer'
+import { ManuscriptView } from '@/components/common/manuscript-view'
 
 // Restrict reader iframe to http(s) scheme so data:/blob:/javascript:
 // URLs cannot execute content inside the PDF viewer frame.
@@ -84,6 +85,10 @@ function ReaderPage() {
   const progress = useReadingProgress(id, { enabled: isAuthenticated })
   const updateMut = useUpdateProgress()
   const removeMut = useRemoveFromHistory()
+
+  // 阅读模式：有在线稿件（Markdown）默认富文本，否则 PDF；可手动切换。
+  const [modeOverride, setModeOverride] = useState<'md' | 'pdf' | null>(null)
+  const mode: 'md' | 'pdf' = modeOverride ?? (data?.has_markdown ? 'md' : 'pdf')
 
   // 游客：挂载时读一次本地进度作为初值（登录用户随后会被服务端进度覆盖）
   const guestInitial = isAuthenticated ? null : readGuestProgress(id)
@@ -291,9 +296,44 @@ function ReaderPage() {
           (isMobile ? ' pb-20' : '')
         }
       >
-        {/* PDF 主体：pdf.js 渲染（可精确分页、进度与页码真实同步） */}
+        {/* 主体：Markdown 在线阅读（0.6.2 起）或 pdf.js 视图（兜底） */}
         <div className="flex h-[60vh] flex-col lg:h-full">
-          {data.download_url && isSafeDownloadUrl(data.download_url) ? (
+          {data.has_markdown && (
+            <div className="flex shrink-0 items-center gap-1 border-b px-3 py-1.5">
+              <button
+                onClick={() => setModeOverride('md')}
+                className={
+                  'rounded-full px-3 py-1 text-xs transition-colors ' +
+                  (mode === 'md'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground')
+                }
+              >
+                富文本阅读
+              </button>
+              <button
+                onClick={() => setModeOverride('pdf')}
+                className={
+                  'rounded-full px-3 py-1 text-xs transition-colors ' +
+                  (mode === 'pdf'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground')
+                }
+              >
+                原稿 PDF
+              </button>
+            </div>
+          )}
+          {mode === 'md' && data.has_markdown ? (
+            <ManuscriptView
+              resourceId={id}
+              initialPercent={progressPercent}
+              onProgress={(p, done) => {
+                setProgressPercent(p)
+                if (done) setCompleted(true)
+              }}
+            />
+          ) : data.download_url && isSafeDownloadUrl(data.download_url) ? (
             <PdfViewer
               url={data.download_url}
               initialPage={progress.data?.page ?? 1}

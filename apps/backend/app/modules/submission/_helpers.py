@@ -155,6 +155,7 @@ def _to_response(entry: Submission) -> SubmissionResponse:
         editor_note=entry.editor_note,
         resource_id=entry.resource_id,
         file_path=entry.file_path,
+        markdown_path=entry.markdown_path,
         submitted_by=entry.submitted_by,
         submitted_at=entry.submitted_at,
         reviewed_by=entry.reviewed_by,

@@ -175,6 +175,8 @@ export interface ResourceResponse extends ResourceBase {
   updated_at: string
   /** 是否有可下载的稿件文件（列表与详情都会返回） */
   has_file?: boolean
+  /** 是否有在线阅读用 Markdown 稿件 */
+  has_markdown?: boolean
   /** R 指数互动指标（列表与详情都会返回） */
   reads?: number | null
   downloads?: number | null

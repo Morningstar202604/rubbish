@@ -143,6 +143,8 @@ class SubmissionResponse(BaseModel):
     resource_publication_status: str | None = None
     resource_id: int | None = None
     file_path: str | None = None
+    # 在线阅读用 Markdown 稿件的存储 key（可空 = 回退 PDF 视图）。
+    markdown_path: str | None = None
     # 双盲评审下审稿人视角会被抹掉，因此可空
     submitted_by: int | None = None
     submitted_at: datetime
