@@ -57,6 +57,8 @@ def _to_assignment_response(
         submission_title=(
             a.submission.title if include_submission_title and a.submission else None
         ),
+        last_reminded_at=a.last_reminded_at,
+        reminder_count=a.reminder_count,
     )
 
 

@@ -387,6 +387,8 @@ export interface AssignmentResponse {
   completed_at?: string | null
   reviewer_username?: string | null
   submission_title?: string | null
+  last_reminded_at?: string | null
+  reminder_count?: number
 }
 
 export interface AssignmentListResponse {

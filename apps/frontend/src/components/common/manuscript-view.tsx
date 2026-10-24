@@ -64,6 +64,7 @@ export function ManuscriptView({ resourceId, initialPercent, onProgress, useWind
   const restoredRef = useRef(false)
   const [scrollHost, setScrollHost] = useState<HTMLDivElement | null>(null)
   const [refsOpen, setRefsOpen] = useState(false)
+  const [tocOpen, setTocOpen] = useState(false)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['catalog', 'manuscript', resourceId],
@@ -181,6 +182,62 @@ export function ManuscriptView({ resourceId, initialPercent, onProgress, useWind
     >
       <div className="mx-auto flex max-w-6xl items-start px-5 py-8">
         {/* 目录侧栏：桌面端吸附 */}
+        {/* 移动端：浮动目录按钮 + 底部抽屉（桌面走左侧吸附栏） */}
+        {toc.length > 2 && (
+          <>
+            <button
+              type="button"
+              onClick={() => setTocOpen(true)}
+              aria-label="打开目录"
+              className="fixed bottom-20 right-4 z-30 flex items-center gap-1.5 rounded-full border bg-card/95 px-3 py-2 text-xs shadow-lg backdrop-blur lg:hidden"
+            >
+              <ListTree className="h-3.5 w-3.5" />
+              目录
+            </button>
+            {tocOpen && (
+              <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-label="文章目录">
+                <button
+                  aria-label="关闭目录"
+                  onClick={() => setTocOpen(false)}
+                  className="absolute inset-0 bg-black/40"
+                />
+                <div className="absolute inset-x-0 bottom-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-background p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="flex items-center gap-1.5 text-sm font-medium">
+                      <ListTree className="h-4 w-4" />
+                      文章目录
+                    </p>
+                    <button
+                      onClick={() => setTocOpen(false)}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      关闭
+                    </button>
+                  </div>
+                  <ul className="space-y-0.5">
+                    {toc.map((t) => (
+                      <li key={t.id}>
+                        <button
+                          onClick={() => {
+                            setTocOpen(false)
+                            window.setTimeout(() => jumpTo(t.id), 120)
+                          }}
+                          className={
+                            'block w-full truncate rounded px-2 py-2 text-left text-sm hover:bg-muted hover:text-primary ' +
+                            (t.level === 3 ? 'pl-6 text-muted-foreground' : 'font-medium')
+                          }
+                        >
+                          {t.text}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
         {toc.length > 2 && (
           <nav
             aria-label="文章目录"

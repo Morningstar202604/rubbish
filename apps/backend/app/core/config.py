@@ -154,8 +154,17 @@ class Settings(BaseSettings):
     email_smtp_password: str = ""
     email_smtp_use_tls: bool = False
     email_smtp_starttls: bool = True
+    # 发信超时（秒）：SMTP 握手/发送的网络超时，避免请求被挂死。
+    email_smtp_timeout: int = Field(default=15, ge=3, le=120)
+    # 失败重试次数（不含首次）：网络抖动时自动重试，全部失败才静默降级。
+    email_smtp_retries: int = Field(default=2, ge=0, le=5)
     email_verification_expire_hours: int = Field(default=24, ge=1)
     password_reset_expire_minutes: int = Field(default=60, ge=1)
+    # 站内信/邮件共用的站点名，出现在邮件标题与正文。
+    site_name: str = "Rubbish"
+    # 进程内定时任务（审稿催办等）。单节点部署默认开启；多节点部署时
+    # 应只在一个实例上开启，或用外部调度器触发 admin 端点。
+    scheduler_enabled: bool = True
 
     # --- Frontend base URL ---
     # Used to build deep-link URLs in transactional emails (verify-email,

@@ -26,6 +26,15 @@ from app.core.captcha import verify_captcha_token
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.email import get_email_sender
+from app.core.email_templates import (
+    duplicate_registration,
+)
+from app.core.email_templates import (
+    reset_password as reset_password_tpl,
+)
+from app.core.email_templates import (
+    verify_email as verify_email_tpl,
+)
 from app.core.logging import get_logger
 from app.core.schemas import MessageResponse
 from app.core.security import (
@@ -525,33 +534,20 @@ async def _send_verification_email(user: User) -> None:
     """Send the verify-email message via the configured sender."""
     token = create_email_verification_token(user.id, user.token_version)
     link = _verify_link(token)
-    body = (
-        f"Welcome to Rubbish, {user.username}.\n\n"
-        f"Verify your email by visiting:\n  {link}\n\n"
-        f"This link expires in {settings.email_verification_expire_hours} hours.\n"
-        f"If you did not create an account, ignore this email.\n"
+    subject, text, html = verify_email_tpl(
+        user.username, link, settings.email_verification_expire_hours
     )
-    await get_email_sender().send(
-        to=user.email,
-        subject="Verify your Rubbish email",
-        body=body,
-    )
+    await get_email_sender().send(to=user.email, subject=subject, body=text, html=html)
 
 
 async def _send_password_reset_email(user: User) -> None:
     """Send the password-reset message via the configured sender."""
     token = create_password_reset_token(user.id, user.token_version)
     link = _reset_link(token)
-    body = (
-        f"Reset your Rubbish password by visiting:\n  {link}\n\n"
-        f"This link expires in {settings.password_reset_expire_minutes} minutes.\n"
-        f"If you did not request a reset, ignore this email.\n"
+    subject, text, html = reset_password_tpl(
+        user.username, link, settings.password_reset_expire_minutes
     )
-    await get_email_sender().send(
-        to=user.email,
-        subject="Reset your Rubbish password",
-        body=body,
-    )
+    await get_email_sender().send(to=user.email, subject=subject, body=text, html=html)
 
 
 async def _notify_duplicate_registration(
@@ -577,20 +573,9 @@ async def _notify_duplicate_registration(
     existing = result.scalar_one_or_none()
     if existing is None:
         return
-    body = (
-        "Someone attempted to register a Rubbish account using your"
-        " email address.\n\n"
-        "If this was you, you can ignore this email; your existing account"
-        " is unaffected.\n"
-        "If you did not initiate this registration, please contact your"
-        " administrator.\n"
-    )
+    subject, text, html = duplicate_registration(existing.username)
     try:
-        await get_email_sender().send(
-            to=existing.email,
-            subject="Rubbish registration attempt",
-            body=body,
-        )
+        await get_email_sender().send(to=existing.email, subject=subject, body=text, html=html)
     except Exception:
         logger.warning("duplicate_registration_email_send_failed", exc_info=True)
 

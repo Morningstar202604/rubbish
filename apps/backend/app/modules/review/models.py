@@ -79,6 +79,14 @@ class ReviewAssignment(Base, TenantScopedMixin):
     )
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # 催办记录（0.8.0）：最近一次自动催办时间与累计次数。用于幂等
+    # （同一窗口内不重复催）与编辑侧可见的"已催 N 次"。
+    last_reminded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    reminder_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
 
     submission = relationship("Submission", backref="review_assignments")
     reviewer = relationship("User", foreign_keys="ReviewAssignment.reviewer_id")

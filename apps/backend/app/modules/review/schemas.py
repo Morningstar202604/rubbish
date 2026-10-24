@@ -41,6 +41,9 @@ class AssignmentResponse(BaseModel):
     # 列表展开审稿人用户名（避免 N+1 前端要再查 user）
     reviewer_username: str | None = None
     submission_title: str | None = None
+    # 催办状态（编辑可见「已催 N 次」；审稿人可见最近提醒时间）
+    last_reminded_at: datetime | None = None
+    reminder_count: int = 0
 
 
 class AssignmentListResponse(BaseModel):

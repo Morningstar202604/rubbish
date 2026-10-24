@@ -1,24 +1,31 @@
-"""Email sending abstraction.
+"""Email delivery layer.
 
-The app never talks to an SMTP server or a transactional API directly —
-it goes through ``EmailSender``. The default ``ConsoleEmailSender`` logs
-the message to stdout, which is fine for dev and tests. To go live, set
-``RUBBISH_EMAIL_BACKEND=smtp`` and configure SMTP credentials (see
-``Settings.email_*`` in ``app/core/config.py``).
+Design goals (0.8.0):
 
-Mailgun / SendGrid / SES / Postmark all expose an SMTP relay, so the
-SMTP backend covers every mainstream provider without per-vendor code.
-A custom backend (e.g. direct Mailgun API) only needs to implement the
-``EmailSender`` Protocol and be wired in ``get_email_sender``.
+- **Fill-in-the-code ready**: with SMTP credentials present in the env, mail
+  works with no code change; without them, everything degrades silently to
+  the console sender so registration/login flows never break.
+- **Non-blocking**: ``smtplib`` is synchronous, so every send is offloaded to
+  a worker thread (``asyncio.to_thread``). A slow relay can never stall the
+  request that triggered it.
+- **Retry with backoff**: transient network errors are retried
+  ``email_smtp_retries`` times (default 2) with exponential backoff.
+- **HTML + text**: every message carries both parts; the HTML shell is the
+  same editorial card used on the site (no external assets, inline CSS).
+- **Testable**: ``EmailSender`` is a Protocol; tests swap in a fake via
+  ``app.core.email._sender`` or ``reset_email_sender()``.
 
-Why a Protocol instead of an ABC: ``Protocol`` is structural typing —
-tests substitute a fake without inheriting. The runtime lookup in
-``get_email_sender`` stays tiny.
+Providers: Mailgun / SendGrid / SES / Postmark / QQ 邮箱 / 163 / 腾讯企业邮 all
+speak SMTP, so one backend covers them. Ports: 465 = implicit TLS
+(``email_smtp_use_tls=true``), 587 = STARTTLS (``use_tls=false`` +
+``starttls=true``), 25 = plain (not recommended).
 """
 
 from __future__ import annotations
 
+import asyncio
 import smtplib
+import ssl
 from email.message import EmailMessage
 from typing import Protocol, runtime_checkable
 
@@ -43,12 +50,7 @@ class EmailSender(Protocol):
 
 
 class ConsoleEmailSender:
-    """Dev / test sender — writes the message to the log stream.
-
-    No network, no credentials, no flakiness. Tests can introspect sent
-    mail by capturing the ``caplog`` fixture or by replacing
-    ``get_email_sender()`` with a fake.
-    """
+    """Dev / test sender — writes the message to the log stream."""
 
     async def send(
         self,
@@ -67,13 +69,7 @@ class ConsoleEmailSender:
 
 
 class SMTPEmailSender:
-    """SMTP relay sender. Covers Mailgun / SendGrid / SES / Postmark / SMTP.
-
-    Each call opens a fresh SMTP connection (no pooling). Transactional
-    volume on this app is low (account verification, password reset),
-    so pooling would be premature. If volume grows, add a connection
-    pool here without touching the caller.
-    """
+    """SMTP relay sender with timeout, retry and thread offloading."""
 
     def __init__(
         self,
@@ -82,16 +78,52 @@ class SMTPEmailSender:
         username: str,
         password: str,
         from_addr: str,
+        from_name: str = "Rubbish",
         use_tls: bool = True,
         starttls: bool = False,
+        timeout: int = 15,
+        retries: int = 2,
     ) -> None:
         self._host = host
         self._port = port
         self._username = username
         self._password = password
         self._from_addr = from_addr
+        self._from_name = from_name
         self._use_tls = use_tls
         self._starttls = starttls
+        self._timeout = timeout
+        self._retries = retries
+
+    def _build_message(self, to: str, subject: str, body: str, html: str | None) -> EmailMessage:
+        msg = EmailMessage()
+        msg["From"] = (
+            f"{self._from_name} <{self._from_addr}>" if self._from_name else self._from_addr
+        )
+        msg["To"] = to
+        msg["Subject"] = subject
+        msg.set_content(body)
+        if html is not None:
+            msg.add_alternative(html, subtype="html")
+        return msg
+
+    def _send_sync(self, msg: EmailMessage) -> None:
+        """Blocking SMTP round-trip (runs inside a worker thread)."""
+        if self._use_tls:
+            client: smtplib.SMTP = smtplib.SMTP_SSL(
+                self._host,
+                self._port,
+                timeout=self._timeout,
+                context=ssl.create_default_context(),
+            )
+        else:
+            client = smtplib.SMTP(self._host, self._port, timeout=self._timeout)
+        with client:
+            if not self._use_tls and self._starttls:
+                client.starttls(context=ssl.create_default_context())
+            if self._username and self._password:
+                client.login(self._username, self._password)
+            client.send_message(msg)
 
     async def send(
         self,
@@ -101,44 +133,42 @@ class SMTPEmailSender:
         body: str,
         html: str | None = None,
     ) -> None:
-        msg = EmailMessage()
-        msg["From"] = self._from_addr
-        msg["To"] = to
-        msg["Subject"] = subject
-        msg.set_content(body)
-        if html is not None:
-            msg.add_alternative(html, subtype="html")
-
-        # smtplib is sync; offload to a thread via asyncio.to_thread in
-        # the caller would be cleaner, but volume is tiny so blocking
-        # the event loop for one SMTP round-trip is acceptable. If a
-        # caller needs strict non-blocking, await asyncio.to_thread(...)
-        # around send_message.
-        # TLS strategy:
-        # - use_tls True  -> implicit TLS (SMTP over SSL, typically :465);
-        #   the connection is encrypted from the handshake, so STARTTLS is
-        #   meaningless and ignored.
-        # - use_tls False -> plain SMTP, optionally upgraded via STARTTLS
-        #   when starttls is set (the common :587 submission scenario).
-        if self._use_tls:
-            client_cm: smtplib.SMTP = smtplib.SMTP_SSL(self._host, self._port)
-        else:
-            client_cm = smtplib.SMTP(self._host, self._port)
-        with client_cm as client:
-            if not self._use_tls and self._starttls:
-                client.starttls()
-            if self._username and self._password:
-                client.login(self._username, self._password)
-            client.send_message(msg)
-        logger.info("email_sent_smtp", to=to, subject=subject)
+        msg = self._build_message(to, subject, body, html)
+        last_error: Exception | None = None
+        for attempt in range(self._retries + 1):
+            try:
+                await asyncio.to_thread(self._send_sync, msg)
+                logger.info("email_sent_smtp", to=to, subject=subject, attempt=attempt + 1)
+                return
+            except (OSError, smtplib.SMTPException) as exc:
+                last_error = exc
+                logger.warning(
+                    "email_smtp_attempt_failed",
+                    to=to,
+                    attempt=attempt + 1,
+                    retries=self._retries,
+                    error=str(exc)[:200],
+                )
+                if attempt < self._retries:
+                    await asyncio.sleep(2**attempt)
+        logger.error("email_smtp_gave_up", to=to, subject=subject, error=str(last_error)[:200])
+        raise last_error if last_error else RuntimeError("smtp send failed")
 
 
 _sender: EmailSender | None = None
 
 
+def smtp_configured() -> bool:
+    """True when the operator has supplied enough env for real delivery."""
+    return bool(
+        settings.email_backend == "smtp"
+        and settings.email_smtp_host
+        and settings.email_from_address
+    )
+
+
 def get_email_sender() -> EmailSender:
-    """Return the configured sender. Constructed lazily on first call so
-    that test overrides via ``app.core.email._sender = ...`` work."""
+    """Return the configured sender (lazily constructed, test-swappable)."""
     global _sender
     if _sender is not None:
         return _sender
@@ -149,8 +179,6 @@ def get_email_sender() -> EmailSender:
 
     if settings.email_backend == "smtp":
         if not settings.email_smtp_host or not settings.email_from_address:
-            # Misconfiguration — fall back to console so the request still
-            # succeeds. The operator should see the warning.
             logger.warning(
                 "email_smtp_misconfigured_fallback_to_console",
                 reason="missing host or from_address",
@@ -164,20 +192,55 @@ def get_email_sender() -> EmailSender:
             username=settings.email_smtp_username,
             password=settings.email_smtp_password,
             from_addr=settings.email_from_address,
+            from_name=settings.email_from_name,
             use_tls=settings.email_smtp_use_tls,
             starttls=settings.email_smtp_starttls,
+            timeout=settings.email_smtp_timeout,
+            retries=settings.email_smtp_retries,
         )
         return _sender
 
-    # Unknown backend — fall back to console.
     logger.warning("email_unknown_backend_fallback_to_console", backend=settings.email_backend)
     _sender = ConsoleEmailSender()
     return _sender
 
 
 def reset_email_sender() -> None:
-    """Test helper: clear the cached sender so the next ``get_email_sender()``
-    call re-reads settings. Tests should call this in teardown if they
-    swapped the sender."""
+    """Test helper: clear the cached sender so the next call re-reads settings."""
     global _sender
     _sender = None
+
+
+async def verify_smtp_connection() -> tuple[bool, str]:
+    """Startup/ops self-check: open a connection and (if creds exist) log in.
+
+    Returns ``(ok, detail)``. Never raises — callers log the result.
+    With the console backend this returns ``(False, "console backend")``.
+    """
+    if not smtp_configured():
+        return False, "SMTP 未配置（email_backend=console 或缺少 host/from）"
+    try:
+        await asyncio.to_thread(_probe_smtp)
+        return True, f"{settings.email_smtp_host}:{settings.email_smtp_port} 连接成功"
+    except Exception as exc:
+        return False, f"连接失败：{str(exc)[:160]}"
+
+
+def _probe_smtp() -> None:
+    if settings.email_smtp_use_tls:
+        client: smtplib.SMTP = smtplib.SMTP_SSL(
+            settings.email_smtp_host,
+            settings.email_smtp_port,
+            timeout=settings.email_smtp_timeout,
+            context=ssl.create_default_context(),
+        )
+    else:
+        client = smtplib.SMTP(
+            settings.email_smtp_host, settings.email_smtp_port, timeout=settings.email_smtp_timeout
+        )
+    with client:
+        if not settings.email_smtp_use_tls and settings.email_smtp_starttls:
+            client.starttls(context=ssl.create_default_context())
+        if settings.email_smtp_username and settings.email_smtp_password:
+            client.login(settings.email_smtp_username, settings.email_smtp_password)
+        client.noop()

@@ -30,7 +30,7 @@ import type {
   SubmissionResponse,
   SubmissionStatus,
 } from '@/lib/types'
-import { extractError } from '@/lib/utils'
+import { extractError, formatDateTime } from '@/lib/utils'
 import { PageHeader } from '@/components/common/page-header'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { Pagination } from '@/components/common/pagination'
@@ -119,6 +119,19 @@ function statusBadge(status: string) {
     default:
       return <Badge variant="outline">{status}</Badge>
   }
+}
+
+function reminderBadge(count?: number, lastAt?: string | null) {
+  if (!count || count < 1) return null
+  return (
+    <Badge
+      variant="outline"
+      className="text-[10px] text-amber-700"
+      title={lastAt ? `最近催办：${formatDateTime(lastAt)}` : undefined}
+    >
+      已催 {count} 次
+    </Badge>
+  )
 }
 
 function assignmentStatusBadge(status: string) {
@@ -761,6 +774,7 @@ function AssignmentsDialog({
                   {a.reviewer_username ?? `#${a.reviewer_id}`}
                 </span>
                 {assignmentStatusBadge(a.status)}
+                {reminderBadge(a.reminder_count, a.last_reminded_at)}
                 <span className="text-xs text-muted-foreground">
                   邀于 {new Date(a.invited_at).toLocaleString()}
                 </span>

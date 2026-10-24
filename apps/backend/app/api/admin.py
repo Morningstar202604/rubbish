@@ -17,6 +17,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_admin, require_tenant_id
+from app.core.config import settings
 from app.core.db import get_db
 from app.core.key_rotation import _active_secret_keys, _signing_key, reload_settings
 from app.core.logging import get_logger
@@ -461,3 +462,48 @@ async def update_review_mode_setting(
     )
     await db.commit()
     return ReviewModeResponse(review_mode=payload.review_mode)
+
+
+@router.post("/maintenance/review-reminders")
+async def trigger_review_reminders(
+    current_admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """手动触发一轮审稿催办（运维/排障用）。
+
+    定时任务每 6 小时自动跑一次；此端点让管理员在需要时立即执行，
+    返回本轮检查/催办/发信的计数。催办本身幂等（3 天窗口内不重置）。
+    """
+    from app.modules.submission.review_reminders import run_overdue_reminders
+
+    tenant_id = require_tenant_id()
+    stats = await run_overdue_reminders(db, tenant_id=tenant_id)
+    db.add(
+        AuditLog(
+            tenant_id=tenant_id,
+            actor_user_id=current_admin.id,
+            action="admin.maintenance.review_reminders",
+            target_type="tenant",
+            target_id=str(tenant_id),
+            payload=dict(stats),
+        )
+    )
+    await db.commit()
+    return stats
+
+
+@router.get("/maintenance/email-status")
+async def email_status(
+    current_admin: User = Depends(require_admin),
+) -> dict[str, Any]:
+    """邮件通道自检：是否配置、SMTP 是否可达（不发送真实邮件）。"""
+    from app.core.email import smtp_configured, verify_smtp_connection
+
+    ok, detail = await verify_smtp_connection()
+    return {
+        "configured": smtp_configured(),
+        "reachable": ok,
+        "detail": detail,
+        "backend": settings.email_backend,
+        "from_address": settings.email_from_address if smtp_configured() else "",
+    }

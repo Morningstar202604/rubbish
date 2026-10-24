@@ -22,6 +22,7 @@ from app.api.deps import (
     user_has_role,
 )
 from app.core.db import get_db
+from app.core.logging import get_logger
 from app.core.schemas import PaginationMeta
 from app.core.time import utcnow
 from app.models import AuditLog, User
@@ -52,6 +53,8 @@ from app.modules.submission.schemas import (
     SubmissionResponse,
     SubmissionReview,
 )
+
+logger = get_logger("rubbish.submission.editor")
 
 
 @router.get("/pending", response_model=SubmissionListResponse)
@@ -263,6 +266,10 @@ async def assign_reviewer(
             detail="Reviewer already assigned or concurrent update",
         ) from exc
     await db.refresh(assignment)
+    # 邮件通知审稿人（best-effort：未配置 SMTP 时静默跳过，不影响指派）
+    from app.modules.submission.review_reminders import send_assignment_email
+
+    await send_assignment_email(reviewer, submission_title=entry.title, assignment_id=assignment.id)
     return AssignmentResponse(
         id=assignment.id,
         submission_id=assignment.submission_id,
@@ -275,6 +282,8 @@ async def assign_reviewer(
         completed_at=assignment.completed_at,
         reviewer_username=reviewer.username,
         submission_title=entry.title,
+        last_reminded_at=assignment.last_reminded_at,
+        reminder_count=assignment.reminder_count,
     )
 
 
@@ -324,6 +333,8 @@ async def list_assignments(
                 completed_at=a.completed_at,
                 reviewer_username=a.reviewer.username if a.reviewer else None,
                 submission_title=entry.title,
+                last_reminded_at=a.last_reminded_at,
+                reminder_count=a.reminder_count,
             )
             for a in rows
         ],
@@ -586,6 +597,22 @@ async def editor_decision(
             detail="Could not apply decision (concurrent update)",
         ) from exc
     await db.refresh(entry)
+    # 裁决邮件通知作者（best-effort；未配置 SMTP 时静默跳过）
+    try:
+        author = (
+            await db.execute(select(User).where(User.id == entry.submitted_by))
+        ).scalar_one_or_none()
+        if author is not None:
+            from app.modules.submission.review_reminders import send_decision_email
+
+            await send_decision_email(
+                author,
+                submission_title=entry.title,
+                decision=decision,
+                note=body.editor_note,
+            )
+    except Exception:
+        logger.warning("decision_email_dispatch_failed", submission_id=entry.id, exc_info=True)
     return _to_response(entry)
 
 

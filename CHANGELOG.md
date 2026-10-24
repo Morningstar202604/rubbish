@@ -7,6 +7,42 @@
 `apps/backend/pyproject.toml`、`apps/frontend/package.json`、`apps/backend/app/__init__.py`
 四处完全一致，由 `scripts/check-version.sh` 守门。
 
+## [0.8.0] — 2026-10-24
+
+### Added
+
+- **SMTP 就绪化（差一个授权码即可上线）**：
+  - `app/core/email.py` 重写：隐式 TLS / STARTTLS 双模式、15s 超时、
+    2 次指数退避重试、`asyncio.to_thread` 非阻塞发送、连接自检
+    `verify_smtp_connection()`；未配置时静默降级为控制台输出。
+  - `app/core/email_templates.py`：5 套中英双版模板（邮箱验证、找回密码、
+    重复注册提醒、审稿邀请、审稿提醒、裁决通知），HTML 内联样式卡片、
+    用户输入全转义、文本+HTML 双部分。邮件标题与正文全部中文化。
+  - 配置项新增 `email_smtp_timeout` / `email_smtp_retries` / `site_name` /
+    `scheduler_enabled`；`.env.example` 补齐 7 家服务商端口与 TLS 对照表。
+  - 文档 `SMTP-接入手册.md`：服务商速查表、3 步上线、6 项验收清单、6 类排错。
+- **审稿催办**：`app/modules/submission/review_reminders.py` —— 未接受
+  3 天 / 已接受 14 天未交 → 站内通知 + （配置后）邮件；3 天窗口幂等；
+  `review.reminder_sent` 审计；`review_assignments` 新增
+  `last_reminded_at` / `reminder_count`（迁移 009）。
+- **进程内定时任务** `app/core/scheduler.py`：每 6 小时一轮，随 lifespan
+  启停，按租户注入上下文，单任务失败不打断循环；`RUBBISH_SCHEDULER_ENABLED`
+  可关（多实例部署只开一台）。
+- **管理端点**：`POST /api/admin/maintenance/review-reminders`（手动催办）、
+  `GET /api/admin/maintenance/email-status`（连通性自检，不发真实邮件）。
+- 编辑工作台审稿人列表显示「已催 N 次」（悬停显示最近催办时间）。
+- 移动端阅读器新增**目录抽屉**（浮动按钮 + 底部抽屉，点击跳转）。
+
+### Changed
+
+- 裁决与指派流程在事务提交后补发通知邮件（best-effort，失败不影响业务）。
+
+### Tests
+
+- 新增 `tests/test_email_layer.py`（16 例：模板/转义/多部分消息/重试/TLS/
+  配置门控/自检）与 `tests/test_review_reminders.py`（10 例：阈值/幂等/
+  审计/权限），全部用假 SMTP，无需真实凭据。后端 754 passed。
+
 ## [0.7.2] — 2026-10-24
 
 多角色端到端演练（真实生产 API，29 项检查全通过）+ 登录态/游客态浏览器走查
