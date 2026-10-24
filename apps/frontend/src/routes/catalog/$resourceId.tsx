@@ -264,25 +264,25 @@ function CatalogDetailPage() {
                 <CardTitle className="text-base">操作</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
+                <Button asChild className="w-full">
+                  <Link
+                    to="/reader/$resourceId"
+                    params={{ resourceId: String(id) }}
+                  >
+                    <BookOpen className="h-4 w-4" />
+                    在线阅读
+                  </Link>
+                </Button>
+                {data.has_file && (
+                  <Button asChild variant="outline" className="w-full">
+                    <a href={`/api/catalog/${id}/file`} download>
+                      <Download className="h-4 w-4" />
+                      下载 PDF
+                    </a>
+                  </Button>
+                )}
                 {isAuthenticated ? (
                   <>
-                    <Button asChild className="w-full">
-                      <Link
-                        to="/reader/$resourceId"
-                        params={{ resourceId: String(id) }}
-                      >
-                        <BookOpen className="h-4 w-4" />
-                        在线阅读
-                      </Link>
-                    </Button>
-                    {data.has_file && (
-                      <Button asChild variant="outline" className="w-full">
-                        <a href={`/api/catalog/${id}/file`} download>
-                          <Download className="h-4 w-4" />
-                          下载 PDF
-                        </a>
-                      </Button>
-                    )}
                     <Button
                       variant="outline"
                       className="w-full"
@@ -293,17 +293,13 @@ function CatalogDetailPage() {
                     </Button>
                   </>
                 ) : (
-                  <>
-                    <Button asChild className="w-full">
-                      <Link to="/login" search={{ redirect: `/catalog/${id}` }}>
-                        <BookOpen className="h-4 w-4" />
-                        登录后阅读全文
-                      </Link>
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                      免费注册即可在线阅读、保存进度并关注作者。
-                    </p>
-                  </>
+                  <p className="rounded-lg border border-dashed bg-muted/30 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                    游客模式：可阅读与下载全部已刊内容，进度保存在本设备。
+                    <Link to="/login" search={{ redirect: `/catalog/${id}` }} className="text-primary hover:underline">
+                      登录
+                    </Link>
+                    后可收藏、跨设备同步并参与评论。
+                  </p>
                 )}
                 {data.external_url && (
                   <Button asChild variant="outline" className="w-full">
@@ -400,7 +396,6 @@ function CatalogDetailPage() {
         <MobileDetailActions
           resourceId={id}
           isAdmin={isAdmin}
-          isAuthenticated={isAuthenticated}
           externalUrl={data.external_url}
           onEdit={() => setEditOpen(true)}
           onDelete={() => setDeleteOpen(true)}
@@ -738,38 +733,27 @@ function SubscribeDisciplineRow({ discipline }: { discipline: string }) {
 function MobileDetailActions({
   resourceId,
   isAdmin,
-  isAuthenticated,
   externalUrl,
   onEdit,
   onDelete,
 }: {
   resourceId: number
   isAdmin: boolean
-  isAuthenticated: boolean
   externalUrl?: string | null
   onEdit: () => void
   onDelete: () => void
 }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-2 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur">
-      {isAuthenticated ? (
-        <Button asChild className="flex-1">
-          <Link
-            to="/reader/$resourceId"
-            params={{ resourceId: String(resourceId) }}
-          >
-            <BookOpen className="h-4 w-4" />
-            在线阅读
-          </Link>
-        </Button>
-      ) : (
-        <Button asChild className="flex-1">
-          <Link to="/login">
-            <BookOpen className="h-4 w-4" />
-            登录后阅读全文
-          </Link>
-        </Button>
-      )}
+      <Button asChild className="flex-1">
+        <Link
+          to="/reader/$resourceId"
+          params={{ resourceId: String(resourceId) }}
+        >
+          <BookOpen className="h-4 w-4" />
+          在线阅读
+        </Link>
+      </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="icon" aria-label="更多操作">

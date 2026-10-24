@@ -60,6 +60,36 @@ async def test_login_returns_valid_tokens(client: AsyncClient, test_user: dict) 
     assert data["username"] == "testuser"
 
 
+async def test_login_accepts_email_as_identifier(client: AsyncClient, test_user: dict) -> None:
+    """登录标识支持邮箱（大小写不敏感）：读者记住的往往是注册邮箱。"""
+    r = await client.post(
+        "/api/auth/login",
+        json={"username": "user@example.com", "password": "password123"},
+    )
+    assert r.status_code == 200
+    assert r.json()["username"] == "testuser"
+
+    upper = await client.post(
+        "/api/auth/login",
+        json={"username": "USER@EXAMPLE.COM", "password": "password123"},
+    )
+    assert upper.status_code == 200
+
+    with_spaces = await client.post(
+        "/api/auth/login",
+        json={"username": "  user@example.com  ", "password": "password123"},
+    )
+    assert with_spaces.status_code == 200
+
+
+async def test_login_email_wrong_password_still_401(client: AsyncClient, test_user: dict) -> None:
+    r = await client.post(
+        "/api/auth/login",
+        json={"username": "user@example.com", "password": "wrongpassword"},
+    )
+    assert r.status_code == 401
+
+
 async def test_login_rejects_bad_password(client: AsyncClient, test_user: dict) -> None:
     response = await client.post(
         "/api/auth/login",

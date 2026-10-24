@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -192,11 +192,14 @@ async def login(
     """
     # User.username uniqueness is (tenant_id, username) — a query without
     # the tenant filter could match a user from another tenant.
+    # 登录标识同时接受用户名或邮箱（大小写不敏感）：期刊读者记住的往往
+    # 是注册邮箱；用户名精确匹配优先级不变，邮箱走 lower 等值比较。
     tenant_id = require_tenant_id()
+    identifier = payload.username.strip()
     result = await db.execute(
         select(User).where(
-            User.username == payload.username,
             User.tenant_id == tenant_id,
+            (User.username == identifier) | (func.lower(User.email) == identifier.lower()),
         )
     )
     user = result.scalar_one_or_none()
