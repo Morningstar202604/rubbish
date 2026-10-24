@@ -214,3 +214,22 @@ h4 {
 .markdown-body hr { margin: 2em 0; border-color: var(--color-border); }
 .markdown-body .katex { font-size: 1.05em; }
 .markdown-body .katex-display { margin: 1.2em 0; overflow-x: auto; overflow-y: hidden; }
+
+/* 参考文献折叠块（manuscript-view） */
+.refs-collapse summary {
+  color: var(--color-foreground);
+}
+.refs-collapse summary::marker {
+  color: var(--color-primary);
+}
+.refs-collapse[open] summary {
+  border-bottom: 1px solid var(--color-border);
+}
+.refs-collapse .markdown-body {
+  font-size: 0.85rem;
+  color: var(--color-muted-foreground);
+}
+.refs-collapse .markdown-body p {
+  text-align: left;
+  margin: 0.3em 0;
+}

@@ -4,27 +4,64 @@ import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
+import { ListTree } from 'lucide-react'
 import 'katex/dist/katex.min.css'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { EmptyState, Loading } from '@/components/common/state'
 
-// 在线阅读的 Markdown 渲染视图（0.6.2）。
+// 在线阅读的 Markdown 渲染视图（0.7.0）。
 // - 数据：GET /api/catalog/{id}/manuscript（text/markdown，公开边界与
 //   PDF 下载端点一致；上传时服务端从 PDF/Word 自动转换）。
 // - 渲染：react-markdown（默认转义原始 HTML，XSS 面为零）+ GFM 表格
-//   + KaTeX 公式；图片为 data URI 自包含，无额外请求。
-// - 进度：以滚动位置折算百分比（复用阅读进度管道，page 恒为 1）。
+//   + KaTeX 公式；图片为 data URI 自包含（urlTransform 白名单放行）。
+// - 阅读体验：桌面端目录侧栏（点击跳转）、参考文献折叠、滚动进度。
+interface TocEntry {
+  id: string
+  level: 2 | 3
+  text: string
+}
+
 interface ManuscriptViewProps {
   resourceId: number
   initialPercent: number
   onProgress: (percent: number, completed: boolean) => void
 }
 
+function headingHash(text: string): string {
+  let h = 5381
+  for (let i = 0; i < text.length; i++) {
+    h = (Math.imul(h, 33) ^ text.charCodeAt(i)) >>> 0
+  }
+  return h.toString(36)
+}
+
+function splitManuscript(md: string): { main: string; refs: string } {
+  const idx = md.lastIndexOf('\n## 参考文献')
+  if (idx < 0) return { main: md, refs: '' }
+  return { main: md.slice(0, idx), refs: md.slice(idx + 1) }
+}
+
+function extractHeadings(md: string): TocEntry[] {
+  const entries: TocEntry[] = []
+  const seen = new Set<string>()
+  for (const line of md.split('\n')) {
+    const m = /^(##|###)\s+(.+)$/.exec(line.trim())
+    if (!m) continue
+    const text = m[2].replace(/^\d+(\.\d+)*[\u3000]?/, '').trim() || m[2]
+    let id = `h-${headingHash(text)}`
+    while (seen.has(id)) id += '-x'
+    seen.add(id)
+    entries.push({ id, level: m[1] === '##' ? 2 : 3, text })
+  }
+  return entries
+}
+
 export function ManuscriptView({ resourceId, initialPercent, onProgress }: ManuscriptViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const restoredRef = useRef(false)
   const [scrollHost, setScrollHost] = useState<HTMLDivElement | null>(null)
+  const [refsOpen, setRefsOpen] = useState(false)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['catalog', 'manuscript', resourceId],
@@ -38,6 +75,18 @@ export function ManuscriptView({ resourceId, initialPercent, onProgress }: Manus
       return resp.data
     },
   })
+
+  // 目录与正文/参考文献拆分：纯字符串操作，无需 memo
+  const split = data ? splitManuscript(data) : { main: '', refs: '' }
+  const main = split.main
+  const refs = split.refs
+  const refCount = refs ? (refs.match(/^\[\d+\]/gm)?.length ?? 0) : 0
+  const toc = (() => {
+    if (!main) return []
+    const entries = extractHeadings(main)
+    if (refs) entries.push({ id: 'refs', level: 2, text: '参考文献' })
+    return entries
+  })()
 
   // 进入时按已保存的百分比恢复阅读位置（本地或服务端进度）。
   // 恢复是一次性副作用：走 timeout 异步执行（react-hooks 编译规则要求
@@ -61,6 +110,14 @@ export function ManuscriptView({ resourceId, initialPercent, onProgress }: Manus
     const max = el.scrollHeight - el.clientHeight
     const percent = max <= 0 ? 100 : Math.min(100, Math.round((el.scrollTop / max) * 100))
     onProgress(percent, percent >= 98)
+  }
+
+  const jumpTo = (id: string) => {
+    const el = document.getElementById(id)
+    if (el && scrollRef.current) {
+      scrollRef.current.scrollTop = el.offsetTop - 24
+      if (id === 'refs') setRefsOpen(true)
+    }
   }
 
   if (isLoading) {
@@ -96,31 +153,87 @@ export function ManuscriptView({ resourceId, initialPercent, onProgress }: Manus
       onScroll={handleScroll}
       className="flex-1 overflow-y-auto bg-background"
     >
-      <article className="markdown-body mx-auto max-w-3xl px-5 py-8">
-        <ReactMarkdown
-          urlTransform={(url) =>
-            // 转换管线把图表内嵌为 data:image URI；默认清洗会剥掉 data: 协议
-            // 导致破图。这里只放行图片 data URI，其余仍走默认清洗。
-            url.startsWith('data:image/') ? url : defaultUrlTransform(url)
-          }
-          remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[[rehypeKatex, { strict: false }]]}
-          components={{
-            // 外链一律新窗口 + 防钓鱼；rel 组合覆盖 noopener/noreferrer
-            a: ({ href, children }) => (
-              <a href={href} target="_blank" rel="noopener noreferrer nofollow">
-                {children}
-              </a>
-            ),
-            img: ({ src, alt }) => (
-              // data URI 内嵌图（转换管线自包含输出）
-              <img src={typeof src === 'string' ? src : undefined} alt={alt ?? ''} loading="lazy" />
-            ),
-          }}
-        >
-          {data}
-        </ReactMarkdown>
-      </article>
+      <div className="mx-auto flex max-w-6xl items-start px-5 py-8">
+        {/* 目录侧栏：桌面端吸附 */}
+        {toc.length > 2 && (
+          <nav
+            aria-label="文章目录"
+            className="sticky top-0 hidden w-52 shrink-0 lg:mr-6 lg:block"
+          >
+            <p className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground">
+              <ListTree className="h-3.5 w-3.5" />
+              目录
+            </p>
+            <ul className="mt-2 max-h-[70vh] space-y-0.5 overflow-y-auto border-l border-border pr-2 text-sm">
+              {toc.map((t) => (
+                <li key={t.id}>
+                  <button
+                    onClick={() => jumpTo(t.id)}
+                    className={
+                      'block w-full truncate rounded px-2 py-1 text-left text-xs transition-colors hover:bg-muted hover:text-primary ' +
+                      (t.level === 3 ? 'pl-5 text-muted-foreground' : 'font-medium')
+                    }
+                    title={t.text}
+                  >
+                    {t.text}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
+
+        <article className="markdown-body min-w-0 flex-1">
+          <ReactMarkdown
+            urlTransform={(url) =>
+              // 转换管线把图表内嵌为 data:image URI；默认清洗会剥掉 data: 协议
+              // 导致破图。这里只放行图片 data URI，其余仍走默认清洗。
+              url.startsWith('data:image/') ? url : defaultUrlTransform(url)
+            }
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[[rehypeKatex, { strict: false }]]}
+            components={{
+              a: ({ href, children }) => (
+                <a href={href} target="_blank" rel="noopener noreferrer nofollow">
+                  {children}
+                </a>
+              ),
+              img: ({ src, alt }) => (
+                <img src={typeof src === 'string' ? src : undefined} alt={alt ?? ''} loading="lazy" />
+              ),
+              h2: ({ children }) => (
+                <h2 id={`h-${headingHash(String(children))}`}>{children}</h2>
+              ),
+              h3: ({ children }) => (
+                <h3 id={`h-${headingHash(String(children))}`}>{children}</h3>
+              ),
+            }}
+          >
+            {main}
+          </ReactMarkdown>
+
+          {refs && (
+            <details
+              id="refs"
+              className="refs-collapse mt-10 rounded-lg border bg-muted/30"
+              open={refsOpen || undefined}
+            >
+              <summary
+                className="cursor-pointer select-none px-4 py-3 text-sm font-medium"
+                onClick={(e) => {
+                  e.preventDefault()
+                  setRefsOpen((v) => !v)
+                }}
+              >
+                参考文献（{refCount} 条）· 点击展开
+              </summary>
+              <div className="border-t px-4 py-3">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{refs}</ReactMarkdown>
+              </div>
+            </details>
+          )}
+        </article>
+      </div>
     </div>
   )
 }

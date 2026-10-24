@@ -14,6 +14,33 @@ import { useAuth } from '@/hooks/use-auth'
 import { formatDateTime } from '@/lib/utils'
 import { EmptyState } from '@/components/common/state'
 
+// 超过 160 字的评论默认折叠，展开/收起切换。
+function LongText({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
+  const long = text.length > 160
+  if (!long) {
+    return <p className="mt-1.5 text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{text}</p>
+  }
+  return (
+    <div>
+      <p
+        className={
+          'mt-1.5 text-sm leading-relaxed whitespace-pre-wrap text-foreground/90 ' +
+          (open ? '' : 'line-clamp-3')
+        }
+      >
+        {text}
+      </p>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="mt-1 text-xs text-primary hover:underline"
+      >
+        {open ? '收起' : '展开全文'}
+      </button>
+    </div>
+  )
+}
+
 // 读者评论区：游客可见可读，登录后可发言；不可编辑（时间线保持诚实），
 // 可删自己的评论，管理员可删任何评论（审计留痕）。
 export function Comments({ resourceId }: { resourceId: number }) {
@@ -141,9 +168,7 @@ export function Comments({ resourceId }: { resourceId: number }) {
                       )}
                     </div>
                   </div>
-                  <p className="mt-1.5 text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
-                    {c.body}
-                  </p>
+                  <LongText text={c.body} />
                 </li>
               )
             })}
