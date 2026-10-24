@@ -758,6 +758,65 @@ function HomePage() {
           </div>
         </motion.section>
 
+        {/* ── 参与社区 ── */}
+        <motion.section
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.12 }}
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+          className="scroll-mt-16 bg-muted/40 py-16"
+        >
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <SectionHeading title="参与社区" label="Join the Community" />
+            <p className="mx-auto max-w-2xl text-center text-sm leading-relaxed text-muted-foreground">
+              游客可以读一切公开内容，阅读进度保存在本设备。登录之后，你就不只是读者了。
+            </p>
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  title: '评论互动',
+                  body: '对每篇论文公开发表质疑、补充与吐槽——像审稿人一样较真，像读者一样自由。',
+                },
+                {
+                  title: '进度跨设备同步',
+                  body: '阅读进度、收藏与关注随账号走：换设备接着读，书架不会丢。',
+                },
+                {
+                  title: '投稿开放',
+                  body: '注册即可投稿，无需申请、无需介绍信。正经与荒诞两个赛道，编辑部分不清谁高谁低。',
+                },
+                {
+                  title: '读者活动',
+                  body: '年度 Rubbish Prize 读者票选、评论区精选、新刊试读——参与就有份。',
+                },
+              ].map((f) => (
+                <motion.div
+                  key={f.title}
+                  variants={card}
+                  whileHover={{ y: -4 }}
+                  className="rounded-lg border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"
+                >
+                  <h3 className="text-base" style={{ fontFamily: DISPLAY_FONT }}>
+                    {f.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.body}</p>
+                </motion.div>
+              ))}
+            </div>
+            {!isAuthenticated && (
+              <div className="mt-8 flex flex-col items-center gap-3">
+                <Button asChild size="lg">
+                  <Link to="/register">免费注册，参与社区</Link>
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  已有账号？<Link to="/login" className="text-primary hover:underline">直接登录</Link>
+                  ·注册不需要邮箱验证
+                </p>
+              </div>
+            )}
+          </div>
+        </motion.section>
+
         {/* ── 期刊指标 ── */}
         <motion.section
           id="metrics"

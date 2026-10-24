@@ -7,6 +7,33 @@
 `apps/backend/pyproject.toml`、`apps/frontend/package.json`、`apps/backend/app/__init__.py`
 四处完全一致，由 `scripts/check-version.sh` 守门。
 
+## [0.6.0] — 2026-10-24
+
+### Added
+
+- **评论系统**：新 `comments` 模块（迁移 007）。`GET /api/comments?resource_id=`
+  公开可读；`POST` 登录可评（仅限已刊出资源，1–1000 字，不可编辑）；`DELETE`
+  本人或管理员（`comment.delete` 审计）。详情页新增读者评论区：游客可见
+  不可评（登录引导），分页加载。`/api/comments` 进入 STRICT_PATHS 限流。
+- **游客模式产品化**：`/reader` 未登录时阅读进度保存到本设备
+  localStorage（键随资源隔离），下次打开续读；阅读器顶部新增游客模式
+  提示条（登录后跨设备同步）。登录用户行为不变（服务端同步）。
+- 首页新增「参与社区」板块：评论互动 / 进度同步 / 投稿开放 / 读者活动
+  （年度 Rubbish Prize 读者票选）四卡 + 注册引导。投稿本就开放给全部
+  登录用户（无需申请作者角色），文案同步说清。
+- **论文排版对标真实期刊**：7 篇在线论文 PDF 全部重排——每篇 2 幅图
+  （折线/柱状/饼图，reportlab 内置图表）+ 1 张三线表 + 中文图注/表注，
+  覆盖奶蛙叙事、食堂排队、摸鱼博弈、自评估框架与创刊三示例。
+
+### Fixed
+
+- **RLS 覆盖门禁两处失真**（tests/test_rls_coverage.py）：检测器此前
+  识别不了 003 的启用写法（元组 + f-string），门禁一直处于 skip；
+  现已修复并激活，规则改为"全局覆盖 + 初始迁移后同文件"双不变量。
+- **audit_logs 缺失 RLS**（真实隔离缺口，被上述失真掩盖）：迁移 007
+  补齐 `audit_logs` 的 tenant_isolation 策略（应用层本就显式过滤
+  tenant_id，无行为回退）。
+
 ## [0.5.0] — 2026-10-24
 
 ### Changed

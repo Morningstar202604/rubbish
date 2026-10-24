@@ -23,6 +23,42 @@ import PdfViewer from '@/components/pdf-viewer'
 // Restrict reader iframe to http(s) scheme so data:/blob:/javascript:
 // URLs cannot execute content inside the PDF viewer frame.
 // http: 放行是为了同源部署（如本地 /uploads 托管的稿件文件）。
+// 游客本地进度：登录用户进度走服务端同步；未登录时进度保存在本设备
+// localStorage，同设备同浏览器下次打开续读。键随资源 id 隔离。
+function guestProgressKey(resourceId: number): string {
+  return `rubbish.reader.progress.${resourceId}`
+}
+
+interface GuestProgress {
+  page: number
+  progress_percent: number
+  completed: boolean
+}
+
+function readGuestProgress(resourceId: number): GuestProgress | null {
+  try {
+    const raw = localStorage.getItem(guestProgressKey(resourceId))
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<GuestProgress>
+    if (typeof parsed.page !== 'number') return null
+    return {
+      page: parsed.page,
+      progress_percent: typeof parsed.progress_percent === 'number' ? parsed.progress_percent : 0,
+      completed: Boolean(parsed.completed),
+    }
+  } catch {
+    return null
+  }
+}
+
+function writeGuestProgress(resourceId: number, value: GuestProgress): void {
+  try {
+    localStorage.setItem(guestProgressKey(resourceId), JSON.stringify(value))
+  } catch {
+    // 隐私模式等场景 localStorage 不可用：静默放弃，不影响阅读
+  }
+}
+
 function isSafeDownloadUrl(url: string): boolean {
   try {
     const u = new URL(url, window.location.origin)
@@ -49,10 +85,14 @@ function ReaderPage() {
   const updateMut = useUpdateProgress()
   const removeMut = useRemoveFromHistory()
 
-  const [page, setPage] = useState(1)
+  // 游客：挂载时读一次本地进度作为初值（登录用户随后会被服务端进度覆盖）
+  const guestInitial = isAuthenticated ? null : readGuestProgress(id)
+  const [page, setPage] = useState(() => guestInitial?.page ?? 1)
   const [totalPages, setTotalPages] = useState<number | null>(null)
-  const [progressPercent, setProgressPercent] = useState(0)
-  const [completed, setCompleted] = useState(false)
+  const [progressPercent, setProgressPercent] = useState(
+    () => guestInitial?.progress_percent ?? 0,
+  )
+  const [completed, setCompleted] = useState(() => guestInitial?.completed ?? false)
   // 本地累加器：仅跟踪本次会话新增的秒数，flush 后清零
   const [localDuration, setLocalDuration] = useState(0)
   const [removeOpen, setRemoveOpen] = useState(false)
@@ -127,6 +167,12 @@ function ReaderPage() {
     stateRef.current = { page, progressPercent, completed, localDuration }
     flushRef.current = flush
   })
+  // 游客本地持久化：任一进度相关状态变化即写 localStorage
+  useEffect(() => {
+    if (isAuthenticated) return
+    writeGuestProgress(id, { page, progress_percent: progressPercent, completed })
+  }, [id, isAuthenticated, page, progressPercent, completed])
+
   useEffect(() => {
     const ticker = setInterval(() => {
       setLocalDuration((s) => s + 1)
@@ -217,6 +263,14 @@ function ReaderPage() {
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
+      {!isAuthenticated && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground">
+          <span>游客模式：阅读进度保存在本设备，登录后可跨设备同步并参与评论。</span>
+          <Link to="/login" search={{ redirect: `/reader/${id}` }} className="text-primary hover:underline">
+            登录
+          </Link>
+        </div>
+      )}
       {/* 顶部标题栏 */}
       <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2 sm:gap-3">
         <Link

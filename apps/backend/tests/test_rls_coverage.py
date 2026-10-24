@@ -62,8 +62,9 @@ _CREATE_TABLE_RE = re.compile(r'op\.create_table\(\s*["\']([a-z_0-9]+)["\']')
 _TENANT_COLUMN_RE = re.compile(r'sa\.Column\(\s*["\']tenant_id["\']')
 # _enable_rls("x") / _enable_audit_rls("y")
 _ENABLE_RLS_CALL_RE = re.compile(r'_enable_(?:audit_)?rls\(\s*"([a-z_0-9]+)"')
-# _XXX_TABLES = ["a", "b"] list definitions
-_TABLE_LIST_RE = re.compile(r"(_[A-Z_0-9]+_TABLES)\s*=\s*\[([^\]]*)\]")
+# _XXX_TABLES / XXX_TABLES = ["a", "b"] 或 ("a", "b")——列表或元组都认
+# （003 用的是元组 TENANT_TABLES，此前漏检导致门禁一直处于 skip 态）。
+_TABLE_LIST_RE = re.compile(r"([A-Z_0-9_]*_TABLES)\s*=\s*[\[\(]([^\]\)]*)[\]\)]")
 # for table in _XXX_TABLES:
 _FOR_TABLE_LOOP_RE = re.compile(r"for\s+\w+\s+in\s+([A-Z_0-9_]+)\s*:")
 # ALTER TABLE x ENABLE ROW LEVEL SECURITY
@@ -149,14 +150,43 @@ def test_every_tenant_table_has_rls_enable() -> None:
         )
 
     offenders: list[str] = []  # "file:table"
+    per_file: dict[str, tuple[set[str], set[str]]] = {}
+    all_tenant: set[str] = set()
+    all_rls: set[str] = set()
     for mf in _collect_migration_files():
         source = mf.read_text(encoding="utf-8")
         tenant_tables = _create_tables_with_tenant_id(source)
         rls_tables = _rls_enabled_tables(source)
+        per_file[mf.name] = (tenant_tables, rls_tables)
+        all_tenant |= tenant_tables
+        all_rls |= rls_tables
+
+    def _exempt(table: str) -> bool:
+        return table in _TENANT_ROOT_TABLES or table in _NO_RLS_BY_DESIGN
+
+    # 不变量一（全局覆盖）：任何租户表必须在迁移链的某处启用 RLS。
+    # 迁移合并后的历史格局是"001 建表、003 统一启用"，所以同文件要求
+    # 只约束初始迁移之后新增的迁移——新迁移里建租户表就必须在同一个
+    # 文件里给 RLS，不允许"以后再补"。
+    for table in sorted(all_tenant - all_rls):
+        if _exempt(table):
+            continue
+        owners = sorted(name for name, (t, _r) in per_file.items() if table in t)
+        offenders.append(f"{'/'.join(owners)}:{table} [no RLS enable anywhere]")
+
+    _INITIAL_SCHEMA_MIGRATIONS = {
+        # 迁移合并后的单一初始 schema：全部租户表在此创建，RLS 在 003
+        # 统一启用（PostgreSQL-only，SQLite 单租户模式跳过）。豁免
+        # "同文件"要求，但不豁免上面的全局覆盖检查。
+        "3392b958c074_001_initial_schema.py",
+    }
+    for name, (tenant_tables, rls_tables) in sorted(per_file.items()):
+        if name in _INITIAL_SCHEMA_MIGRATIONS:
+            continue
         for table in sorted(tenant_tables - rls_tables):
-            if table in _TENANT_ROOT_TABLES or table in _NO_RLS_BY_DESIGN:
+            if _exempt(table) or table in all_rls:
                 continue
-            offenders.append(f"{mf.name}:{table}")
+            offenders.append(f"{name}:{table} [no RLS enable in same migration]")
 
     assert not offenders, (
         "Multi-tenant tables created without an RLS enable in the same "

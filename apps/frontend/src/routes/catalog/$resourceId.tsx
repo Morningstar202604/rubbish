@@ -52,6 +52,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { AddToListDialog } from '@/components/common/add-to-list-dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
+import { Comments } from '@/components/common/comments'
 import { MetaItem } from '@/components/common/meta-item'
 import { EmptyState, ErrorState, Loading } from '@/components/common/state'
 
@@ -251,6 +252,8 @@ function CatalogDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          <Comments resourceId={id} />
         </div>
 
         {/* 右侧操作区（移动端隐藏：操作移入底部固定操作栏） */}

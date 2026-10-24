@@ -21,6 +21,7 @@ from __future__ import annotations
 # register a ModuleManifest.
 ENABLED_MODULES: list[str] = [
     "catalog",
+    "comments",
     "export",
     "reader",
     "submission",
