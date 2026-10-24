@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import ReactMarkdown from 'react-markdown'
+import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
@@ -98,6 +98,11 @@ export function ManuscriptView({ resourceId, initialPercent, onProgress }: Manus
     >
       <article className="markdown-body mx-auto max-w-3xl px-5 py-8">
         <ReactMarkdown
+          urlTransform={(url) =>
+            // 转换管线把图表内嵌为 data:image URI；默认清洗会剥掉 data: 协议
+            // 导致破图。这里只放行图片 data URI，其余仍走默认清洗。
+            url.startsWith('data:image/') ? url : defaultUrlTransform(url)
+          }
           remarkPlugins={[remarkGfm, remarkMath]}
           rehypePlugins={[[rehypeKatex, { strict: false }]]}
           components={{
