@@ -86,7 +86,11 @@ async def robots(request: Request) -> Response:
             "",
         ]
     )
-    return Response(content=body, media_type="text/plain; charset=utf-8")
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Type": "text/plain; charset=utf-8"},
+    )
 
 
 @router.get("/sitemap.xml", response_class=Response, include_in_schema=False)
@@ -160,7 +164,13 @@ async def rss_feed(request: Request, db: AsyncSession = Depends(get_db)) -> Resp
         + "".join(items)
         + "</channel></rss>"
     )
-    return Response(content=body, media_type="application/rss+xml; charset=utf-8")
+    # 显式以 UTF-8 字节输出：Starlette 对 str 内容默认按 latin-1 编码，
+    # 中文会变成乱码（线上实测 "开放获取" → "寮€鏀捐幏"）。
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="application/rss+xml; charset=utf-8",
+        headers={"Content-Type": "application/rss+xml; charset=utf-8"},
+    )
 
 
 def _meta_tags(title: str, description: str, canonical: str, extra: str = "") -> str:
