@@ -536,14 +536,14 @@ function HomePage() {
                     to="/catalog/$resourceId"
                     params={{ resourceId: String(r.id) }}
                     aria-label={`阅读《${r.title}》`}
-                    className="absolute inset-0 z-0 rounded-lg focus-visible:ring-2 focus-visible:ring-ring"
+                    className="absolute inset-0 z-20 rounded-lg focus-visible:ring-2 focus-visible:ring-ring"
                   />
                   {/* 卡片顶部学科色条 */}
                   <span
                     aria-hidden
                     className="h-1 w-full bg-gradient-to-r from-primary via-primary/60 to-transparent opacity-70"
                   />
-                  <div className="pointer-events-none relative z-10 flex flex-1 flex-col p-5">
+                  <div className="pointer-events-none relative z-10 flex flex-1 flex-col p-5 [&_a]:pointer-events-auto">
                     <div className="mb-3 flex items-center justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-1.5">
                         <Badge

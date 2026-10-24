@@ -864,8 +864,17 @@ function RelatedResources({
   resourceId: number
   discipline?: string | null
 }) {
-  const { data } = useResources({ page: 1, page_size: 8, discipline: discipline ?? undefined })
-  const items = (data?.data ?? []).filter((r) => r.id !== resourceId).slice(0, 4)
+  const { data: sameDiscipline } = useResources({
+    page: 1,
+    page_size: 8,
+    discipline: discipline ?? undefined,
+  })
+  const { data: fallback } = useResources({ page: 1, page_size: 8 })
+  const pool =
+    (sameDiscipline?.data ?? []).filter((r) => r.id !== resourceId).length >= 1
+      ? (sameDiscipline?.data ?? [])
+      : (fallback?.data ?? [])
+  const items = pool.filter((r) => r.id !== resourceId).slice(0, 4)
   if (items.length === 0) return null
   return (
     <Card>
