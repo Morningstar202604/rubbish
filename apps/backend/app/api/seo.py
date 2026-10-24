@@ -118,6 +118,51 @@ async def sitemap(request: Request, db: AsyncSession = Depends(get_db)) -> Respo
     return Response(content="\n".join(lines), media_type="application/xml")
 
 
+@router.get("/feed.xml", response_class=Response, include_in_schema=False)
+@router.get("/rss.xml", response_class=Response, include_in_schema=False)
+async def rss_feed(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
+    """RSS 2.0 feed of the latest published records.
+
+    期刊站标配：读者可用任意 RSS 阅读器订阅新刊，聚合器与索引服务也可直接
+    收割。仅含已刊出内容；摘要截断 500 字；全部字段 HTML 转义。
+    """
+    from email.utils import format_datetime
+
+    root = _root(request)
+    site = html.escape(settings.site_name)
+    rows = await _published_resources(db, limit=50)
+    items: list[str] = []
+    for r in rows:
+        link = f"{root}/catalog/{r.id}"
+        summary = html.escape((r.abstract or "")[:500])
+        pub_line = f"<pubDate>{format_datetime(r.created_at)}</pubDate>" if r.created_at else ""
+        items.append(
+            "<item>"
+            f"<title>{html.escape(r.title)}</title>"
+            f"<link>{html.escape(link)}</link>"
+            f'<guid isPermaLink="true">{html.escape(link)}</guid>'
+            f"<description>{summary}</description>"
+            f"<author>{html.escape(', '.join(r.authors or []))}</author>"
+            f"<category>{html.escape(r.discipline or '')}</category>"
+            f"{pub_line}"
+            "</item>"
+        )
+    latest = rows[0].created_at if rows else None
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>'
+        f"<title>{site}</title>"
+        f"<link>{html.escape(root)}</link>"
+        f"<description>{site} · 开放获取学术期刊 · 最新发表</description>"
+        "<language>zh-cn</language>"
+        f'<atom:link href="{html.escape(root)}/feed.xml" rel="self" type="application/rss+xml"/>'
+        + (f"<lastBuildDate>{format_datetime(latest)}</lastBuildDate>" if latest else "")
+        + "".join(items)
+        + "</channel></rss>"
+    )
+    return Response(content=body, media_type="application/rss+xml; charset=utf-8")
+
+
 def _meta_tags(title: str, description: str, canonical: str, extra: str = "") -> str:
     t = html.escape(title, quote=True)
     d = html.escape(description, quote=True)

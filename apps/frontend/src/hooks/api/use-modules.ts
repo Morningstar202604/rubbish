@@ -118,7 +118,8 @@ export function useResources(params: ResourceListParams = {}) {
     queryKey: keys.catalog.list(params),
     queryFn: async () => (await api.get<ResourceListResponse>('/catalog', { params })).data,
     placeholderData: (prev) => prev,
-    staleTime: 5 * 60_000,
+    // 目录会随刊出变化：30 秒内视为新鲜，切回页面时自动刷新。
+    staleTime: 30_000,
   })
 }
 
@@ -127,6 +128,7 @@ export function useResource(id: number) {
     queryKey: keys.catalog.detail(id),
     queryFn: async () => (await api.get<ResourceResponse>(`/catalog/${id}`)).data,
     enabled: id > 0,
+    staleTime: 30_000,
   })
 }
 
@@ -142,7 +144,7 @@ export function useCatalogStats() {
   return useQuery<ResourceStats>({
     queryKey: keys.catalog.stats(),
     queryFn: async () => (await api.get<ResourceStats>('/catalog/stats')).data,
-    staleTime: 5 * 60_000,
+    staleTime: 60_000,
   })
 }
 

@@ -19,9 +19,12 @@ void initMonitoring()
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60_000,
+      staleTime: 30_000,
       retry: 1,
-      refetchOnWindowFocus: false,
+      // 切回标签页/网络恢复时刷新：期刊站内容会更新（新刊出论文、评论），
+      // 关闭聚焦刷新会让用户看到过期目录（此前 5 分钟内看不到新发表）。
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
     },
   },
 })

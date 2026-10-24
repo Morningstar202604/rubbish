@@ -93,23 +93,44 @@ const FAQ = [
   },
 ]
 
+// 入场动效：左右滑入 + 淡入上移。
+// 关键约束（0.7.1 事故复盘的延续）：初始 opacity 不低于 0.3，
+// 保证打印/截图/未触发/省电模式下内容仍可读；位移量克制（≤28px），
+// 避免大幅滑动造成视觉抖动。
+const EASE_OUT = [0.22, 1, 0.36, 1] as const
+
 const rise: Variants = {
-  hidden: { opacity: 0.3, y: 22 },
+  hidden: { opacity: 0.3, y: 24 },
   show: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: i * 0.06, duration: 0.65, ease: [0.22, 1, 0.36, 1] },
+    transition: { delay: i * 0.06, duration: 0.62, ease: EASE_OUT },
   }),
+}
+
+const slideInLeft: Variants = {
+  hidden: { opacity: 0.3, x: -28 },
+  show: { opacity: 1, x: 0, transition: { duration: 0.7, ease: EASE_OUT } },
+}
+
+const slideInRight: Variants = {
+  hidden: { opacity: 0.3, x: 28 },
+  show: { opacity: 1, x: 0, transition: { duration: 0.7, ease: EASE_OUT } },
 }
 
 const cardsWrap: Variants = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.08 } },
+  show: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } },
 }
 
 const card: Variants = {
-  hidden: { opacity: 0.3, y: 18 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
+  hidden: { opacity: 0.3, y: 18, scale: 0.985 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.5, ease: EASE_OUT },
+  },
 }
 
 function fmtDate(iso: string): string {
@@ -305,8 +326,7 @@ function HomePage() {
             </motion.p>
 
             <motion.h1
-              variants={rise}
-              custom={1}
+              variants={slideInLeft}
               className="mt-5 text-7xl leading-none tracking-tight sm:text-9xl"
               style={{ fontFamily: DISPLAY_FONT, fontWeight: 600 }}
             >
@@ -315,8 +335,7 @@ function HomePage() {
 
             {/* 打字机口号（等宽占位避免布局跳动） */}
             <motion.p
-              variants={rise}
-              custom={2}
+              variants={slideInRight}
               className="mx-auto mt-5 flex min-h-7 items-center justify-center text-base text-muted-foreground sm:text-lg"
             >
               <span className="mr-1" style={{ fontFamily: DISPLAY_FONT }}>
@@ -465,7 +484,7 @@ function HomePage() {
         <motion.section
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true, amount: 0.1 }}
+          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}
           className="mx-auto max-w-6xl px-4 py-16 sm:px-6"
         >
@@ -512,12 +531,19 @@ function HomePage() {
                   whileHover={{ y: -5 }}
                   className="group relative flex flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-colors hover:border-primary/40"
                 >
+                  {/* 整卡可点：覆盖整张卡片的链接（视觉内容在其上、不拦截点击） */}
+                  <Link
+                    to="/catalog/$resourceId"
+                    params={{ resourceId: String(r.id) }}
+                    aria-label={`阅读《${r.title}》`}
+                    className="absolute inset-0 z-0 rounded-lg focus-visible:ring-2 focus-visible:ring-ring"
+                  />
                   {/* 卡片顶部学科色条 */}
                   <span
                     aria-hidden
                     className="h-1 w-full bg-gradient-to-r from-primary via-primary/60 to-transparent opacity-70"
                   />
-                  <div className="flex flex-1 flex-col p-5">
+                  <div className="pointer-events-none relative z-10 flex flex-1 flex-col p-5">
                     <div className="mb-3 flex items-center justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-1.5">
                         <Badge
@@ -547,7 +573,7 @@ function HomePage() {
                       <Link
                         to="/catalog/$resourceId"
                         params={{ resourceId: String(r.id) }}
-                        className="underline-offset-4 decoration-1 hover:underline"
+                        className="pointer-events-auto underline-offset-4 decoration-1 hover:underline"
                       >
                         {r.title}
                       </Link>
@@ -589,7 +615,7 @@ function HomePage() {
           id="process"
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true, amount: 0.15 }}
+          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.09 } } }}
           className="scroll-mt-16 bg-muted/40 py-16"
         >
@@ -637,7 +663,7 @@ function HomePage() {
           id="scope"
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true, amount: 0.12 }}
+          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
           className="scroll-mt-16 py-16"
         >
@@ -704,7 +730,7 @@ function HomePage() {
           id="policy"
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true, amount: 0.15 }}
+          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.09 } } }}
           className="scroll-mt-16 bg-muted/40 py-16"
         >
@@ -762,7 +788,7 @@ function HomePage() {
         <motion.section
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true, amount: 0.12 }}
+          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
           className="scroll-mt-16 bg-muted/40 py-16"
         >
@@ -822,7 +848,7 @@ function HomePage() {
           id="metrics"
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true, amount: 0.1 }}
+          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}
           className="scroll-mt-16 py-16"
         >
@@ -974,7 +1000,7 @@ function HomePage() {
           id="authors"
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true, amount: 0.12 }}
+          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
           className="scroll-mt-16 bg-muted/40 py-16"
         >
@@ -1054,7 +1080,7 @@ function HomePage() {
           id="faq"
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true, amount: 0.1 }}
+          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
           className="scroll-mt-16 py-16"
         >
@@ -1088,7 +1114,7 @@ function HomePage() {
           id="about"
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true, amount: 0.12 }}
+          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
           className="scroll-mt-16 bg-muted/40 py-16"
         >
@@ -1232,6 +1258,14 @@ function HomePage() {
                   >
                     期刊政策
                   </Link>
+                </li>
+                <li>
+                  <a
+                    href="/feed.xml"
+                    className="text-primary-foreground/75 transition-colors hover:text-primary-foreground"
+                  >
+                    RSS 订阅
+                  </a>
                 </li>
                 <li>
                   <a

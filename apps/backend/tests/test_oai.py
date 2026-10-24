@@ -198,3 +198,54 @@ async def test_record_includes_language_and_rights(client: AsyncClient, admin_us
     rights = [e.text for e in ET.fromstring(r.text).iter(f"{DC_NS}rights")]
     assert languages == ["zh"]
     assert rights == ["CC BY 4.0"]
+
+
+async def test_rss_feed_serves_published_only(client: AsyncClient, admin_user: dict) -> None:
+    """RSS 2.0 feed：只有已刊出内容，字段完整且转义。"""
+    from conftest import auth_headers
+
+    await client.post(
+        "/api/catalog",
+        json={
+            "type": "paper",
+            "title": "RSS 测试论文 <script>",
+            "authors": ["RSS 作者"],
+            "year": 2026,
+            "discipline": "计算机科学",
+            "abstract": "用于验证 RSS feed 的摘要内容。",
+            "publication_status": "published",
+        },
+        headers=auth_headers(admin_user),
+    )
+    r = await client.get("/feed.xml")
+    assert r.status_code == 200
+    assert "application/rss+xml" in r.headers["content-type"]
+    body = r.text
+    assert '<rss version="2.0"' in body
+    assert "RSS 测试论文" in body
+    assert "<script>" not in body  # 标题已转义
+    assert "&lt;script&gt;" in body
+    assert "<pubDate>" in body
+
+
+async def test_rss_alias_path(client: AsyncClient) -> None:
+    assert (await client.get("/rss.xml")).status_code == 200
+
+
+async def test_rss_excludes_drafts(client: AsyncClient, admin_user: dict) -> None:
+    from conftest import auth_headers
+
+    await client.post(
+        "/api/catalog",
+        json={
+            "type": "paper",
+            "title": "RSS 草稿不应出现",
+            "authors": ["作者"],
+            "year": 2026,
+            "discipline": "计算机科学",
+            "abstract": "草稿摘要。",
+            "publication_status": "draft",
+        },
+        headers=auth_headers(admin_user),
+    )
+    assert "RSS 草稿不应出现" not in (await client.get("/feed.xml")).text

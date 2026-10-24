@@ -7,6 +7,34 @@
 `apps/backend/pyproject.toml`、`apps/frontend/package.json`、`apps/backend/app/__init__.py`
 四处完全一致，由 `scripts/check-version.sh` 守门。
 
+## [0.8.1] — 2026-10-24
+
+### Fixed
+
+- **首页文章卡片点击无效**（用户反馈"主界面点击没反应"）：整张卡片只有标题
+  一行是链接，点缩略图/摘要/空白处全部落空。改为覆盖整卡的链接层
+  （`absolute inset-0`），内容层 `pointer-events-none`，标题仍可独立点击。
+- **新发表不实时出现**（"看不到新文章"）：目录/首页列表 `staleTime` 5 分钟 +
+  `refetchOnWindowFocus: false`，新刊出论文最长 5 分钟不可见。改为 30 秒
+  新鲜期 + 切回标签页/网络恢复自动刷新（`refetchOnWindowFocus`、
+  `refetchOnReconnect`）。
+
+### Added
+
+- **RSS 2.0 订阅**：`/feed.xml`（别名 `/rss.xml`），最新 50 篇已刊出论文，
+  摘要截断 500 字、全字段转义、`<pubDate>`/`<category>`/`<author>` 完整；
+  首页页脚与 `index.html` discovery link 均已接线。3 个新测试（转义/别名/
+  草稿不入 feed）。
+- **文章页引用导出**：BibTeX / RIS 一键下载（复用公开 `/api/export`），
+  可直接导入 Zotero / EndNote / Mendeley。
+- **相关文章**：详情页按同学科推荐 4 篇（排除自身，无结果时不渲染空壳）。
+- **入场动效升级**：刊名左滑入、标语右滑入、卡片淡入+微缩放，统一
+  缓动曲线与 stagger；`prefers-reduced-motion` 与打印场景保持可读
+  （初始 opacity 0.3 兜底）。
+- **稳定性（防抖动）**：`scrollbar-gutter: stable` 消除内容切换的横向跳动、
+  图片 `height:auto` 防布局偏移、统一 150ms 交互过渡、触摸设备禁用 hover
+  位移、`scroll-behavior: smooth`。
+
 ## [0.8.0] — 2026-10-24
 
 ### Added

@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   Download,
   ExternalLink,
+  FileDown,
   Heart,
   MoreVertical,
   Pencil,
@@ -24,6 +25,7 @@ import {
   useRecordView,
   useReadingProgress,
   useResource,
+  useResources,
   useSubscribeDiscipline,
   useUnfollowAuthor,
   useUnsubscribeDiscipline,
@@ -255,6 +257,8 @@ function CatalogDetailPage() {
             </Card>
           )}
 
+          <RelatedResources resourceId={id} discipline={data.discipline} />
+
           <Comments resourceId={id} />
         </div>
 
@@ -381,6 +385,22 @@ function CatalogDetailPage() {
                 <Share2 className="h-4 w-4" />
                 复制分享链接
               </Button>
+              {/* 引用文件导出：复用公开 /api/export（BibTeX / RIS），
+                  供 Zotero / EndNote / Mendeley 直接导入 */}
+              <div className="grid grid-cols-2 gap-2">
+                <Button asChild variant="ghost" size="sm">
+                  <a href={`/api/export?ids=${id}&format=bibtex`} download>
+                    <FileDown className="h-3.5 w-3.5" />
+                    BibTeX
+                  </a>
+                </Button>
+                <Button asChild variant="ghost" size="sm">
+                  <a href={`/api/export?ids=${id}&format=ris`} download>
+                    <FileDown className="h-3.5 w-3.5" />
+                    RIS
+                  </a>
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -831,5 +851,46 @@ function MobileDetailActions({
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
+  )
+}
+
+
+// 相关文章：同类型的高相关条目（优先同学科），帮助读者从"一篇"到"一批"。
+// 用公开目录接口，取 4 条、排除自身；无结果时整块不渲染（不留空壳）。
+function RelatedResources({
+  resourceId,
+  discipline,
+}: {
+  resourceId: number
+  discipline?: string | null
+}) {
+  const { data } = useResources({ page: 1, page_size: 8, discipline: discipline ?? undefined })
+  const items = (data?.data ?? []).filter((r) => r.id !== resourceId).slice(0, 4)
+  if (items.length === 0) return null
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">相关文章</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {items.map((r) => (
+          <Link
+            key={r.id}
+            to="/catalog/$resourceId"
+            params={{ resourceId: String(r.id) }}
+            className="group block rounded-md border-b pb-2 last:border-0 last:pb-0"
+          >
+            <p className="line-clamp-2 text-sm font-medium leading-snug transition-colors group-hover:text-primary">
+              {r.title}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {r.authors.slice(0, 2).join('、')}
+              {r.authors.length > 2 ? ' 等' : ''} · {r.year}
+              {r.absurdity_index != null && r.absurdity_index >= 7.5 ? ' · 离谱' : ''}
+            </p>
+          </Link>
+        ))}
+      </CardContent>
+    </Card>
   )
 }
