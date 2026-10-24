@@ -266,8 +266,14 @@ function ReaderPage() {
 
   const totalDuration = (progress.data?.duration_sec ?? 0) + localDuration
 
+  const windowScroll = isMobile && mode === 'md'
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col">
+    <div
+      className={
+        'flex flex-col ' +
+        (windowScroll ? 'min-h-[calc(100dvh-3.5rem)]' : 'h-[calc(100vh-3.5rem)]')
+      }
+    >
       {!isAuthenticated && (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground">
           <span>游客模式：阅读进度保存在本设备，登录后可跨设备同步并参与评论。</span>
@@ -297,7 +303,12 @@ function ReaderPage() {
         }
       >
         {/* 主体：Markdown 在线阅读（0.6.2 起）或 pdf.js 视图（兜底） */}
-        <div className="flex h-[60vh] flex-col lg:h-full">
+        <div
+          className={
+            'flex flex-col lg:h-full ' +
+            (windowScroll ? '' : 'h-[calc(100dvh-14rem)] min-h-[26rem] md:h-[calc(100dvh-11rem)]')
+          }
+        >
           {data.has_markdown && (
             <div className="flex shrink-0 items-center gap-1 border-b px-3 py-1.5">
               <button
@@ -327,6 +338,7 @@ function ReaderPage() {
           {mode === 'md' && data.has_markdown ? (
             <ManuscriptView
               resourceId={id}
+              useWindowScroll={windowScroll}
               initialPercent={progressPercent}
               onProgress={(p, done) => {
                 setProgressPercent(p)
@@ -364,6 +376,12 @@ function ReaderPage() {
                 当前第 {page} 页
               </p>
               <div className="space-y-1.5">
+                {mode === 'md' ? (
+                  <p className="rounded-md bg-muted/60 px-2 py-1.5 text-xs text-muted-foreground">
+                    富文本视图：滚动即记录进度，无需翻页。
+                  </p>
+                ) : (
+                <>
                 <Label htmlFor="page">页码</Label>
                 <div className="flex items-center gap-2">
                   <Input
@@ -396,6 +414,8 @@ function ReaderPage() {
                     下一页
                   </Button>
                 </div>
+                </>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -462,13 +482,15 @@ function ReaderPage() {
         </aside>
       </div>
 
-      {/* 移动端底部阅读操作栏：翻页 + 保存进度（桌面端沿用侧栏控件） */}
+      {/* 移动端底部阅读操作栏：PDF 模式翻页 + 保存进度；富文本模式滚动即进度 */}
       {isMobile && (
         <div
           role="toolbar"
           aria-label="阅读操作栏"
           className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-2 border-t bg-background/95 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur"
         >
+          {mode === 'pdf' && (
+            <>
           <Button
             variant="outline"
             size="sm"
@@ -489,6 +511,8 @@ function ReaderPage() {
           >
             下一页
           </Button>
+            </>
+          )}
           <Button
             size="sm"
             className="flex-1"

@@ -24,9 +24,9 @@ export const Route = createFileRoute('/authors')({
 // 作者指南与收录标准：对标正式期刊的投稿要求（原创性、伦理、评审流程），
 // 但去掉老古董包袱——不收版面费、不要求单位介绍信、正式承认荒诞研究。
 const rise = {
-  initial: { opacity: 0, y: 14 },
+  initial: { opacity: 0.3, y: 14 },
   whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: '-40px' },
+  viewport: { once: true, margin: '0px 0px 200px 0px' },
   transition: { duration: 0.45, ease: 'easeOut' as const },
 }
 

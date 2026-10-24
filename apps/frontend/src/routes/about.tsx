@@ -13,9 +13,9 @@ export const Route = createFileRoute('/about')({
 // 编委会为编辑部化名的虚构阵容（本刊自己就是一本正经与荒诞并存的刊物，
 // 编委信息按刊物设定的方式呈现，不指向任何真实人物）。
 const rise = {
-  initial: { opacity: 0, y: 14 },
+  initial: { opacity: 0.3, y: 14 },
   whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: '-40px' },
+  viewport: { once: true, margin: '0px 0px 200px 0px' },
   transition: { duration: 0.45, ease: 'easeOut' as const },
 }
 

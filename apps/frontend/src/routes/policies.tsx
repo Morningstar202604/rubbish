@@ -20,9 +20,9 @@ export const Route = createFileRoute('/policies')({
 // 期刊政策与社区规范：开放获取、学术诚信、荒诞内容免责、社区行为、
 // 撤稿、隐私。一条一条写实，不留"最终解释权归本刊所有"这种废话。
 const rise = {
-  initial: { opacity: 0, y: 14 },
+  initial: { opacity: 0.3, y: 14 },
   whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: '-40px' },
+  viewport: { once: true, margin: '0px 0px 200px 0px' },
   transition: { duration: 0.45, ease: 'easeOut' as const },
 }
 

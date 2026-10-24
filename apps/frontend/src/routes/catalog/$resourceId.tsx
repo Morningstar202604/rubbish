@@ -9,6 +9,8 @@ import {
   Heart,
   MoreVertical,
   Pencil,
+  Quote,
+  Share2,
   Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -162,6 +164,15 @@ function CatalogDetailPage() {
         <div className="space-y-6 lg:col-span-2">
           <Card>
             <CardHeader>
+              <CardTitle className="text-base">摘要</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm leading-7 whitespace-pre-wrap">{data.abstract}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle className="text-base">元数据</CardTitle>
             </CardHeader>
             <CardContent>
@@ -231,16 +242,7 @@ function CatalogDetailPage() {
             </Card>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">摘要</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm leading-7 whitespace-pre-wrap">{data.abstract}</p>
-            </CardContent>
-          </Card>
-
-          {data.preview && (
+          {data.preview && data.preview.trim() !== data.abstract.trim() && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">预览</CardTitle>
@@ -339,6 +341,48 @@ function CatalogDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">引用与分享</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="rounded-md bg-muted/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                {data.authors.join('，')}：{data.title}[Z]．Rubbish，{data.year}．
+              </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={async () => {
+                  const cite = `${data.authors.join('，')}：${data.title}[Z]．Rubbish，${data.year}．`
+                  try {
+                    await navigator.clipboard.writeText(cite)
+                    toast.success('引用格式已复制')
+                  } catch {
+                    toast.error('复制失败，请手动选择')
+                  }
+                }}
+              >
+                <Quote className="h-4 w-4" />
+                复制引用格式
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(window.location.href)
+                    toast.success('链接已复制')
+                  } catch {
+                    toast.error('复制失败')
+                  }
+                }}
+              >
+                <Share2 className="h-4 w-4" />
+                复制分享链接
+              </Button>
+            </CardContent>
+          </Card>
 
           {isAuthenticated && (
           <Card>

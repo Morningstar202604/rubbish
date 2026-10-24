@@ -4,7 +4,7 @@ import { Download, FileDown, Plus, SlidersHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/use-auth'
 import { useIsMobile } from '@/hooks/use-is-mobile'
-import { exportResources, useResources } from '@/hooks/api/use-modules'
+import { exportResources, useCatalogStats, useResources } from '@/hooks/api/use-modules'
 import type { ResourceType } from '@/lib/types'
 import { extractError, formatAuthors } from '@/lib/utils'
 import { absurdityLevel, typeLabel } from '@/lib/resource-labels'
@@ -64,7 +64,7 @@ const EXPORT_FORMATS = ['bibtex', 'ris', 'csv', 'json'] as const
 function CatalogListPage() {
   const navigate = useNavigate()
   const search = useSearch({ strict: false }) as CatalogSearch
-  const { isAdmin } = useAuth()
+  const { isAdmin, isAuthenticated } = useAuth()
   const isMobile = useIsMobile()
 
   const params = {
@@ -205,14 +205,16 @@ function CatalogListPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10">
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      onChange={toggleAll}
-                      aria-label="全选"
-                    />
-                  </TableHead>
+                  {isAuthenticated && (
+                    <TableHead className="w-10">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={toggleAll}
+                        aria-label="全选"
+                      />
+                    </TableHead>
+                  )}
                   <TableHead>标题</TableHead>
                   <TableHead>作者</TableHead>
                   <TableHead className="w-16">年份</TableHead>
@@ -228,14 +230,16 @@ function CatalogListPage() {
                       key={r.id}
                       data-state={selectedIds.includes(r.id) ? 'selected' : undefined}
                     >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(r.id)}
-                          onChange={() => toggleOne(r.id)}
-                          aria-label={`选择 ${r.title}`}
-                        />
-                      </TableCell>
+                      {isAuthenticated && (
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(r.id)}
+                            onChange={() => toggleOne(r.id)}
+                            aria-label={`选择 ${r.title}`}
+                          />
+                        </TableCell>
+                      )}
                       {/* 长文本列约束列宽 + 截断，防止 160 字符标题把整表撑出视口
                           （对齐 shadcn DataTable 长文本列 max-w+truncate 惯例） */}
                       <TableCell className="max-w-[320px] truncate">
@@ -311,6 +315,8 @@ function CatalogFilterFields({
   updateSearch: (patch: Partial<CatalogSearch>) => void
   className: string
 }) {
+  const { data: stats } = useCatalogStats()
+  const facetDisciplines = Object.keys(stats?.by_discipline ?? {})
   return (
     <div className={className}>
       <div className="space-y-1.5">
@@ -352,18 +358,29 @@ function CatalogFilterFields({
       </div>
       <div className="space-y-1.5">
         <label className="text-xs text-muted-foreground">学科</label>
-        <Input
-          placeholder="如 computer science"
-          defaultValue={search.discipline ?? ''}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              updateSearch({
-                discipline: (e.target as HTMLInputElement).value,
-                page: 1,
-              })
-            }
-          }}
-        />
+        <Select
+          value={search.discipline ?? 'all'}
+          onValueChange={(v) =>
+            updateSearch({ discipline: v === 'all' ? undefined : v, page: 1 })
+          }
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部学科</SelectItem>
+            {(facetDisciplines.length > 0
+              ? facetDisciplines
+              : search.discipline
+                ? [search.discipline]
+                : []
+            ).map((d) => (
+              <SelectItem key={d} value={d}>
+                {d}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="space-y-1.5">
         <label className="text-xs text-muted-foreground">年份</label>

@@ -26,6 +26,8 @@ interface ManuscriptViewProps {
   resourceId: number
   initialPercent: number
   onProgress: (percent: number, completed: boolean) => void
+  /** true = 用 window 原生滚动采集进度（移动端富文本），false = 容器内滚 */
+  useWindowScroll?: boolean
 }
 
 function headingHash(text: string): string {
@@ -57,7 +59,7 @@ function extractHeadings(md: string): TocEntry[] {
   return entries
 }
 
-export function ManuscriptView({ resourceId, initialPercent, onProgress }: ManuscriptViewProps) {
+export function ManuscriptView({ resourceId, initialPercent, onProgress, useWindowScroll = false }: ManuscriptViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const restoredRef = useRef(false)
   const [scrollHost, setScrollHost] = useState<HTMLDivElement | null>(null)
@@ -97,12 +99,29 @@ export function ManuscriptView({ resourceId, initialPercent, onProgress }: Manus
       if (restoredRef.current) return
       restoredRef.current = true
       if (initialPercent > 0) {
-        const max = scrollHost.scrollHeight - scrollHost.clientHeight
-        scrollHost.scrollTop = (initialPercent / 100) * max
+        if (useWindowScroll) {
+          const max = document.documentElement.scrollHeight - window.innerHeight
+          window.scrollTo(0, (initialPercent / 100) * max)
+        } else {
+          const max = scrollHost.scrollHeight - scrollHost.clientHeight
+          scrollHost.scrollTop = (initialPercent / 100) * max
+        }
       }
     }, 60)
     return () => window.clearTimeout(timer)
-  }, [data, scrollHost, initialPercent])
+  }, [data, scrollHost, initialPercent, useWindowScroll])
+
+  // 进度采集：移动端富文本走 window 原生滚动，桌面/内滚走容器滚动
+  useEffect(() => {
+    if (!useWindowScroll) return
+    const onWinScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight
+      const percent = max <= 0 ? 100 : Math.min(100, Math.round((window.scrollY / max) * 100))
+      onProgress(percent, percent >= 98)
+    }
+    window.addEventListener('scroll', onWinScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onWinScroll)
+  })
 
   const handleScroll = () => {
     const el = scrollRef.current
@@ -114,10 +133,14 @@ export function ManuscriptView({ resourceId, initialPercent, onProgress }: Manus
 
   const jumpTo = (id: string) => {
     const el = document.getElementById(id)
-    if (el && scrollRef.current) {
+    if (!el) return
+    if (useWindowScroll) {
+      const top = el.getBoundingClientRect().top + window.scrollY - 88
+      window.scrollTo({ top })
+    } else if (scrollRef.current) {
       scrollRef.current.scrollTop = el.offsetTop - 24
-      if (id === 'refs') setRefsOpen(true)
     }
+    if (id === 'refs') setRefsOpen(true)
   }
 
   if (isLoading) {
@@ -150,8 +173,11 @@ export function ManuscriptView({ resourceId, initialPercent, onProgress }: Manus
         scrollRef.current = node
         setScrollHost(node)
       }}
-      onScroll={handleScroll}
-      className="flex-1 overflow-y-auto bg-background"
+      onScroll={useWindowScroll ? undefined : handleScroll}
+      className={
+        'flex-1 bg-background ' +
+        (useWindowScroll ? '' : 'overflow-y-auto')
+      }
     >
       <div className="mx-auto flex max-w-6xl items-start px-5 py-8">
         {/* 目录侧栏：桌面端吸附 */}

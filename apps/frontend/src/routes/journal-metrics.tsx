@@ -15,9 +15,9 @@ export const Route = createFileRoute('/journal-metrics')({
 // 权重与计算口径属于编辑部内部口径，不进页面、不进 API。
 // 没有引文数据，所以诚实标注"不与 JCR 影响因子互比"。
 const rise = {
-  initial: { opacity: 0, y: 14 },
+  initial: { opacity: 0.3, y: 14 },
   whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: '-40px' },
+  viewport: { once: true, margin: '0px 0px 200px 0px' },
   transition: { duration: 0.45, ease: 'easeOut' as const },
 }
 

@@ -52,7 +52,9 @@ export function CoverArt({ seed, title, subtitle, className }: CoverArtProps) {
       </span>
       <span className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/25 to-transparent p-2 text-[10px] font-medium tracking-wide text-white/90">
         <span className="line-clamp-1">{subtitle ?? 'Rubbish'}</span>
-        <span className="shrink-0 opacity-75">R·{h % 97}</span>
+        <span className="shrink-0 opacity-60" aria-hidden>
+          {String(h % 7 + 1).padStart(2, '0')}
+        </span>
       </span>
     </div>
   )
