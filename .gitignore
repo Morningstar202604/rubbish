@@ -57,6 +57,9 @@ infra/caddy_config/
 *.bak
 *.tmp
 *.orig
+# 一次性脚本（xxx.tmp.py / audit-shots.tmp.mjs）：上面的 *.tmp 只匹配
+# 以 .tmp 结尾的文件，捕获不到 `.tmp.<ext>` 形式，故单独列出。
+*.tmp.*
 
 # IDE
 .vscode/
