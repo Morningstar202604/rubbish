@@ -75,24 +75,24 @@ export function CookieBanner() {
       aria-live="polite"
       aria-label="Cookie 使用同意"
       data-testid="cookie-banner"
-      className="fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-3xl rounded-lg border bg-background/95 p-4 shadow-lg backdrop-blur sm:bottom-6 sm:left-auto sm:right-6 sm:p-5"
+      className="fixed bottom-3 left-3 right-3 z-40 max-h-[38vh] overflow-y-auto rounded-xl border bg-background/95 p-3.5 shadow-lg backdrop-blur sm:bottom-5 sm:left-auto sm:right-5 sm:w-[22rem] sm:p-4"
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-        <div className="flex-1 text-sm text-foreground/90">
-          <p className="font-medium">本站使用 Cookie</p>
+      <div className="flex flex-col gap-2.5 sm:gap-3">
+        <div className="text-xs leading-relaxed text-foreground/90">
+          <p className="text-[13px] font-medium">本站使用 Cookie</p>
           <p className="mt-1 text-foreground/70">
-            必要 Cookie 用于保持登录状态与防护跨站请求伪造，站点没有广告或第三方追踪
-            Cookie。你可以随时在设置中更改选择。
+            必要 Cookie 用于保持登录与防跨站伪造；本站无广告、无第三方追踪。
             <a href="/privacy" className="ml-1 underline hover:text-foreground">
               隐私政策
             </a>
           </p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
+        <div className="flex items-center gap-2">
           <Button
             type="button"
             variant="outline"
             size="sm"
+            className="flex-1"
             onClick={essentialOnly}
             data-testid="cookie-banner-essential"
           >
@@ -101,6 +101,7 @@ export function CookieBanner() {
           <Button
             type="button"
             size="sm"
+            className="flex-1"
             onClick={accept}
             data-testid="cookie-banner-accept"
           >

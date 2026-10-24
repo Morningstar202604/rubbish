@@ -41,12 +41,42 @@ export function formatDateTime(iso: string | null | undefined, fallback = '—')
   return date.toLocaleString()
 }
 
+// 后端 detail 目前是英文（FastAPI/OAuth2 惯例），界面上直接抛出会让中文用户
+// 看到 "Invalid credentials" 这类原文。此处集中映射常见认证/权限/校验错误，
+// 未命中的 detail 原样返回（新增后端错误时可在下表补充）。
+const BACKEND_ERROR_ZH: Record<string, string> = {
+  'Invalid credentials': '用户名或密码不正确',
+  'User account is disabled': '账号已被停用，请联系编辑部',
+  'Invalid or expired two-factor session; log in again': '验证会话已过期，请重新登录',
+  'Invalid or expired refresh token': '登录状态已过期，请重新登录',
+  'Not authenticated': '请先登录',
+  'Insufficient permissions': '没有权限执行此操作',
+  'Resource not found': '内容不存在或已被删除',
+  'Submission not found': '投稿不存在或已被删除',
+  'This resource has no downloadable file': '该内容没有可下载的文件',
+  'This resource has no online manuscript': '该内容没有在线全文',
+  'Only the submitter can upload files': '只有投稿作者本人可以上传文件',
+  'File exceeds maximum size': '文件超过大小限制',
+  'Unsupported file type': '不支持该文件类型',
+  'Comment not found': '评论不存在',
+  'Reading list not found': '阅读列表不存在',
+  'Assignment not found': '审稿任务不存在',
+  'Email already registered': '该邮箱已注册',
+  'Username already taken': '该用户名已被占用',
+  'Slug already taken in this tenant': '该短链接已被占用',
+  'DOI already exists in this catalog': '该 DOI 已存在',
+}
+
+export function translateBackendError(detail: string): string {
+  return BACKEND_ERROR_ZH[detail] ?? detail
+}
+
 // Single source of truth for converting a thrown value (axios + unknown)
 // into a user-facing toast message. Used by every mutation catch block.
 export function extractError(err: unknown, fallback: string): string {
   if (err instanceof AxiosError) {
     const detail = (err.response?.data as { detail?: string } | undefined)?.detail
-    if (detail) return detail
+    if (detail) return translateBackendError(detail)
   }
   return fallback
 }

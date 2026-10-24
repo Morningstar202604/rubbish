@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate, useSearch } from '@tanstack/react-r
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
-import { safeInternalPath } from '@/lib/utils'
+import { extractError, safeInternalPath } from '@/lib/utils'
 import { isTwoFactorRequired } from '@/lib/types'
 import { useLogin, useTwoFactorLogin } from '@/hooks/api/use-auth'
 import { Button } from '@/components/ui/button'
@@ -40,11 +40,7 @@ function LoginPage() {
       toast.success('登录成功')
       void navigate({ to: safeInternalPath(search.redirect) })
     } catch (err) {
-      const msg =
-        err instanceof AxiosError
-          ? (err.response?.data as { detail?: string })?.detail ?? '登录失败'
-          : '登录失败'
-      toast.error(msg)
+      toast.error(extractError(err, '登录失败，请检查用户名与密码'))
     }
   }
 

@@ -110,7 +110,8 @@ export function MobileAppShell() {
 
   // 期刊门面模式：首页走独立的全宽 editorial 版式，不套移动端 Tab 壳（与桌面端一致）。
   // 提前返回必须放在全部 hooks 之后（rules of hooks）。
-  if (location.pathname === '/') {
+  const AUTH_FACADE = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email']
+  if (location.pathname === '/' || AUTH_FACADE.includes(location.pathname)) {
     return (
       <div className="min-h-screen bg-background">
         <ModuleErrorBoundary name="页面" resetKeys={[location.pathname]}>

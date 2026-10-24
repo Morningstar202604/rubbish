@@ -26,6 +26,7 @@
   --accent: oklch(0.93 0.06 75);
   --accent-foreground: oklch(0.36 0.09 60);
   --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.88 0.015 90);
   --input: oklch(0.88 0.015 90);
   --ring: oklch(0.62 0.10 273);
@@ -60,6 +61,7 @@
   --accent: oklch(0.30 0.08 65);
   --accent-foreground: oklch(0.85 0.11 70);
   --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.145 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.55 0.11 273);
@@ -94,6 +96,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -246,5 +249,29 @@ h4 {
   }
   .refs-collapse {
     display: block !important;
+  }
+}
+
+/* 键盘可达性：全站焦点环（0.7.2 审计发现 Tab 焦点 outline:none） */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  /* 鼠标点击不显示焦点环，仅键盘导航显示 */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+  /* 跳转主内容（读屏/键盘用户） */
+  .skip-to-content:focus {
+    position: fixed;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 100;
+    padding: 0.5rem 1rem;
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+    border-radius: 0.375rem;
   }
 }

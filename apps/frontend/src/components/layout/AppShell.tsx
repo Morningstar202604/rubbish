@@ -132,7 +132,10 @@ export function AppShell() {
   // 不套工作台侧边栏 —— 否则访客看到的是"作者后台"而不是对外期刊官网。
   // 注意：提前返回必须放在全部 hooks 之后（rules of hooks），
   // 否则会形成条件式 hook 调用（react-hooks/rules-of-hooks 会拦截）。
-  if (location.pathname === '/') {
+  // 访客入口页（登录/注册/找回密码/邮箱验证）同样不套工作台侧栏：
+  // 未登录用户看到「我的提交/用户管理」这类导航只会困惑，且登录框应居中独立。
+  const AUTH_FACADE = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email']
+  if (location.pathname === '/' || AUTH_FACADE.includes(location.pathname)) {
     return (
       <div className="min-h-screen bg-background">
         <ModuleErrorBoundary name="页面" resetKeys={[location.pathname]}>

@@ -421,12 +421,12 @@ function HomePage() {
               >
                 投稿流程
               </a>
-              <a
-                href="#metrics"
+              <Link
+                to="/journal-metrics"
                 className="text-muted-foreground transition-colors hover:text-foreground"
               >
                 期刊指标
-              </a>
+              </Link>
               <Link
                 to="/authors"
                 className="text-muted-foreground transition-colors hover:text-foreground"

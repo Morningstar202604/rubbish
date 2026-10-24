@@ -7,6 +7,43 @@
 `apps/backend/pyproject.toml`、`apps/frontend/package.json`、`apps/backend/app/__init__.py`
 四处完全一致，由 `scripts/check-version.sh` 守门。
 
+## [0.7.2] — 2026-10-24
+
+多角色端到端演练（真实生产 API，29 项检查全通过）+ 登录态/游客态浏览器走查
+（Playwright），据实修复：
+
+### Fixed
+
+- **通知未读数不可见**：`--color-destructive-foreground` 从未定义，
+  侧边栏未读徽标文字与背景同色（红点无数字）；危险确认按钮同样受影响。
+  补齐 light/dark 两套 token 与 `@theme inline` 映射。
+- **登录失败提示为英文原文**：`extractError` 直接回传后端 detail
+  （如 "Invalid credentials"）。新增 `translateBackendError` 集中映射
+  19 类常见认证/权限/校验错误为中文，56 处调用点一处生效；登录页改用
+  本地化兜底文案。
+- **登录/注册页套着工作台侧栏**：未登录访客能看到「我的提交/用户管理」
+  等无权限导航。桌面与移动外壳的访客门面扩展到
+  `/login /register /forgot-password /reset-password /verify-email`。
+- **全站键盘焦点不可见**：Tab 导航无焦点环（`outline: none`）。
+  新增 `:focus-visible` 全局焦点样式（2px ring + offset）与跳转主内容样式。
+- **首页导航「期刊指标」跳到锚点**而非独立指标页（`#metrics`），
+  与其他入口不一致；改为路由 `/journal-metrics`。
+- **Cookie 同意横幅遮挡内容**：桌面宽横幅压住表单/正文底部；
+  改为右下角紧凑卡片（22rem、可滚动、按钮并排），移动端占宽但不遮操作区。
+
+### Changed
+
+- **生产数据清理**：删除 2 条「工作流验收报告」测试稿（待审队列脏数据）
+  与 1 条与已刊目录重复的 pending 投稿（同一论文既在目录又待审）；
+  目录 7 条 ↔ accepted 投稿 7 条，待审队列归零。
+
+### Verified
+
+- 多角色 API 演练 29/29：注册→投稿→上传（自动转 md）→编辑待审可见→
+  建审稿人并授权→指派→审稿人接受→读双盲稿→提交意见→编辑大修→
+  作者修订重投→录用（刊前暂存）→刊前 404→刊出→游客读详情/全文/PDF→
+  读者评论→阅读列表→通知→指标。测试账号与资源已全部清理。
+
 ## [0.7.1] — 2026-10-24
 
 ### Fixed
