@@ -30,6 +30,9 @@
   `/users/me` 自管理、租户域名 CRUD、CAPTCHA provider 解析与缓存、
   审稿催办邮件通道、投稿文件边界（413/Range/预签名/丢失）、目录冲突与
   facet、管理员用户状态/角色/评审模式等 8 个测试文件。
+- 前端新增 `useInViewReveal` 与 `RevealSection` 单测（13 个用例，覆盖
+  揭示时机、once 语义、自定义 rootMargin/threshold、无 IO 环境降级、
+  卸载清理），前端测试 109 → **122 passed（17 files）**。
 
 ## [0.8.1] — 2026-10-24
 
