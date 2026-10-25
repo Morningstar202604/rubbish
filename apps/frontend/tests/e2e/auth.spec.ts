@@ -116,8 +116,9 @@ test.describe('auth: register + verify + login + logout', () => {
     // 退出
     await logoutViaUi(page)
     await expect(page).toHaveURL(/\/login$/)
-    // 退出后顶部又显示登录注册按钮
-    await expect(page.getByRole('link', { name: '登录' }).first()).toBeVisible()
+    // 退出后落在登录页：表单上的「登录」按钮可见（登录页不套顶部栏）
+    await expect(page.getByRole('button', { name: '登录' })).toBeVisible()
+    await expect(page.getByRole('link', { name: '注册' }).first()).toBeVisible()
   })
 
   test('can verify email via resend + verify-email page', async ({ page }) => {

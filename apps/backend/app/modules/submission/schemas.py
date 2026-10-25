@@ -157,6 +157,18 @@ class SubmissionListResponse(BaseModel):
     meta: PaginationMeta
 
 
+class ReviewerCandidate(BaseModel):
+    """Editor 分配审稿人时的候选（持有 reviewer 角色且账号启用）。"""
+
+    id: int
+    username: str
+    email: str
+
+
+class ReviewerCandidateListResponse(BaseModel):
+    data: list[ReviewerCandidate]
+
+
 class SubmissionUpdate(BaseModel):
     """Body for PATCH /submissions/{id} — author edits their manuscript.
 
@@ -214,6 +226,8 @@ __all__ = [
     "MessageResponse",
     "PaginationMeta",
     "ResubmitRequest",
+    "ReviewerCandidate",
+    "ReviewerCandidateListResponse",
     "SubmissionCreate",
     "SubmissionDecision",
     "SubmissionListResponse",

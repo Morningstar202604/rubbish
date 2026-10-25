@@ -9,6 +9,57 @@
 
 ## [Unreleased]
 
+## [0.8.2] — 2026-10-25
+
+### Fixed
+
+- **在线阅读图表全部裂图**：PDF 转 Markdown 在 Windows 上产出
+  `![](C:/Users/.../Temp/rubbish-md-xxx/-0001-00.png)` 绝对路径，替换逻辑按
+  裸文件名匹配导致一个都没命中，图片既没内联也指向本机临时目录。改为按文件名
+  正则匹配任意前缀路径并内联为 data URI，增量回归测试锁定（这类
+  存量稿件需重新生成 md——已随本版本重跑 7 篇存量稿件）。
+- **移动端状态筛选 Tab 换行重叠**：`TabsList` 高度固定 36px 且 `flex-wrap`
+  折行后第二行压到卡片上（编辑工作台最明显）。改为单行横向滚动（隐藏滚动条、
+  触发器 `shrink-0`、左对齐），11 个状态在 390px 下可滑动查看。
+- **详情/阅读页底部操作栏与 Tab 栏叠压**：两个页面各自的 `fixed bottom-0 z-40`
+  操作栏盖住全局 Tab 栏（z-30）。改为堆叠在 Tab 栏之上并补 `env(safe-area-inset-bottom)`，
+  内容区 padding 同步加大；这两页不再渲染中心 FAB（会悬在操作栏上方遮挡内容）。
+- **游客看到无法生效的控件**：阅读页游客仍显示「保存进度」按钮（点击只弹
+  toast）；桌面侧栏改为说明卡，移动底部栏改为「登录以同步阅读进度」链接。
+- 控制台噪声：`<img src="">` 空串警告（转换失败的图片引用）改为不渲染该图片。
+
+### Changed
+
+- **类型标签本地化**：目录/详情/阅读页/我的提交/审稿工作台此前直接显示后端
+  枚举 `paper`，统一走 `typeLabel()` 显示「论文」。
+- **角色信息贯通**：`TokenResponse` 与 `/auth/me`、`/users/me` 增加 `roles`；
+  侧边栏与移动抽屉按角色显隐（审稿工作台=reviewer，编辑工作台=editor/
+  section_editor），普通作者不再看到点进去就 403 的入口。
+- **编辑工作台对非 admin 的 editor 开放**：路由守卫从 `isAdmin` 改为角色判定；
+  「分配审稿人」下拉改用新端点 `GET /api/submissions/reviewer-candidates`
+  （仅 `require_editor`，只返回持 reviewer 角色且启用的账号），此前走
+  `/admin/users` 对非 admin 编辑是 403，下拉永远为空。
+
+### CI
+
+- `apps/backend/uv.lock` 与 `package-lock.json` 版本位与 VERSION 对齐
+  （`uv sync --locked` 不再因 lockfile 过期失败）。
+- `npm audit` 高危清零：`undici` 8.12.1 → 8.12.3（jsdom 传递依赖）；
+  KaTeX 原型污染为 low，需降级 rehype-katex 到 1.x 才能修（语义化破坏），
+  保持现状并留档。
+- pre-commit 两处红：`apps/frontend/public/help.html` 尾部多余空行（EOF fixer）、
+  `scripts/hooks/*.py` 在索引里缺可执行位（100644 → 100755）；
+  `no-junk-files` 误伤仓库治理命令 `.codebuddy/commands/test-gap.md`，加白名单。
+
+### Tests
+
+- 新增 `test_auth_roles_me.py`（3 例：登录/`/auth/me`/`/users/me` 的 roles）、
+  `test_reviewer_candidates.py`（4 例：候选过滤、字段最小集、非 editor 403、
+  非 admin editor 可进工作台）、`test_manuscript.py` 图片内联回归（12 例）。
+- 前端 `nav.test.ts` +5 例覆盖 `filterNav` 的角色/登录/管理员组合；共 127 passed。
+- 更新两处过时 E2E：访客详情页不再断言"登录后阅读全文"（0.6.1 已取消登录墙）、
+  退出登录后落在登录页应断言表单按钮而非顶部链接。E2E 68 passed。
+
 ### Fixed
 
 - **首页/内容页整段长期发灰（`whileInView` 全面失效）**：motion 14.5.0 的

@@ -31,6 +31,7 @@ export function useLogin() {
         id: data.user_id,
         username: data.username,
         is_admin: data.is_admin,
+        roles: data.roles ?? [],
       })
       void qc.invalidateQueries({ queryKey: [...AUTH_KEY, 'me'] })
     },
@@ -51,6 +52,7 @@ export function useTwoFactorLogin() {
         id: data.user_id,
         username: data.username,
         is_admin: data.is_admin,
+        roles: data.roles ?? [],
       })
       void qc.invalidateQueries({ queryKey: [...AUTH_KEY, 'me'] })
     },
@@ -67,6 +69,7 @@ export function useRegister() {
         id: data.user_id,
         username: data.username,
         is_admin: data.is_admin,
+        roles: data.roles ?? [],
       })
       void qc.invalidateQueries({ queryKey: [...AUTH_KEY, 'me'] })
     },

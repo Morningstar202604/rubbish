@@ -22,6 +22,19 @@ def _make_pdf(text: str = "奶蛙叙事的演化路径考察") -> bytes:
     return data
 
 
+def _make_pdf_with_image(text: str = "含图论文") -> bytes:
+    """含位图的 PDF：pymupdf4llm 会抽取图片并在 Markdown 里留文件引用。"""
+    doc = pymupdf.open()
+    page = doc.new_page()
+    page.insert_text((72, 100), text, fontname="china-s")
+    pix = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 120, 80), False)
+    pix.clear_with(200)
+    page.insert_image(pymupdf.Rect(72, 140, 300, 260), pixmap=pix)
+    data = doc.tobytes()
+    doc.close()
+    return data
+
+
 def _make_docx(text: str = "排队论建模的实证研究") -> bytes:
     """最小可解析 docx（mammoth 只需 document.xml 的段落文本）。"""
     buf = io.BytesIO()
@@ -56,6 +69,16 @@ def test_convert_pdf_extracts_text() -> None:
     md = convert_to_markdown(_make_pdf(), "thesis.pdf")
     assert md is not None
     assert "奶蛙叙事" in md
+
+
+def test_convert_pdf_images_are_inlined_as_data_uri() -> None:
+    """回归：Windows 下 pymupdf4llm 产出 `![](C:/.../rubbish-md-xxx/-0001-00.png)`
+    绝对路径，旧实现按相对文件名匹配，图片全部落空（data URI 0 个、阅读器空图）。"""
+    md = convert_to_markdown(_make_pdf_with_image(), "with-image.pdf")
+    assert md is not None
+    assert "data:image/png;base64," in md
+    assert "rubbish-md-" not in md
+    assert "C:/" not in md
 
 
 def test_convert_docx_extracts_text() -> None:

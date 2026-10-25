@@ -30,7 +30,7 @@ import { useLogout } from '@/hooks/api/use-auth'
 import { useUnreadCount } from '@/hooks/api/use-modules'
 import { cn } from '@/lib/utils'
 import { BrandMark } from '@/components/common/brand-mark'
-import { resolveActiveNavPath, type NavItem } from '@/lib/nav'
+import { filterNav, resolveActiveNavPath, type NavItem } from '@/lib/nav'
 import { ModuleErrorBoundary } from '@/components/common/error-boundary'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -56,10 +56,24 @@ const NAV: NavItem[] = [
   { to: '/follows', label: '关注与订阅', icon: Heart, auth: true, group: '内容' },
   { to: '/recommendations', label: '推荐', icon: Lightbulb, auth: true, group: '内容' },
   { to: '/submissions', label: '我的提交', icon: ScrollText, auth: true, group: '我的工作' },
-  { to: '/review/assignments', label: '审稿工作台', icon: ClipboardCheck, auth: true, group: '我的工作' },
+  {
+    to: '/review/assignments',
+    label: '审稿工作台',
+    icon: ClipboardCheck,
+    auth: true,
+    roles: ['reviewer'],
+    group: '我的工作',
+  },
   // 编辑工作台（admin 审核队列）：挂在审稿工作台旁，语义上属于编辑部工作流，
   // 而非"我的提交"的子页面
-  { to: '/submissions/pending', label: '编辑工作台', icon: Gavel, auth: true, adminOnly: true, group: '我的工作' },
+  {
+    to: '/submissions/pending',
+    label: '编辑工作台',
+    icon: Gavel,
+    auth: true,
+    roles: ['editor', 'section_editor'],
+    group: '我的工作',
+  },
   { to: '/ingest', label: '导入', icon: Upload, auth: true, group: '我的工作' },
   { to: '/notifications', label: '通知', icon: Bell, auth: true, group: '消息' },
   // admin 组：用户 → 期刊四件套（卷/期/信息/设置）归组连续排列，审计日志垫底
@@ -82,10 +96,10 @@ export function AppShell() {
   const logoutMut = useLogout()
   const { data: unread } = useUnreadCount({ enabled: isAuthenticated })
 
-  const visibleNav = NAV.filter((n) => {
-    if (n.adminOnly && !isAdmin) return false
-    if (n.auth && !isAuthenticated) return false
-    return true
+  const visibleNav = filterNav(NAV, {
+    isAuthenticated,
+    isAdmin,
+    roles: user?.roles ?? [],
   })
 
   const activePath = resolveActiveNavPath(location.pathname, visibleNav)

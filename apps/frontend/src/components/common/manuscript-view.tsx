@@ -189,7 +189,7 @@ export function ManuscriptView({ resourceId, initialPercent, onProgress, useWind
               type="button"
               onClick={() => setTocOpen(true)}
               aria-label="打开目录"
-              className="fixed bottom-20 right-4 z-30 flex items-center gap-1.5 rounded-full border bg-card/95 px-3 py-2 text-xs shadow-lg backdrop-blur lg:hidden"
+              className="fixed bottom-[calc(8rem+env(safe-area-inset-bottom))] right-4 z-30 flex items-center gap-1.5 rounded-full border bg-card/95 px-3 py-2 text-xs shadow-lg backdrop-blur lg:hidden"
             >
               <ListTree className="h-3.5 w-3.5" />
               目录
@@ -281,9 +281,12 @@ export function ManuscriptView({ resourceId, initialPercent, onProgress, useWind
                   {children}
                 </a>
               ),
-              img: ({ src, alt }) => (
-                <img src={typeof src === 'string' ? src : undefined} alt={alt ?? ''} loading="lazy" />
-              ),
+              img: ({ src, alt }) =>
+                // 空/非字符串 src（例如转换失败的本地绝对路径被清洗成空串）
+                // 直接不渲染：浏览器对 src="" 会重新请求整页，且控制台报错。
+                typeof src === 'string' && src ? (
+                  <img src={src} alt={alt ?? ''} loading="lazy" />
+                ) : null,
               h2: ({ children }) => (
                 <h2 id={`h-${headingHash(String(children))}`}>{children}</h2>
               ),

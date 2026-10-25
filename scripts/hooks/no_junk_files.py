@@ -37,6 +37,12 @@ def _in_test_dir(f):
     return "tests" in _norm(f).split("/") or "test" in _norm(f).split("/")
 
 
+def _is_governance_command(f):
+    # .codebuddy/commands/ 是仓库治理命令（test-gap.md 等），文件名前缀
+    # 会命中下面的临时脚本正则，属于误伤。
+    return _norm(f).startswith(".codebuddy/commands/")
+
+
 def main(argv):
     files = argv[1:]
     if not files:
@@ -45,6 +51,7 @@ def main(argv):
         f
         for f in files
         if not _in_test_dir(f)
+        and not _is_governance_command(f)
         and any(p.search(f.split("/")[-1]) for p in TMP_PATTERNS)
     ]
     if not hits:

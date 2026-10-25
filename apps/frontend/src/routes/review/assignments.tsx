@@ -12,6 +12,7 @@ import {
   useSubmitReview,
 } from '@/hooks/api/use-modules'
 import type { AssignmentStatus, Recommendation, ReviewSubmit } from '@/lib/types'
+import { typeLabel } from '@/lib/resource-labels'
 import { extractError } from '@/lib/utils'
 import { PageHeader } from '@/components/common/page-header'
 import { Pagination } from '@/components/common/pagination'
@@ -479,7 +480,7 @@ function SubmissionDetailDialog({
             <div>
               <h3 className="text-base font-semibold">{data.title}</h3>
               <div className="mt-1 flex flex-wrap gap-1">
-                <Badge variant="secondary">{data.type}</Badge>
+                <Badge variant="secondary">{typeLabel(data.type)}</Badge>
                 <Badge variant="outline">{data.discipline}</Badge>
                 {data.subdiscipline && (
                   <Badge variant="outline">{data.subdiscipline}</Badge>

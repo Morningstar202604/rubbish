@@ -5,6 +5,10 @@ export interface AuthUser {
   id: number
   username: string
   is_admin: boolean
+  // 服务端下发的角色名（reviewer/editor/section_editor/author/reader）。
+  // 前端只用来决定导航可见性，真正的权限仍由后端 require_* 依赖强制。
+  // 可选：旧版会话缓存里没有这个字段，读取方一律 `?? []`。
+  roles?: string[]
 }
 
 interface AuthState {

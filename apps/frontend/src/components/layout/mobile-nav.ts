@@ -32,6 +32,8 @@ export interface MobileMoreItem {
   label: string
   icon: LucideIcon
   adminOnly?: boolean
+  /** 任一角色命中即可见（admin 视为全角色） */
+  roles?: string[]
 }
 
 // 底部 Tab 栏：4 个固定入口。中心 FAB 由外壳单独渲染，不在此列表。
@@ -43,7 +45,7 @@ export const MOBILE_TABS: MobileTab[] = [
   { to: '/__more', label: '我的', icon: User, openSheet: true },
 ]
 
-// "更多"底部抽屉的次级导航（按 isAdmin 过滤）。
+// "更多"底部抽屉的次级导航（按 isAdmin + 角色过滤）。
 export const MOBILE_MORE: MobileMoreItem[] = [
   { to: '/dashboard', label: '概览', icon: Home },
   { to: '/authors', label: '作者指南', icon: PenLine },
@@ -52,8 +54,13 @@ export const MOBILE_MORE: MobileMoreItem[] = [
   { to: '/submissions', label: '我的提交', icon: ScrollText },
   { to: '/follows', label: '关注与订阅', icon: Heart },
   { to: '/recommendations', label: '推荐', icon: Lightbulb },
-  { to: '/review/assignments', label: '审稿工作台', icon: ClipboardCheck },
-  { to: '/submissions/pending', label: '编辑工作台', icon: Gavel, adminOnly: true },
+  { to: '/review/assignments', label: '审稿工作台', icon: ClipboardCheck, roles: ['reviewer'] },
+  {
+    to: '/submissions/pending',
+    label: '编辑工作台',
+    icon: Gavel,
+    roles: ['editor', 'section_editor'],
+  },
   { to: '/ingest', label: '导入', icon: Upload },
   { to: '/account/security', label: '账号安全', icon: KeyRound },
   { to: '/admin/users', label: '用户管理', icon: Users, adminOnly: true },

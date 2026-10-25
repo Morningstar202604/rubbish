@@ -120,7 +120,7 @@ function CatalogDetailPage() {
   }
 
   return (
-    <div className={isMobile ? 'pb-24' : ''}>
+    <div className={isMobile ? 'pb-40' : ''}>
       <Link
         to="/catalog"
         className="mb-4 inline-flex items-center text-sm text-muted-foreground hover:text-primary"
@@ -808,7 +808,7 @@ function MobileDetailActions({
   onDelete: () => void
 }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-2 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur">
+    <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex items-center gap-2 border-t bg-background/95 p-3 backdrop-blur">
       <Button asChild className="flex-1">
         <Link
           to="/reader/$resourceId"

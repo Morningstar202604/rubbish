@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LucideIcon } from 'lucide-react'
-import { resolveActiveNavPath, type NavItem } from '@/lib/nav'
+import { filterNav, resolveActiveNavPath, type NavItem } from '@/lib/nav'
 
 // icon 仅用于渲染，解析逻辑不依赖它
 const item = (to: string): NavItem => ({
@@ -45,5 +45,63 @@ describe('resolveActiveNavPath', () => {
 
   it('空导航列表返回 undefined', () => {
     expect(resolveActiveNavPath('/dashboard', [])).toBeUndefined()
+  })
+})
+
+
+const roleItems: NavItem[] = [
+  { to: '/catalog', label: '目录', icon: null as unknown as LucideIcon },
+  { to: '/submissions', label: '我的提交', icon: null as unknown as LucideIcon, auth: true },
+  {
+    to: '/review/assignments',
+    label: '审稿工作台',
+    icon: null as unknown as LucideIcon,
+    auth: true,
+    roles: ['reviewer'],
+  },
+  {
+    to: '/submissions/pending',
+    label: '编辑工作台',
+    icon: null as unknown as LucideIcon,
+    auth: true,
+    roles: ['editor', 'section_editor'],
+  },
+  { to: '/admin/users', label: '用户管理', icon: null as unknown as LucideIcon, adminOnly: true },
+]
+
+describe('filterNav', () => {
+  it('访客只看公开入口', () => {
+    const visible = filterNav(roleItems, { isAuthenticated: false, isAdmin: false, roles: [] })
+    expect(visible.map((i) => i.to)).toEqual(['/catalog'])
+  })
+
+  it('普通作者看到登录后入口但没有审稿/编辑工作台', () => {
+    const visible = filterNav(roleItems, { isAuthenticated: true, isAdmin: false, roles: [] })
+    expect(visible.map((i) => i.to)).toEqual(['/catalog', '/submissions'])
+  })
+
+  it('审稿人只多出审稿工作台', () => {
+    const visible = filterNav(roleItems, {
+      isAuthenticated: true,
+      isAdmin: false,
+      roles: ['reviewer'],
+    })
+    expect(visible.map((i) => i.to)).toEqual(['/catalog', '/submissions', '/review/assignments'])
+  })
+
+  it('编辑（非管理员）能看到编辑工作台', () => {
+    const visible = filterNav(roleItems, { isAuthenticated: true, isAdmin: false, roles: ['editor'] })
+    expect(visible.map((i) => i.to)).toContain('/submissions/pending')
+  })
+
+  it('管理员绕过角色检查且看到管理入口', () => {
+    const visible = filterNav(roleItems, { isAuthenticated: true, isAdmin: true, roles: [] })
+    expect(visible.map((i) => i.to)).toEqual([
+      '/catalog',
+      '/submissions',
+      '/review/assignments',
+      '/submissions/pending',
+      '/admin/users',
+    ])
   })
 })

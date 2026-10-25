@@ -22,6 +22,7 @@ from __future__ import annotations
 import base64
 import logging
 import os
+import re
 import tempfile
 from io import BytesIO
 from pathlib import Path
@@ -52,15 +53,17 @@ def _pdf_to_markdown(contents: bytes) -> str | None:
             )
             # pymupdf4llm 产出对临时目录图片的文件引用：逐个内嵌为 data URI，
             # 让 Markdown 自包含（阅读器无需额外的图片端点）。
+            # 引用可能是裸文件名，也可能是带临时目录的绝对路径（Windows 上实测
+            # 为 `![](C:/Users/.../Temp/rubbish-md-xxx/-0001-00.png)`），所以按
+            # 文件名匹配所有形如 `](含有该文件名的路径)` 的引用，统一替换。
             for name in sorted(os.listdir(tmp)):
-                ref = name.replace("\\", "/")
-                token = f"![]({ref})"
-                if token not in md and f"{ref}" not in md:
+                path = Path(tmp, name)
+                if not path.is_file():
                     continue
-                data = Path(tmp, name).read_bytes()
-                b64 = base64.b64encode(data).decode("ascii")
-                md = md.replace(f"![]({ref})", f"![](data:image/png;base64,{b64})")
-                md = md.replace(f"]({ref})", f"](data:image/png;base64,{b64})")
+                b64 = base64.b64encode(path.read_bytes()).decode("ascii")
+                data_uri = f"data:image/png;base64,{b64}"
+                pattern = r"!\[([^\]]*)\]\(([^)\n]*" + re.escape(name) + r")\)"
+                md = re.sub(pattern, f"![\\g<1>]({data_uri})", md)
         md = md.strip()
         return md or None
     finally:

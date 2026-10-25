@@ -25,7 +25,7 @@ from app.core.db import get_db
 from app.core.logging import get_logger
 from app.core.schemas import PaginationMeta
 from app.core.time import utcnow
-from app.models import AuditLog, User
+from app.models import AuditLog, Role, User, UserRole
 from app.modules.catalog.models import Resource
 from app.modules.notifications import services as notifications
 from app.modules.review.models import ReviewAssignment, ReviewReport
@@ -48,6 +48,8 @@ from app.modules.submission.routes import router
 from app.modules.submission.schemas import (
     AnonymizedFileUpdate,
     MessageResponse,
+    ReviewerCandidate,
+    ReviewerCandidateListResponse,
     SubmissionDecision,
     SubmissionListResponse,
     SubmissionResponse,
@@ -74,6 +76,40 @@ async def list_pending_submissions(
         Submission.tenant_id == tenant_id,
     )
     return await _list_submissions(db, query, page, page_size)
+
+
+@router.get("/reviewer-candidates", response_model=ReviewerCandidateListResponse)
+async def list_reviewer_candidates(
+    limit: int = Query(default=200, ge=1, le=200),
+    _: User = Depends(require_editor),
+    db: AsyncSession = Depends(get_db),
+) -> ReviewerCandidateListResponse:
+    """可被指派的审稿人（持 reviewer 角色且账号启用）。
+
+    供编辑工作台的下拉使用：之前走 /admin/users，非 admin 的 editor
+    会拿到 403，导致「没有可指派的审稿人」。此端点只暴露分配所需的最小
+    字段（id / username / email），且同样要求 editor 权限。
+    """
+    tenant_id = require_tenant_id()
+    rows = (
+        await db.execute(
+            select(User.id, User.username, User.email)
+            .join(UserRole, UserRole.user_id == User.id)
+            .join(Role, Role.id == UserRole.role_id)
+            .where(
+                User.tenant_id == tenant_id,
+                User.is_active.is_(True),
+                UserRole.tenant_id == tenant_id,
+                Role.tenant_id == tenant_id,
+                Role.name == ROLE_REVIEWER,
+            )
+            .order_by(User.username.asc())
+            .limit(limit)
+        )
+    ).all()
+    return ReviewerCandidateListResponse(
+        data=[ReviewerCandidate(id=row.id, username=row.username, email=row.email) for row in rows]
+    )
 
 
 @router.get("", response_model=SubmissionListResponse)

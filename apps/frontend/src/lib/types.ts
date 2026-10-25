@@ -21,6 +21,8 @@ export interface TokenResponse {
   user_id: number
   username: string
   is_admin: boolean
+  // 服务端下发的角色名；旧后端不返回时按空数组处理
+  roles?: string[]
   // M2 2FA: when the account requires 2FA, access/refresh are empty
   // strings and the client must redeem ``two_factor_token`` via
   // ``POST /auth/2fa/authenticate`` before storing any tokens.

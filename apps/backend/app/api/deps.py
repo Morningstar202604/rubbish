@@ -172,6 +172,7 @@ async def get_current_user_optional(
 # 预定义角色名（与 Role 表保持一致；bootstrap 创建时用此 slug）
 ROLE_REVIEWER = "reviewer"
 ROLE_EDITOR = "editor"
+ROLE_SECTION_EDITOR = "section_editor"
 
 
 async def _user_has_role(db: AsyncSession, user: User, role_name: str) -> bool:
@@ -205,6 +206,21 @@ async def user_has_role(db: AsyncSession, user: User, role_name: str) -> bool:
     return await _user_has_role(db, user, role_name)
 
 
+async def user_role_names(db: AsyncSession, user: User) -> list[str]:
+    """当前用户在本租户内被授予的角色名（去重排序；不含 admin 伪角色）。"""
+    tenant_id = user.tenant_id
+    result = await db.execute(
+        select(Role.name)
+        .join(UserRole, UserRole.role_id == Role.id)
+        .where(
+            UserRole.user_id == user.id,
+            UserRole.tenant_id == tenant_id,
+            Role.tenant_id == tenant_id,
+        )
+    )
+    return sorted({r for r in result.scalars() if r})
+
+
 async def require_reviewer(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -225,11 +241,15 @@ async def require_editor(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """要求当前用户拥有 editor 角色或 admin。
+    """要求当前用户拥有 editor / section_editor 角色或 admin。
 
-    用于编辑分配审稿人 + 4 元决定端点。
+    用于编辑分配审稿人 + 4 元决定端点。section_editor（栏目编辑）在
+    权限层面是 editor 的子集角色，此前可被分配但没有任何实际权限，
+    导致「编辑工作台」入口可见却处处 403。
     """
-    if await _user_has_role(db, current_user, ROLE_EDITOR):
+    if await _user_has_role(db, current_user, ROLE_EDITOR) or await _user_has_role(
+        db, current_user, ROLE_SECTION_EDITOR
+    ):
         return current_user
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,

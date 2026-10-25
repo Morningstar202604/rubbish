@@ -29,6 +29,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
           id: res.id,
           username: res.username,
           is_admin: res.is_admin,
+          roles: res.roles ?? [],
         } satisfies AuthUser)
       } catch (err) {
         // 只有后端明确说「你这个 token 不认」才登出。网络抖动、

@@ -289,6 +289,25 @@ export function useAllSubmissions(status?: string, page = 1, pageSize = 20) {
   })
 }
 
+export interface ReviewerCandidate {
+  id: number
+  username: string
+  email: string
+}
+
+export function useReviewerCandidates(limit = 200) {
+  return useQuery<ReviewerCandidate[]>({
+    queryKey: ['submissions', 'reviewer-candidates', limit] as const,
+    queryFn: async () =>
+      (
+        await api.get<{ data: ReviewerCandidate[] }>('/submissions/reviewer-candidates', {
+          params: { limit },
+        })
+      ).data.data,
+    staleTime: 60_000,
+  })
+}
+
 export function usePendingSubmissions(page = 1, pageSize = 20) {
   return useQuery<SubmissionListResponse>({
     queryKey: keys.submission.pending(page),

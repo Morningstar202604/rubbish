@@ -12,6 +12,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { BrandMark } from '@/components/common/brand-mark'
 import { ModuleErrorBoundary } from '@/components/common/error-boundary'
 import { CookieBanner } from '@/components/common/cookie-banner'
+import { filterNav } from '@/lib/nav'
 import { MOBILE_TABS, MOBILE_MORE, MOBILE_FAB_TO, type MobileTab } from './mobile-nav'
 
 // 底部抽屉：自带遮罩、ESC 关闭、打开时锁 body 滚动。移动原生交互，不依赖居中 Dialog。
@@ -90,7 +91,11 @@ export function MobileAppShell() {
   const logoutMut = useLogout()
   const { data: unread } = useUnreadCount({ enabled: isAuthenticated })
 
-  const moreItems = MOBILE_MORE.filter((m) => !m.adminOnly || isAdmin)
+  const moreItems = filterNav(MOBILE_MORE, {
+    isAuthenticated,
+    isAdmin,
+    roles: user?.roles ?? [],
+  })
 
   // 认证页（登录/注册/找回密码/验证邮箱）不展示底部 Tab 栏与 FAB，避免未登录时露出需鉴权入口
   const isAuthPage = [
@@ -107,6 +112,11 @@ export function MobileAppShell() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSheetOpen(false)
   }, [location.pathname])
+
+  // 阅读页与资源详情页自带底部固定操作栏（z-40），会盖住 Tab 栏；
+  // 这类页面不再叠加中心 FAB，否则 FAB 悬在操作栏上方遮挡内容。
+  const hasOwnBottomBar =
+    /^\/reader\//.test(location.pathname) || /^\/catalog\/\d+/.test(location.pathname)
 
   // 期刊门面模式：首页走独立的全宽 editorial 版式，不套移动端 Tab 壳（与桌面端一致）。
   // 提前返回必须放在全部 hooks 之后（rules of hooks）。
@@ -163,7 +173,7 @@ export function MobileAppShell() {
       </main>
 
       {/* 中心悬浮按钮：仅登录用户且在非认证页可见，跳导入（创建类操作） */}
-      {showChrome && isAuthenticated && (
+      {showChrome && isAuthenticated && !hasOwnBottomBar && (
         <Button
           aria-label="导入"
           onClick={() => go(MOBILE_FAB_TO)}

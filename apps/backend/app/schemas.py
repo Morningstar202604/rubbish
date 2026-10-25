@@ -39,6 +39,10 @@ class TokenResponse(BaseModel):
     user_id: int
     username: str
     is_admin: bool
+    # 当前用户的角色名列表（reviewer/editor/section_editor/author/reader）。
+    # 登录响应即携带，前端据此渲染「审稿工作台 / 编辑工作台」等入口，
+    # 不必再调 /admin/users（那个接口要求 admin 权限）。
+    roles: list[str] = Field(default_factory=list)
     # M2 2FA: when 2FA is required but not yet completed, access/refresh
     # are empty strings and ``requires_2fa`` is True with a short-lived
     # ``two_factor_token`` to redeem via POST /auth/2fa/authenticate.

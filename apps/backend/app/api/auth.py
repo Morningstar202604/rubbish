@@ -21,7 +21,12 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_tenant_id, get_current_user, require_tenant_id
+from app.api.deps import (
+    get_current_tenant_id,
+    get_current_user,
+    require_tenant_id,
+    user_role_names,
+)
 from app.core.captcha import verify_captcha_token
 from app.core.config import settings
 from app.core.db import get_db
@@ -172,7 +177,7 @@ async def register(
     except Exception:
         logger.warning("verification_email_send_failed", user_id=user.id, exc_info=True)
 
-    return _issue_tokens(user, response)
+    return await _issue_tokens(user, response, db)
 
 
 @router.post(
@@ -227,7 +232,7 @@ async def login(
             pending_token=create_two_factor_pending_token(user.id, user.token_version)
         )
 
-    return _issue_tokens(user, response)
+    return await _issue_tokens(user, response, db)
 
 
 @router.post("/login/2fa", response_model=TokenResponse)
@@ -320,7 +325,7 @@ async def login_two_factor(
             detail="Invalid two-factor code",
         )
 
-    return _issue_tokens(user, response)
+    return await _issue_tokens(user, response, db)
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -409,7 +414,7 @@ async def refresh(
     await db.commit()
     await db.refresh(user)
 
-    return _issue_tokens(user, response)
+    return await _issue_tokens(user, response, db)
 
 
 @router.post("/revoke-all", status_code=status.HTTP_204_NO_CONTENT)
@@ -459,8 +464,14 @@ async def logout(
 
 
 @router.get("/me", response_model=UserResponse)
-async def me(current_user: User = Depends(get_current_user)) -> UserResponse:
-    return UserResponse.model_validate(current_user)
+async def me(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    """当前用户资料：包含角色名列表（前端按角色渲染导航）。"""
+    resp = UserResponse.model_validate(current_user)
+    resp.roles = await user_role_names(db, current_user)
+    return resp
 
 
 @router.patch("/me/orcid", response_model=UserResponse)
@@ -483,10 +494,12 @@ async def patch_orcid(
         current_user.orcid = payload.orcid
         await db.commit()
         await db.refresh(current_user)
-    return UserResponse.model_validate(current_user)
+    resp = UserResponse.model_validate(current_user)
+    resp.roles = await user_role_names(db, current_user)
+    return resp
 
 
-def _issue_tokens(user: User, response: Response) -> TokenResponse:
+async def _issue_tokens(user: User, response: Response, db: AsyncSession) -> TokenResponse:
     """Helper: build access+refresh tokens and set the refresh cookie.
 
     Access token carries ``token_version`` (invalidated on logout /
@@ -494,6 +507,10 @@ def _issue_tokens(user: User, response: Response) -> TokenResponse:
     (refresh_token_version) — a separate counter bumped on revoke-all
     so bulk revocation does not depend on the JTI denylist — and a
     unique ``jti`` (JWT ID) for per-token revocation via the denylist.
+
+    Also returns the caller's role names: the SPA renders role-gated
+    navigation (审稿工作台 / 编辑工作台) from them, and /admin/users —
+    the only other source of roles — is admin-only.
     """
     base_claims = {"sub": str(user.id), "token_version": user.token_version}
     access_token = create_access_token(base_claims)
@@ -512,6 +529,7 @@ def _issue_tokens(user: User, response: Response) -> TokenResponse:
         user_id=user.id,
         username=user.username,
         is_admin=user.is_admin,
+        roles=await user_role_names(db, user),
     )
 
 

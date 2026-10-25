@@ -309,7 +309,7 @@ async def authenticate_2fa(
     # Issue the standard access + refresh tokens (same path as password login).
     from app.api.auth import _issue_tokens
 
-    token_response = _issue_tokens(user, response)
+    token_response = await _issue_tokens(user, response, db)
     _clear_pending_cookie(response)
     logger.info("two_factor_login_success", user_id=user.id)
     return token_response

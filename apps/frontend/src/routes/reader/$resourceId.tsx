@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { ChevronLeft, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { typeLabel } from '@/lib/resource-labels'
 import { formatDateTime } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import { useIsMobile } from '@/hooks/use-is-mobile'
@@ -293,13 +294,13 @@ function ReaderPage() {
           返回详情
         </Link>
         <span className="min-w-0 flex-1 text-sm font-medium line-clamp-1">{data.title}</span>
-        {data.type && <Badge variant="secondary">{data.type}</Badge>}
+        {data.type && <Badge variant="secondary">{typeLabel(data.type)}</Badge>}
       </div>
 
       <div
         className={
           'flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden' +
-          (isMobile ? ' pb-20' : '')
+          (isMobile ? ' pb-36' : '')
         }
       >
         {/* 主体：Markdown 在线阅读（0.6.2 起）或 pdf.js 视图（兜底） */}
@@ -458,14 +459,28 @@ function ReaderPage() {
               </div>
 
               {/* 移动端：保存进度由底部固定操作栏独占，这里仅桌面端显示 */}
-              <Button
-                className="w-full max-md:hidden"
-                size="sm"
-                onClick={onManualUpdate}
-                disabled={updateMut.isPending}
-              >
-                {updateMut.isPending ? '保存中…' : '保存进度'}
-              </Button>
+              {isAuthenticated ? (
+                <Button
+                  className="w-full max-md:hidden"
+                  size="sm"
+                  onClick={onManualUpdate}
+                  disabled={updateMut.isPending}
+                >
+                  {updateMut.isPending ? '保存中…' : '保存进度'}
+                </Button>
+              ) : (
+                <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground max-md:hidden">
+                  游客进度自动保存在本设备；{' '}
+                  <Link
+                    to="/login"
+                    search={{ redirect: `/reader/${id}` }}
+                    className="text-primary hover:underline"
+                  >
+                    登录
+                  </Link>{' '}
+                  后可跨设备同步。
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -487,7 +502,7 @@ function ReaderPage() {
         <div
           role="toolbar"
           aria-label="阅读操作栏"
-          className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-2 border-t bg-background/95 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur"
+          className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex items-center gap-2 border-t bg-background/95 p-2 backdrop-blur"
         >
           {mode === 'pdf' && (
             <>
@@ -513,14 +528,24 @@ function ReaderPage() {
           </Button>
             </>
           )}
-          <Button
-            size="sm"
-            className="flex-1"
-            onClick={onManualUpdate}
-            disabled={updateMut.isPending}
-          >
-            {updateMut.isPending ? '保存中…' : '保存进度'}
-          </Button>
+          {isAuthenticated ? (
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={onManualUpdate}
+              disabled={updateMut.isPending}
+            >
+              {updateMut.isPending ? '保存中…' : '保存进度'}
+            </Button>
+          ) : (
+            <Link
+              to="/login"
+              search={{ redirect: `/reader/${id}` }}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+            >
+              登录以同步阅读进度
+            </Link>
+          )}
         </div>
       )}
 

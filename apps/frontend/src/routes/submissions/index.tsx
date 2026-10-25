@@ -39,6 +39,7 @@ import type {
   SubmissionStatus,
   SubmissionType,
 } from '@/lib/types'
+import { typeLabel } from '@/lib/resource-labels'
 import { extractError, parseListField } from '@/lib/utils'
 import { PageHeader } from '@/components/common/page-header'
 import { Pagination } from '@/components/common/pagination'
@@ -448,7 +449,7 @@ function SubmissionsPage() {
                     <TableCell className="max-w-[320px] truncate font-medium">
                       {s.title}
                     </TableCell>
-                    <TableCell>{s.type}</TableCell>
+                    <TableCell>{typeLabel(s.type)}</TableCell>
                     <TableCell className="max-w-[200px] truncate text-muted-foreground">
                       {s.discipline}
                     </TableCell>

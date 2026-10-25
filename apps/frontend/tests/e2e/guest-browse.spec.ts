@@ -5,8 +5,8 @@ import { ADMIN } from './helpers'
 // 校验:
 // - 根路径 / 未登录时展示公开门面页（不重定向，访客可先逛再看）
 // - /catalog 与 /catalog/$resourceId 未登录可访问（公开目录 + 公开详情）
-// - 详情页对访客隐藏鉴权能力（阅读进度/关注），显示"登录后阅读全文"引导
-// - /reader/* 未登录会被守卫挡回 /login
+// - 详情页对访客开放阅读（0.6.1 起取消登录墙），不显示鉴权专属能力
+// - /reader/* 未登录也可直接阅读（进度存本机，登录后跨设备同步）
 // - 顶部菜单对未登录用户显示「登录」「注册」按钮
 
 test.describe('guest browse', () => {
@@ -32,7 +32,7 @@ test.describe('guest browse', () => {
     await expect(page.getByPlaceholder('标题/作者/摘要')).toBeVisible()
   })
 
-  test('catalog detail is publicly visible with login CTA for guests', async ({
+  test('catalog detail is publicly readable for guests without a login wall', async ({
     page,
     request,
   }) => {
@@ -68,23 +68,17 @@ test.describe('guest browse', () => {
     await expect(
       page.getByText('这是一篇用于验证访客可以直接查看目录详情页').first(),
     ).toBeVisible()
-    // 鉴权能力降级：显示登录引导，而非"在线阅读"
-    await expect(
-      page.getByRole('link', { name: '登录后阅读全文' }).first(),
-    ).toBeVisible()
-    await expect(page.getByRole('link', { name: '在线阅读' })).toHaveCount(0)
-    // 阅读进度卡 / 关注卡对访客隐藏
-    await expect(page.getByText('阅读进度', { exact: true })).toHaveCount(0)
+    // 0.6.1 起阅读无登录墙：访客直接看到「在线阅读」，不存在"登录后阅读全文"
+    await expect(page.getByRole('link', { name: '在线阅读' }).first()).toBeVisible()
+    await expect(page.getByText('登录后阅读全文')).toHaveCount(0)
+    // 鉴权专属能力（关注/订阅）对访客隐藏
     await expect(page.getByText('关注', { exact: true })).toHaveCount(0)
-
-    // 点击登录引导跳 /login
-    await page.getByRole('link', { name: '登录后阅读全文' }).first().click()
-    await expect(page).toHaveURL(/\/login/)
   })
 
-  test('reader requires login and bounces to /login', async ({ page }) => {
+  test('reader is readable by guests (no login wall)', async ({ page }) => {
     await page.goto('/reader/1')
-    await expect(page).toHaveURL(/\/login/)
+    // 路由不再重定向；页面渲染阅读进度卡或"无法阅读"状态都说明守卫已放行
+    await expect(page).toHaveURL(/\/reader\/1$/)
   })
 
   test('dashboard requires login and bounces to /login', async ({ page }) => {

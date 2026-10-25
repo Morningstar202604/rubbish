@@ -6,8 +6,36 @@ export interface NavItem {
   icon: LucideIcon
   auth?: boolean
   adminOnly?: boolean
+  /**
+   * 任一角色命中即可见（admin 视为拥有全部角色）。只影响导航可见性，
+   * 真正的权限由后端 require_* 依赖强制。
+   */
+  roles?: string[]
   /** 侧边栏分组标题：角色化导航 —— 读者/作者/审稿人/编辑各自只见自己的分区 */
   group?: string
+}
+
+export interface NavViewer {
+  isAuthenticated: boolean
+  isAdmin: boolean
+  roles: string[]
+}
+
+/**
+ * 导航可见性过滤：登录要求 + 管理员限定 + 角色命中（任一）。
+ *
+ * 不用「登录就显示审稿工作台」这种粗粒度判断：普通作者点进去只会看到
+ * 403 空壳。admin 绕过角色检查（后端同样把 admin 视为全角色）。
+ */
+export function filterNav<T extends NavItem>(items: T[], viewer: NavViewer): T[] {
+  return items.filter((item) => {
+    if (item.auth && !viewer.isAuthenticated) return false
+    if (item.adminOnly && !viewer.isAdmin) return false
+    if (item.roles && !viewer.isAdmin && !item.roles.some((r) => viewer.roles.includes(r))) {
+      return false
+    }
+    return true
+  })
 }
 
 /**

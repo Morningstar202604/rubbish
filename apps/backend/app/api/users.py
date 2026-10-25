@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, user_role_names
 from app.core.db import get_db
 from app.core.logging import get_logger
 from app.core.security import hash_password, verify_password
@@ -32,8 +32,13 @@ class ChangePasswordRequest(BaseModel):
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_me(current_user: User = Depends(get_current_user)) -> UserResponse:
-    return UserResponse.model_validate(current_user)
+async def get_me(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    resp = UserResponse.model_validate(current_user)
+    resp.roles = await user_role_names(db, current_user)
+    return resp
 
 
 @router.patch("/me", response_model=UserResponse)
@@ -81,7 +86,9 @@ async def update_me(
                 exc_info=True,
             )
 
-    return UserResponse.model_validate(current_user)
+    resp = UserResponse.model_validate(current_user)
+    resp.roles = await user_role_names(db, current_user)
+    return resp
 
 
 @router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT)

@@ -13,7 +13,6 @@ import { toast } from 'sonner'
 import { getAuthState } from '@/lib/auth'
 import {
   downloadSubmissionFile,
-  useAdminUsers,
   useAllSubmissions,
   useAssignReviewer,
   useCancelAssignment,
@@ -22,6 +21,7 @@ import {
   useSubmissionAssignments,
   useSubmissionReports,
   useSubmissionVersions,
+  useReviewerCandidates,
 } from '@/hooks/api/use-modules'
 import type {
   AssignmentResponse,
@@ -30,6 +30,7 @@ import type {
   SubmissionResponse,
   SubmissionStatus,
 } from '@/lib/types'
+import { typeLabel } from '@/lib/resource-labels'
 import { extractError, formatDateTime } from '@/lib/utils'
 import { PageHeader } from '@/components/common/page-header'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
@@ -57,13 +58,20 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 
-// 指派审稿人时从 /admin/users 取多少候选。超出时 UI 会明确提示"只取了前 N 个"，
+// 指派审稿人时取多少候选。超出时 UI 会明确提示"只取了前 N 个"，
 // 避免目标审稿人只是没被列出来却被当成"不存在"。
 const REVIEWER_CANDIDATE_LIMIT = 200
 
 export const Route = createFileRoute('/submissions/pending')({
   beforeLoad: () => {
-    if (!getAuthState().isAdmin) throw redirect({ to: '/login' })
+    // 编辑工作台对 editor / section_editor / admin 开放；具体权限由后端
+    // require_editor 强制，这里只挡掉完全无关的访客与普通作者。
+    const { isAuthenticated, isAdmin, user } = getAuthState()
+    if (!isAuthenticated) throw redirect({ to: '/login' })
+    const roles = user?.roles ?? []
+    if (!isAdmin && !roles.includes('editor') && !roles.includes('section_editor')) {
+      throw redirect({ to: '/dashboard' })
+    }
   },
   component: PendingSubmissionsPage,
 })
@@ -241,7 +249,7 @@ function PendingSubmissionsPage() {
         }
         className="mb-4"
       >
-        <TabsList className="flex-wrap">
+        <TabsList>
           {STATUS_TABS.map((t) => (
             <TabsTrigger key={t.value} value={t.value}>
               {t.label}
@@ -267,7 +275,7 @@ function PendingSubmissionsPage() {
                     {statusBadge(s.status)}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <Badge variant="outline">{s.type}</Badge>
+                    <Badge variant="outline">{typeLabel(s.type)}</Badge>
                     <span>{s.discipline}</span>
                     <span>{s.year}</span>
                     <span>
@@ -513,7 +521,7 @@ function SubmissionDetailBody({ sub }: { sub: SubmissionResponse }) {
   return (
     <div className="space-y-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="outline">{sub.type}</Badge>
+        <Badge variant="outline">{typeLabel(sub.type)}</Badge>
         <span className="text-muted-foreground">{sub.discipline}</span>
         <span className="text-muted-foreground">{sub.year}</span>
         {sub.subdiscipline && (
@@ -631,15 +639,11 @@ function AssignReviewerDialog({
   submission: SubmissionResponse
   onClose: () => void
 }) {
-  const { data: users, isLoading } = useAdminUsers(REVIEWER_CANDIDATE_LIMIT, 0)
-  // 后端只接受持 reviewer 角色（或管理员）的用户，选错会在提交时报 422。
-  // 这里先把不可选的人从下拉里滤掉，不让用户走到"选了才报错"那一步。
-  const candidates = (users ?? []).filter(
-    (u) => u.is_admin || u.roles.includes('reviewer'),
-  )
-  // /admin/users 是分页接口，这里固定取前 N 个：超出时要让用户知道，
-  // 否则目标审稿人可能只是"没被列出来"，看起来像不存在。
-  const truncated = users !== undefined && users.length >= REVIEWER_CANDIDATE_LIMIT
+  // 专供编辑的候选端点：只返回持 reviewer 角色且启用的账号，非 admin 的
+  // editor 也能用（此前走 /admin/users 会 403，下拉永远是空的）。
+  const { data: candidateData, isLoading } = useReviewerCandidates(REVIEWER_CANDIDATE_LIMIT)
+  const candidates = candidateData ?? []
+  const truncated = candidates.length >= REVIEWER_CANDIDATE_LIMIT
   const assignMut = useAssignReviewer()
   const [reviewerId, setReviewerId] = useState<number | null>(null)
   const [dueDate, setDueDate] = useState('')
@@ -698,7 +702,7 @@ function AssignReviewerDialog({
             )}
             {truncated && (
               <p className="text-xs text-muted-foreground">
-                候选列表只取了前 {REVIEWER_CANDIDATE_LIMIT} 个用户，目标审稿人不在其中时请用
+                候选列表只取了前 {REVIEWER_CANDIDATE_LIMIT} 个审稿人，目标审稿人不在其中时请用
                 「用户管理」确认其角色。
               </p>
             )}
