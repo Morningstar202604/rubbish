@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { motion } from 'motion/react'
 import { ArrowLeft, BookOpen, Download, Lock, Quote, Sparkles, TrendingUp } from 'lucide-react'
 import { useJournalMetrics } from '@/hooks/api/use-modules'
 import { PageHeader } from '@/components/common/page-header'
+import { RevealSection } from '@/components/common/reveal-section'
 import { ErrorState, Loading } from '@/components/common/state'
 import { Card, CardContent } from '@/components/ui/card'
 import { typeLabel } from '@/lib/resource-labels'
@@ -14,13 +14,6 @@ export const Route = createFileRoute('/journal-metrics')({
 // 公开指标页（0.5.0 改版）：像正式期刊的指标页一样只呈现数值与含义；
 // 权重与计算口径属于编辑部内部口径，不进页面、不进 API。
 // 没有引文数据，所以诚实标注"不与 JCR 影响因子互比"。
-const rise = {
-  initial: { opacity: 0.3, y: 14 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: '0px 0px 200px 0px' },
-  transition: { duration: 0.45, ease: 'easeOut' as const },
-}
-
 function JournalMetricsPage() {
   const { data, isLoading, isError, refetch } = useJournalMetrics()
 
@@ -46,7 +39,7 @@ function JournalMetricsPage() {
       ) : (
         <div className="space-y-8">
           {data.published_total > 0 && data.r_factor != null ? (
-            <motion.section {...rise}>
+            <RevealSection>
               <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 via-transparent to-accent/10">
                 <CardContent className="flex flex-col items-center gap-2 py-10 text-center sm:flex-row sm:justify-between sm:text-left">
                   <div>
@@ -82,10 +75,10 @@ function JournalMetricsPage() {
                   </div>
                 </CardContent>
               </Card>
-            </motion.section>
+            </RevealSection>
           ) : null}
 
-          <motion.section {...rise}>
+          <RevealSection>
             <h2 className="text-lg font-medium">指标一览</h2>
             <dl className="mt-3 grid gap-4 sm:grid-cols-2">
               {[
@@ -121,9 +114,9 @@ function JournalMetricsPage() {
                 </div>
               ))}
             </dl>
-          </motion.section>
+          </RevealSection>
 
-          <motion.section {...rise}>
+          <RevealSection>
             <h2 className="text-lg font-medium">指标体系说明</h2>
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
               {[
@@ -159,9 +152,9 @@ function JournalMetricsPage() {
                 </Card>
               ))}
             </div>
-          </motion.section>
+          </RevealSection>
 
-          <motion.section {...rise}>
+          <RevealSection>
             <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
               <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
               <p className="text-xs leading-relaxed text-muted-foreground">
@@ -170,9 +163,9 @@ function JournalMetricsPage() {
                 <strong>不发布影响因子，也不使用 JCR 分区</strong>；任何把本刊指标与外部影响因子并列比较的说法都不成立。
               </p>
             </div>
-          </motion.section>
+          </RevealSection>
 
-          <motion.section {...rise}>
+          <RevealSection>
             <h2 className="text-lg font-medium">按学科</h2>
             <ul className="mt-3 space-y-2 text-sm">
               {Object.entries(data.by_discipline).length === 0 ? (
@@ -191,9 +184,9 @@ function JournalMetricsPage() {
                 ))
               )}
             </ul>
-          </motion.section>
+          </RevealSection>
 
-          <motion.section {...rise}>
+          <RevealSection>
             <h2 className="text-lg font-medium">按类型</h2>
             <ul className="mt-3 space-y-2 text-sm">
               {Object.entries(data.by_type).length === 0 ? (
@@ -210,9 +203,9 @@ function JournalMetricsPage() {
                 ))
               )}
             </ul>
-          </motion.section>
+          </RevealSection>
 
-          <motion.section {...rise} className="border-t pt-6 text-xs leading-relaxed text-muted-foreground">
+          <RevealSection className="border-t pt-6 text-xs leading-relaxed text-muted-foreground">
             <p>
               数据来源：本站数据库的 resources / reading_history /
               reading_list_items / submissions 表；页面每次访问实时计算。
@@ -223,7 +216,7 @@ function JournalMetricsPage() {
                 /api/catalog/journal-metrics
               </a>
             </p>
-          </motion.section>
+          </RevealSection>
         </div>
       )}
     </div>

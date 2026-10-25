@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { AnimatePresence, motion, MotionConfig, type Variants } from 'motion/react'
+import { useInViewReveal } from '@/hooks/use-in-view-reveal'
 import {
   Archive,
   ArrowRight,
@@ -249,6 +250,19 @@ function HomePage() {
   const disciplines = stats ? Object.keys(stats.by_discipline).length : 0
   const readsTotal = metrics?.reads_total ?? 0
 
+  // 滚动入场：motion 14.5.0 的 whileInView 在本项目不触发（线上同样复现），
+  // 改由原生 IntersectionObserver 驱动 animate；容器保留原本的 stagger variants。
+  const [statsRevealRef, statsReveal] = useInViewReveal()
+  const [revealLatestRef, revealLatest] = useInViewReveal()
+  const [revealProcessRef, revealProcess] = useInViewReveal()
+  const [revealScopeRef, revealScope] = useInViewReveal()
+  const [revealPolicyRef, revealPolicy] = useInViewReveal()
+  const [revealCommunityRef, revealCommunity] = useInViewReveal()
+  const [revealMetricsRef, revealMetrics] = useInViewReveal()
+  const [revealAuthorsRef, revealAuthors] = useInViewReveal()
+  const [revealFaqRef, revealFaq] = useInViewReveal()
+  const [revealAboutRef, revealAbout] = useInViewReveal()
+
   // 返回顶部按钮：滚过首屏后出现
   const [showTop, setShowTop] = useState(false)
   useEffect(() => {
@@ -382,10 +396,10 @@ function HomePage() {
 
             {/* 数据卡：进入视口数字滚动 */}
             <motion.div
+              ref={statsRevealRef}
               variants={cardsWrap}
               initial="hidden"
-              whileInView="show"
-              viewport={{ once: true, amount: 0.3 }}
+              animate={statsReveal ? 'show' : 'hidden'}
               className="mx-auto mt-12 grid max-w-4xl grid-cols-2 gap-4 lg:grid-cols-4"
             >
               {[
@@ -397,6 +411,7 @@ function HomePage() {
                 <motion.div
                   key={s.label}
                   variants={card}
+                  animate={statsReveal ? 'show' : 'hidden'}
                   whileHover={{ y: -4 }}
                   className="rounded-lg border bg-card/80 p-5 text-left shadow-sm backdrop-blur transition-colors hover:border-primary/40"
                 >
@@ -482,9 +497,9 @@ function HomePage() {
 
         {/* ── 最新发表：卡片网格 ── */}
         <motion.section
+          ref={revealLatestRef}
           initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
+          animate={revealLatest ? 'show' : 'hidden'}
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}
           className="mx-auto max-w-6xl px-4 py-16 sm:px-6"
         >
@@ -528,6 +543,7 @@ function HomePage() {
                 <motion.article
                   key={r.id}
                   variants={card}
+                  animate={revealLatest ? 'show' : 'hidden'}
                   whileHover={{ y: -5 }}
                   className="group relative flex flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-colors hover:border-primary/40"
                 >
@@ -612,10 +628,10 @@ function HomePage() {
 
         {/* ── 投稿流程：步进卡片 ── */}
         <motion.section
-          id="process"
+          ref={revealProcessRef}
           initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
+          animate={revealProcess ? 'show' : 'hidden'}
+          id="process"
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.09 } } }}
           className="scroll-mt-16 bg-muted/40 py-16"
         >
@@ -626,6 +642,7 @@ function HomePage() {
                 <motion.div
                   key={step.title}
                   variants={card}
+                  animate={revealProcess ? 'show' : 'hidden'}
                   whileHover={{ y: -4 }}
                   className="relative rounded-lg border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"
                 >
@@ -660,10 +677,10 @@ function HomePage() {
 
         {/* ── 征稿范围 ── */}
         <motion.section
-          id="scope"
+          ref={revealScopeRef}
           initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
+          animate={revealScope ? 'show' : 'hidden'}
+          id="scope"
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
           className="scroll-mt-16 py-16"
         >
@@ -704,6 +721,7 @@ function HomePage() {
                   <motion.div
                     key={d.name}
                     variants={card}
+                    animate={revealScope ? 'show' : 'hidden'}
                     whileHover={{ y: -3 }}
                     className="group relative overflow-hidden rounded-lg border bg-card p-4 shadow-sm transition-colors hover:border-primary/40"
                   >
@@ -727,10 +745,10 @@ function HomePage() {
 
         {/* ── 开放获取与长期保存 ── */}
         <motion.section
-          id="policy"
+          ref={revealPolicyRef}
           initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
+          animate={revealPolicy ? 'show' : 'hidden'}
+          id="policy"
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.09 } } }}
           className="scroll-mt-16 bg-muted/40 py-16"
         >
@@ -757,6 +775,7 @@ function HomePage() {
                 <motion.div
                   key={f.title}
                   variants={card}
+                  animate={revealPolicy ? 'show' : 'hidden'}
                   whileHover={{ y: -4 }}
                   className="rounded-lg border bg-card p-6 shadow-sm transition-colors hover:border-primary/40"
                 >
@@ -786,9 +805,9 @@ function HomePage() {
 
         {/* ── 参与社区 ── */}
         <motion.section
+          ref={revealCommunityRef}
           initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
+          animate={revealCommunity ? 'show' : 'hidden'}
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
           className="scroll-mt-16 bg-muted/40 py-16"
         >
@@ -819,6 +838,7 @@ function HomePage() {
                 <motion.div
                   key={f.title}
                   variants={card}
+                  animate={revealCommunity ? 'show' : 'hidden'}
                   whileHover={{ y: -4 }}
                   className="rounded-lg border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"
                 >
@@ -845,10 +865,10 @@ function HomePage() {
 
         {/* ── 期刊指标 ── */}
         <motion.section
-          id="metrics"
+          ref={revealMetricsRef}
           initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
+          animate={revealMetrics ? 'show' : 'hidden'}
+          id="metrics"
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}
           className="scroll-mt-16 py-16"
         >
@@ -897,6 +917,7 @@ function HomePage() {
                 <motion.div
                   key={item.label}
                   variants={card}
+                  animate={revealMetrics ? 'show' : 'hidden'}
                   whileHover={{ y: -4 }}
                   className="rounded-lg border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"
                 >
@@ -997,10 +1018,10 @@ function HomePage() {
 
         {/* ── 作者指南 ── */}
         <motion.section
-          id="authors"
+          ref={revealAuthorsRef}
           initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
+          animate={revealAuthors ? 'show' : 'hidden'}
+          id="authors"
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
           className="scroll-mt-16 bg-muted/40 py-16"
         >
@@ -1035,6 +1056,7 @@ function HomePage() {
               </div>
               <motion.div
                 variants={card}
+                animate={revealAuthors ? 'show' : 'hidden'}
                 className="relative overflow-hidden rounded-lg border bg-card p-6 shadow-sm"
               >
                 <span
@@ -1077,10 +1099,10 @@ function HomePage() {
 
         {/* ── 常见问题 ── */}
         <motion.section
-          id="faq"
+          ref={revealFaqRef}
           initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
+          animate={revealFaq ? 'show' : 'hidden'}
+          id="faq"
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
           className="scroll-mt-16 py-16"
         >
@@ -1091,6 +1113,7 @@ function HomePage() {
                 <motion.details
                   key={item.q}
                   variants={card}
+                  animate={revealFaq ? 'show' : 'hidden'}
                   className="group rounded-lg border bg-card px-5 py-4 shadow-sm transition-colors hover:border-primary/40"
                 >
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium sm:text-base">
@@ -1111,10 +1134,10 @@ function HomePage() {
 
         {/* ── 关于本刊 ── */}
         <motion.section
-          id="about"
+          ref={revealAboutRef}
           initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.05, margin: '0px 0px 240px 0px' }}
+          animate={revealAbout ? 'show' : 'hidden'}
+          id="about"
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
           className="scroll-mt-16 bg-muted/40 py-16"
         >
@@ -1123,6 +1146,7 @@ function HomePage() {
             <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
               <motion.blockquote
                 variants={card}
+                animate={revealAbout ? 'show' : 'hidden'}
                 className="relative rounded-lg border bg-card p-7 shadow-sm"
               >
                 <span
@@ -1153,6 +1177,7 @@ function HomePage() {
               </motion.blockquote>
               <motion.div
                 variants={card}
+                animate={revealAbout ? 'show' : 'hidden'}
                 className="relative overflow-hidden rounded-lg border bg-card p-6 shadow-sm"
               >
                 <span

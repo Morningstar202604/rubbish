@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { motion } from 'motion/react'
 import {
   ArrowLeft,
   ArrowRight,
@@ -13,6 +12,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { PageHeader } from '@/components/common/page-header'
+import { RevealSection } from '@/components/common/reveal-section'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/hooks/use-auth'
@@ -20,15 +20,6 @@ import { useAuth } from '@/hooks/use-auth'
 export const Route = createFileRoute('/authors')({
   component: AuthorsPage,
 })
-
-// 作者指南与收录标准：对标正式期刊的投稿要求（原创性、伦理、评审流程），
-// 但去掉老古董包袱——不收版面费、不要求单位介绍信、正式承认荒诞研究。
-const rise = {
-  initial: { opacity: 0.3, y: 14 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: '0px 0px 200px 0px' },
-  transition: { duration: 0.45, ease: 'easeOut' as const },
-}
 
 const ACCEPT_CRITERIA: Array<{ title: string; body: string }> = [
   {
@@ -89,7 +80,7 @@ function AuthorsPage() {
       />
 
       <div className="space-y-10">
-        <motion.section {...rise}>
+        <RevealSection>
           <h2 className="text-xl font-medium">双轨收录</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             Rubbish 是一家正经与荒诞兼容的开放获取期刊。两个赛道共用同一套格式与伦理标准，
@@ -108,9 +99,9 @@ function AuthorsPage() {
               </Card>
             ))}
           </div>
-        </motion.section>
+        </RevealSection>
 
-        <motion.section {...rise}>
+        <RevealSection>
           <h2 className="text-xl font-medium">收录标准</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {ACCEPT_CRITERIA.map((c, i) => (
@@ -127,9 +118,9 @@ function AuthorsPage() {
               </Card>
             ))}
           </div>
-        </motion.section>
+        </RevealSection>
 
-        <motion.section {...rise}>
+        <RevealSection>
           <h2 className="text-xl font-medium">发表要求</h2>
           <div className="mt-4 grid gap-6 lg:grid-cols-2">
             <div className="rounded-lg border bg-card p-5">
@@ -161,9 +152,9 @@ function AuthorsPage() {
               </ul>
             </div>
           </div>
-        </motion.section>
+        </RevealSection>
 
-        <motion.section {...rise}>
+        <RevealSection>
           <h2 className="text-xl font-medium">不予收录</h2>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {NOT_ACCEPTED.map((item) => (
@@ -183,9 +174,9 @@ function AuthorsPage() {
             </Link>
             。
           </p>
-        </motion.section>
+        </RevealSection>
 
-        <motion.section {...rise}>
+        <RevealSection>
           <h2 className="text-xl font-medium">格式模板</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             不强制使用，但用模板能显著降低编辑部的排版时间——你的论文会更快见刊。
@@ -224,9 +215,9 @@ function AuthorsPage() {
               </Card>
             ))}
           </div>
-        </motion.section>
+        </RevealSection>
 
-        <motion.section {...rise}>
+        <RevealSection>
           <h2 className="text-xl font-medium">评审流程</h2>
           <ol className="mt-4 space-y-3">
             {[
@@ -251,9 +242,9 @@ function AuthorsPage() {
             <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
             每次裁决与版本变更均写入审计日志；审稿过程中编辑部不会向任何人泄露你的稿件内容。
           </p>
-        </motion.section>
+        </RevealSection>
 
-        <motion.section {...rise} className="rounded-xl border bg-gradient-to-br from-primary/5 to-accent/10 p-8 text-center">
+        <RevealSection className="rounded-xl border bg-gradient-to-br from-primary/5 to-accent/10 p-8 text-center">
           <PenLine className="mx-auto h-8 w-8 text-primary" />
           <h2 className="mt-3 text-xl font-medium">准备好了？</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
@@ -265,7 +256,7 @@ function AuthorsPage() {
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
-        </motion.section>
+        </RevealSection>
       </div>
     </div>
   )

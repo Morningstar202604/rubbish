@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { motion } from 'motion/react'
 import {
   ArrowLeft,
   EyeOff,
@@ -11,6 +10,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { PageHeader } from '@/components/common/page-header'
+import { RevealSection } from '@/components/common/reveal-section'
 import { Card, CardContent } from '@/components/ui/card'
 
 export const Route = createFileRoute('/policies')({
@@ -19,13 +19,6 @@ export const Route = createFileRoute('/policies')({
 
 // 期刊政策与社区规范：开放获取、学术诚信、荒诞内容免责、社区行为、
 // 撤稿、隐私。一条一条写实，不留"最终解释权归本刊所有"这种废话。
-const rise = {
-  initial: { opacity: 0.3, y: 14 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: '0px 0px 200px 0px' },
-  transition: { duration: 0.45, ease: 'easeOut' as const },
-}
-
 const SECTIONS = [
   {
     icon: Scale,
@@ -112,7 +105,7 @@ function PoliciesPage() {
 
       <div className="space-y-6">
         {SECTIONS.map(({ icon: Icon, title, body }) => (
-          <motion.section key={title} {...rise}>
+          <RevealSection key={title}>
             <Card>
               <CardContent className="p-6">
                 <h2 className="flex items-center gap-2 text-lg font-medium">
@@ -129,10 +122,10 @@ function PoliciesPage() {
                 </ul>
               </CardContent>
             </Card>
-          </motion.section>
+          </RevealSection>
         ))}
 
-        <motion.p {...rise} className="border-t pt-6 text-xs leading-relaxed text-muted-foreground">
+        <RevealSection as="p" className="border-t pt-6 text-xs leading-relaxed text-muted-foreground">
           政策更新会在本页与站内公告同步注明日期；重大变更提前 14 天公示。
           上一版政策文本可向编辑部索取。
           完整隐私条款见
@@ -140,7 +133,7 @@ function PoliciesPage() {
             隐私政策
           </a>
           。
-        </motion.p>
+        </RevealSection>
       </div>
     </div>
   )

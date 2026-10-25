@@ -7,6 +7,30 @@
 `apps/backend/pyproject.toml`、`apps/frontend/package.json`、`apps/backend/app/__init__.py`
 四处完全一致，由 `scripts/check-version.sh` 守门。
 
+## [Unreleased]
+
+### Fixed
+
+- **首页/内容页整段长期发灰（`whileInView` 全面失效）**：motion 14.5.0 的
+  `whileInView` 在本项目（React 19 + Vite 8）下观察器已创建、回调也已触发，
+  但变体永不推进，导致 9 个首页区块与作者指南/政策/期刊指标页长期停留在
+  `opacity: 0.3` 的入场初态。生产构建同样复现。改用原生
+  `IntersectionObserver`（`hooks/use-in-view-reveal.ts` +
+  `components/common/reveal-section.tsx`）驱动 `animate`，保留原 stagger
+  与缓动；顺带修正 `authors.tsx` 中被全局替换误伤的闭合标签。
+
+### Changed
+
+- 文档截图 `docs/assets/screenshots/` 全量重生成（0.8.1 UI，30 张，
+  桌面 + 移动双视口），替换 2026-10-21 的旧界面截图。
+
+### Tests
+
+- 后端覆盖率 84% → 88%（822 passed）：新增 scheduler 生命周期与任务循环、
+  `/users/me` 自管理、租户域名 CRUD、CAPTCHA provider 解析与缓存、
+  审稿催办邮件通道、投稿文件边界（413/Range/预签名/丢失）、目录冲突与
+  facet、管理员用户状态/角色/评审模式等 8 个测试文件。
+
 ## [0.8.1] — 2026-10-24
 
 ### Fixed
