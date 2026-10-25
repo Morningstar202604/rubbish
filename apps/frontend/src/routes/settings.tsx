@@ -14,6 +14,20 @@ export const Route = createFileRoute('/settings')({
   component: SettingsPage,
 })
 
+const ROLE_LABELS: Record<string, string> = {
+  reader: '读者',
+  author: '作者',
+  reviewer: '审稿人',
+  editor: '编辑',
+  section_editor: '栏目编辑',
+}
+
+function roleSummary(isAdmin?: boolean, roles?: string[]) {
+  const named = (roles ?? []).map((r) => ROLE_LABELS[r] ?? r)
+  if (isAdmin) named.unshift('管理员')
+  return named.length ? named.join('、') : '普通用户'
+}
+
 function SettingsPage() {
   const user = useAuthStore((s) => s.user)
 
@@ -31,9 +45,9 @@ function SettingsPage() {
             <span className="text-muted-foreground">用户名</span>
             <span className="font-medium">{user?.username ?? '—'}</span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">角色</span>
-            <span className="font-medium">{user?.is_admin ? '管理员' : '普通用户'}</span>
+            <span className="text-right font-medium">{roleSummary(user?.is_admin, user?.roles)}</span>
           </div>
           <p className="pt-2 text-xs text-muted-foreground">
             修改密码请前往{' '}

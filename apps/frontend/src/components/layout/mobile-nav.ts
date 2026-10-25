@@ -62,6 +62,7 @@ export const MOBILE_MORE: MobileMoreItem[] = [
     roles: ['editor', 'section_editor'],
   },
   { to: '/ingest', label: '导入', icon: Upload },
+  { to: '/settings', label: '账号设置', icon: Settings },
   { to: '/account/security', label: '账号安全', icon: KeyRound },
   { to: '/admin/users', label: '用户管理', icon: Users, adminOnly: true },
   { to: '/admin/audit-logs', label: '审计日志', icon: ShieldCheck, adminOnly: true },

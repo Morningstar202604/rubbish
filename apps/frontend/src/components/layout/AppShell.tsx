@@ -21,6 +21,7 @@ import {
   Settings,
   ShieldCheck,
   TrendingUp,
+  User,
   Users,
   X,
 } from 'lucide-react'
@@ -279,6 +280,12 @@ export function AppShell() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/settings">
+                      <User className="h-4 w-4" />
+                      账号设置
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/account/security">
                       <ShieldCheck className="h-4 w-4" />
