@@ -192,6 +192,9 @@ function CatalogDetailPage() {
                 }
               />
               <MetaItem label="语言" value={languageLabel(data.language)} />
+              {data.keywords && data.keywords.length > 0 && (
+                <MetaItem label="关键词" value={data.keywords.join('；')} />
+              )}
               <MetaItem label="ISSN" value={data.issn} />
               <MetaItem label="ISBN" value={data.isbn} />
             </CardContent>

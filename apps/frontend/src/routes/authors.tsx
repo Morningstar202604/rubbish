@@ -76,7 +76,7 @@ function AuthorsPage() {
 
       <PageHeader
         title="作者指南"
-        description="投稿要求、收录标准、格式模板与评审流程——一份读完就能动笔的指南。"
+        description="投稿要求、结构规范、图表与引用细则、格式模板——一份读完就能动笔的指南。"
       />
 
       <div className="space-y-10">
@@ -131,10 +131,13 @@ function AuthorsPage() {
               <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                 <li>· 稿件为 Markdown / PDF / Word 任一格式，图表清晰</li>
                 <li>· 中文为主，英文稿件亦可（目录会标注语言）</li>
-                <li>· 摘要 150–300 字，关键词 3–6 个</li>
-                <li>· 篇幅建议 3,000–15,000 字（荒诞研究上不封顶，别真写 15 万字）</li>
-                <li>· 全体作者同意署名与排序，投稿后不可悄悄增删作者</li>
-                <li>· 参考文献格式不限（GB/T 7714、APA、BibTeX 均可），但要一致</li>
+                <li>· 摘要 200–350 字，关键词 4–6 个，含 JEL/MSC 分类更佳</li>
+                <li>· 篇幅分三档：短篇 2,500–6,000 字 / 中篇 6,000–12,000 字 / 长篇 12,000 字以上</li>
+                <li>· 结构含「方法（或论证框架）」与「讨论」两节，缺一不可</li>
+                <li>· 图表编号 + 标题 + 正文引用；图 ≥ 300 dpi，表用三线表</li>
+                <li>· 参考文献 ≥ 8 条，全部可在 DOI 或公开数据库核实，格式统一为 GB/T 7714-2015</li>
+                <li>· 必须有「数据可用性」「作者贡献」「利益冲突」三段声明</li>
+                <li>· 全体作者同意署名与排序，投稿后不可增删作者（只可勘误）</li>
               </ul>
             </div>
             <div className="rounded-lg border bg-card p-5">
@@ -177,11 +180,58 @@ function AuthorsPage() {
         </RevealSection>
 
         <RevealSection>
+          <h2 className="text-xl font-medium">结构规范</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            本刊采用「结构化写作」：每一节都有明确的功能，不按功能写的稿件会在初审被退回补全，
+            而不是直接拒稿。以下规范对两个赛道同等适用——荒诞研究的论证同样要经得起结构审查。
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {[
+              {
+                title: '必须有的六节',
+                body: '引言（现象—缺口—贡献）、相关工作（有立场的分组梳理）、方法或论证框架、结果、讨论（含义—局限—含义）、结论。缺「方法」与「讨论」两节直接退修。',
+              },
+              {
+                title: '摘要四要素',
+                body: '200–350 字，写清「问题 / 方法 / 结果 / 结论」。不写「本文具有重要意义」这类空转句；荒诞研究也要让读者读完摘要就知道你严肃地荒诞什么。',
+              },
+              {
+                title: '图表三原则',
+                body: '自明（不读正文也能懂）、有编号与标题（图下表上）、正文显式引用。图 ≥ 300 dpi；表用三线表，不用竖线；图注末尾写数据来源。',
+              },
+              {
+                title: '引用纪律',
+                body: 'GB/T 7714-2015 顺序编码制，≥ 8 条，全部可在 DOI 或公开数据库核实。编造引用一经发现即退稿并记入作者信用记录——这条没有例外，包括荒诞赛道。',
+              },
+              {
+                title: '三段声明',
+                body: '数据与代码可用性（已公开 / 可索取 / 受限说明）、作者贡献（CRediT 分类）、利益冲突。三段都不能空着，写「无」也是写。',
+              },
+              {
+                title: '篇幅三档',
+                body: '短篇 2,500–6,000 字、中篇 6,000–12,000 字、长篇 12,000 字以上。目录会标注篇幅档位；短篇不因短而减分，长篇不因长而加分，但内容必须撑得住。',
+              },
+            ].map((c) => (
+              <Card key={c.title}>
+                <CardContent className="p-5">
+                  <p className="text-sm font-medium">{c.title}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.body}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+            完整细则见《Rubbish 编辑规范》（可在下方模板首段找到自检清单）；
+            模板为 Markdown 与 LaTeX 两版，等价，任选其一。
+          </p>
+        </RevealSection>
+
+        <RevealSection>
           <h2 className="text-xl font-medium">格式模板</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             不强制使用，但用模板能显著降低编辑部的排版时间——你的论文会更快见刊。
           </p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
               {
                 href: '/templates/rubbish-submission-template.md',
@@ -193,7 +243,13 @@ function AuthorsPage() {
                 href: '/templates/rubbish-submission-template.tex',
                 icon: FileText,
                 title: 'LaTeX 模板',
-                body: '公式多的正经研究用它；编译出 PDF 后直接投稿。',
+                body: '公式多的正经研究用它；xelatex 编译出 PDF 后直接投稿。',
+              },
+              {
+                href: '/templates/rubbish-editorial-standards.md',
+                icon: BookOpenCheck,
+                title: '编辑规范（完整版）',
+                body: '篇幅分档、结构规范、图表与引用细则、提交清单——投稿前必读。',
               },
             ].map((t) => (
               <Card key={t.href}>

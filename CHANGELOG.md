@@ -9,6 +9,47 @@
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-10-26
+
+### Added
+
+- **《Rubbish 编辑规范》1.0**（`docs/editorial-standards.md`，同步发布到
+  `/templates/rubbish-editorial-standards.md`）：篇幅三档（短篇 2,500–6,000 /
+  中篇 6,000–12,000 / 长篇 12,000 以上）、六节结构强制、图表三原则、GB/T 7714-2015
+  引用纪律、三段声明（数据可用性 / 作者贡献 / 利益冲突）、提交清单、荒诞赛道特别说明。
+- 作者指南新增「结构规范」六卡区块与规范下载入口；投稿要求文案由「3,000–15,000 字」
+  改为三档篇幅 + 图表/引用/声明的硬性条款。
+- 投稿模板（Markdown / LaTeX）按规范重写：新增投稿前五项自检、JEL/MSC 分类、
+  数据可用性 / 作者贡献 / 利益冲突三段、GB/T 7714-2015 各类文献示例。
+- 详情页元数据补「关键词」一行。
+
+### Changed
+
+- **全部 8 篇论文重写**（4,000–10,700 字正文，合计约 45,000 字）：
+  - 长篇 2 篇：同行评审时滞的排队模型（10,706 字，4 图 3 表，17 refs）、
+    多租户 RLS 工程实践（8,729 字，3 图 1 表，10 refs）；
+  - 中篇 2 篇：标题通胀的三十五年测量（6,313 字，数据来自 Crossref 实测）、
+    中文长文排版三因子实验（6,371 字）；
+  - 短篇 4 篇：茶歇的知识转移（4,242）、致谢里的信号（3,251）、
+    预印本双轨时间（4,056）、城市鸽群取食秩序（3,012）。
+- **64 条参考文献全部经 Crossref 校验**（`_deploy/journal/verify_refs.py`，0 失败），
+  按 GB/T 7714-2015 自动生成，每条带 DOI；引用采用 `[@key]` 语法在源码中标记，
+  编号按首次出现顺序自动生成。
+- 论文生产链重建于 `_deploy/journal/`：`measure_titles.py` / `measure_refs.py`
+  （Crossref + OpenAlex 实测）、`figures.py`（20 张 matplotlib 图，统一视觉语言）、
+  `render_pdf.py`（GB 排版 PDF）、`build_journal.py`（一次生成 PDF + Markdown + manifest）、
+  `verify_refs.py`（DOI 校验）、`publish_live.py`（经平台 API 投稿→录用→刊出）。
+- 线上目录：8 篇新论文刊出（resource 11–18），7 篇旧论文按备份下线
+  （备份 `_deploy/journal/backup/legacy-resources-2-8.json`）；PDF 与 Markdown
+  已用 `docker compose cp` 替换为最终构建。
+
+### Notes
+
+- 8 篇全部为"结构性论证"：数值来自可复现的模拟或公开数据抽样，正文明确标注
+  「本文数值来自模拟，不涉及任何编辑部内部日志」，避免把模拟结果伪装成实测。
+- 线上阅读器实测：8 篇 Markdown 与本地构建逐字节一致，图片 25/25 全部 `naturalWidth > 0`，
+  标题层级 14–33 个，无 console error。
+
 ## [0.8.2] — 2026-10-25
 
 ### Fixed
