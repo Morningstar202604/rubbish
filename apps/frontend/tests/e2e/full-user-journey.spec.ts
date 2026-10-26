@@ -148,9 +148,9 @@ test.describe('全流程用户旅程', () => {
     await authorPage
       .getByLabel('摘要', { exact: true })
       .fill('End-to-end journey submission.')
-    // 下载链接是重点：这条路径以前会因 AnyHttpUrl 直塞 String 列而 500
+    // 稿件直链（原「下载链接」）是重点：这条路径以前会因 AnyHttpUrl 直塞 String 列而 500
     await authorPage
-      .getByLabel('下载链接')
+      .getByLabel('稿件直链（可选）')
       .fill('https://arxiv.org/pdf/2401.00001')
     await authorPage.getByRole('button', { name: '提交' }).click({ force: true })
     await expect(authorPage.getByText('提交成功，等待审核')).toBeVisible({
