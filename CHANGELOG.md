@@ -32,7 +32,7 @@
   Bar/Line/Pie/Radar/Scatter + Canvas 渲染器，统一配色与中文字体）。指标页新增
   「一眼看全刊」三图（荒诞气质环图 / 读者行为雷达 / 学科构成条形），
   首页指标区新增学科构成图并 **懒加载**（190 KB gzip 不拖首屏）。
-- **动效与交互层**：路由级过渡（180ms 淡入上浮，`AnimatePresence mode="wait"`）、
+- **动效与交互层**：路由级过渡（180ms 单侧淡入上浮，仅入场不做退场）、
   卡片 hover 抬升（`card-lift`）、导航下划线生长（`link-underline`）、
   骨架屏扫光（`skeleton-shimmer`）、阅读页顶部进度条（双滚动容器兼容）、
   徽章 hover 微缩放。全部在 `prefers-reduced-motion` 下关闭。
