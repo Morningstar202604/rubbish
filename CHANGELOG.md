@@ -40,6 +40,11 @@
 
 ### Fixed
 
+- **路由过渡与 router state 冲突**：初版用 `AnimatePresence mode="wait"`，
+  会等旧页退出后再挂载新页，导致 ingest → submissions 的预填弹窗在等待期丢失。
+  改为单侧入场动画（180ms 淡入上浮），卸载保持同步。
+- **E2E 选择器误伤**：全站替换「下载链接 → 稿件直链」时把 `catalog/new`
+  的两个 spec 也改了，而该页字段名未变，导致 60s beforeAll 超时。
 - **期刊详情页下载文件名**：此前返回存储 UUID（如 `9cd5d1a3….pdf`），
   现按资源标题生成可读名并附 RFC 5987 `filename*`（中文名可正常保存）。
 - **上传 MIME 误拒**：`.md/.tex/.csv/.ipynb` 在浏览器里常被报成
