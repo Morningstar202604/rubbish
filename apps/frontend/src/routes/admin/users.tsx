@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { MoreHorizontal, Search } from 'lucide-react'
 import { toast } from 'sonner'
@@ -61,7 +61,8 @@ function AdminUsersPage() {
   const [page, setPage] = useState(1)
   const [query, setQuery] = useState('')
   const offset = (page - 1) * PAGE_SIZE
-  const { data, isLoading, isError, refetch } = useAdminUsers(PAGE_SIZE, offset)
+  // 服务端过滤：本地过滤只能看到当前这一页，用户超过 50 个后搜不到老账号。
+  const { data, isLoading, isError, refetch } = useAdminUsers(PAGE_SIZE, offset, query)
   const setActiveMut = useSetUserActive()
   const assignRoleMut = useAssignRole()
   const revokeRoleMut = useRevokeRole()
@@ -70,17 +71,9 @@ function AdminUsersPage() {
   // 后端返回裸数组无 meta，totalPages 用「当前页是否满页」推断（与审计日志页共用）。
   const totalPages = inferTotalPagesFromFullPage(data ?? [], PAGE_SIZE, page)
 
-  // 仅本地过滤当前页，避免与服务端分页耦合
-  const filtered = useMemo(() => {
-    if (!data) return []
-    const q = query.trim().toLowerCase()
-    if (!q) return data
-    return data.filter(
-      (u) =>
-        u.username.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q),
-    )
-  }, [data, query])
+  // 搜索由服务端完成（分页前过滤）；这里不再二次过滤，
+  // 否则「搜到了但被本地条件筛掉」会把结果又变空。
+  const filtered = data ?? []
 
   const onToggleActive = async (u: UserResponse) => {
     try {

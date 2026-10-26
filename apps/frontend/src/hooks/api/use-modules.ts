@@ -98,6 +98,8 @@ export const keys = {
   },
   admin: {
     users: (limit = 50, offset = 0) => ['admin', 'users', limit, offset] as const,
+    usersSearch: (limit = 50, offset = 0, query = '') =>
+      ['admin', 'users', limit, offset, query] as const,
     audit: (limit = 50, offset = 0) => ['admin', 'audit', limit, offset] as const,
     reviewMode: () => ['admin', 'review-mode'] as const,
     volumes: () => ['admin', 'volumes'] as const,
@@ -833,11 +835,16 @@ export function useFetchIngest() {
 }
 
 // --- Admin ---
-export function useAdminUsers(limit = 50, offset = 0) {
+export function useAdminUsers(limit = 50, offset = 0, query = '') {
   return useQuery<UserResponse[]>({
-    queryKey: keys.admin.users(limit, offset),
+    // query 进 key：搜索词变化要重新请求，而不是复用上一页的缓存
+    queryKey: keys.admin.usersSearch(limit, offset, query),
     queryFn: async () =>
-      (await api.get<UserResponse[]>('/admin/users', { params: { limit, offset } })).data,
+      (
+        await api.get<UserResponse[]>('/admin/users', {
+          params: { limit, offset, ...(query ? { q: query } : {}) },
+        })
+      ).data,
   })
 }
 

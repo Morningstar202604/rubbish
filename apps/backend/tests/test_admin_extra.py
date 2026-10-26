@@ -123,3 +123,37 @@ async def test_security_reload_writes_audit(
     assert r.status_code == 204
     audit = await db_session.execute(select(AuditLog).where(AuditLog.action == "security.reload"))
     assert audit.scalars().first() is not None
+
+
+@pytest.mark.asyncio
+async def test_list_users_search_filters_before_pagination(
+    client: AsyncClient, admin_user: dict, test_user: dict
+) -> None:
+    """搜索必须在分页之前生效。
+
+    回归背景：前端原先只在「当前页 50 条」里做本地过滤，用户超过 50 个
+    以后，搜一个确实存在的老账号会显示「暂无用户」，看起来像数据丢了。
+    """
+    # 造一个排在第二页的账号（新用户 id 更大，会排在前面）
+    for i in range(3):
+        await client.post(
+            "/api/auth/register",
+            json={
+                "email": f"page{i}@example.com",
+                "username": f"pageuser{i}",
+                "password": "password123",
+            },
+        )
+
+    # limit=1 时第一页只有最新那个用户
+    page1 = await client.get("/api/admin/users?limit=1&offset=0", headers=auth_headers(admin_user))
+    assert page1.status_code == 200
+    assert len(page1.json()) == 1
+    assert page1.json()[0]["username"] != "testuser"
+
+    # 但按用户名搜索能直接命中老账号，说明过滤发生在分页之前
+    found = await client.get(
+        "/api/admin/users?limit=1&offset=0&q=testuser", headers=auth_headers(admin_user)
+    )
+    assert found.status_code == 200
+    assert [u["username"] for u in found.json()] == ["testuser"]

@@ -13,7 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_admin, require_tenant_id
@@ -121,18 +121,25 @@ async def _user_with_roles(db: AsyncSession, user: User) -> UserResponse:
 async def list_users(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    q: str = Query(default="", max_length=200, description="按用户名或邮箱模糊匹配"),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
 ) -> list[UserResponse]:
-    """List all users in the current tenant, including their role names."""
+    """List users in the current tenant, newest first.
+
+    ``q`` 是服务端过滤：前端原先只在「当前这一页 50 条」里做本地过滤，
+    用户超过 50 个以后，搜一个确实存在的账号会显示「暂无用户」——
+    看起来像数据丢了。过滤必须在分页之前发生。
+    """
     tenant_id = require_tenant_id()
-    result = await db.execute(
-        select(User)
-        .where(User.tenant_id == tenant_id)
-        .order_by(User.id.desc())
-        .limit(limit)
-        .offset(offset)
-    )
+    stmt = select(User).where(User.tenant_id == tenant_id)
+    term = q.strip()
+    if term:
+        like = f"%{term.lower()}%"
+        stmt = stmt.where(
+            or_(func.lower(User.username).like(like), func.lower(User.email).like(like))
+        )
+    result = await db.execute(stmt.order_by(User.id.desc()).limit(limit).offset(offset))
     users = result.scalars().all()
     return [await _user_with_roles(db, u) for u in users]
 
