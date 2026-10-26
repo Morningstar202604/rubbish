@@ -125,7 +125,7 @@ function CatalogDetailPage() {
     <div className={isMobile ? 'pb-40' : ''}>
       <Link
         to="/catalog"
-        className="mb-4 inline-flex items-center text-sm text-muted-foreground hover:text-primary"
+        className="mb-4 inline-flex min-h-[36px] items-center text-sm text-muted-foreground hover:text-primary"
       >
         <ChevronLeft className="mr-1 h-4 w-4" />
         返回目录
@@ -816,7 +816,7 @@ function AbstractCard({ text, collapsible }: { text: string; collapsible: boolea
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="mt-2 text-xs font-medium text-primary hover:underline"
+            className="mt-2 inline-flex min-h-[36px] items-center text-xs font-medium text-primary hover:underline"
           >
             {open ? '收起' : '展开全文'}
           </button>
@@ -840,7 +840,7 @@ function FoldCard({
 }) {
   return (
     <details open={defaultOpen} className="group rounded-xl border bg-card text-card-foreground shadow-sm">
-      <summary className="flex cursor-pointer select-none items-center justify-between gap-2 px-6 py-4 text-base font-semibold [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-[48px] cursor-pointer select-none items-center justify-between gap-2 px-6 py-4 text-base font-semibold [&::-webkit-details-marker]:hidden">
         {title}
         <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
       </summary>

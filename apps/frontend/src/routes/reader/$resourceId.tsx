@@ -295,7 +295,7 @@ function ReaderPage() {
         <Link
           to="/catalog/$resourceId"
           params={{ resourceId: String(id) }}
-          className="inline-flex shrink-0 items-center text-sm text-muted-foreground hover:text-primary"
+          className="inline-flex min-h-[36px] shrink-0 items-center text-sm text-muted-foreground hover:text-primary"
         >
           <ChevronLeft className="mr-1 h-4 w-4" />
           返回详情
@@ -323,7 +323,7 @@ function ReaderPage() {
               <button
                 onClick={() => setModeOverride('md')}
                 className={
-                  'rounded-full px-3 py-1 text-xs transition-colors ' +
+                  'min-h-[36px] rounded-full px-4 py-1.5 text-xs transition-colors ' +
                   (mode === 'md'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground')
@@ -334,7 +334,7 @@ function ReaderPage() {
               <button
                 onClick={() => setModeOverride('pdf')}
                 className={
-                  'rounded-full px-3 py-1 text-xs transition-colors ' +
+                  'min-h-[36px] rounded-full px-4 py-1.5 text-xs transition-colors ' +
                   (mode === 'pdf'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground')
