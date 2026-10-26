@@ -7,6 +7,7 @@ import rehypeKatex from 'rehype-katex'
 import { ListTree } from 'lucide-react'
 import 'katex/dist/katex.min.css'
 import { api } from '@/lib/api'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import { Button } from '@/components/ui/button'
 import { EmptyState, Loading } from '@/components/common/state'
 
@@ -28,6 +29,8 @@ interface ManuscriptViewProps {
   onProgress: (percent: number, completed: boolean) => void
   /** true = 用 window 原生滚动采集进度（移动端富文本），false = 容器内滚 */
   useWindowScroll?: boolean
+  /** 目录条目数变化时回调，供阅读页决定底部「目录」按钮是否出现 */
+  onTocChange?: (count: number) => void
 }
 
 function headingHash(text: string): string {
@@ -42,6 +45,30 @@ function splitManuscript(md: string): { main: string; refs: string } {
   const idx = md.lastIndexOf('\n## 参考文献')
   if (idx < 0) return { main: md, refs: '' }
   return { main: md.slice(0, idx), refs: md.slice(idx + 1) }
+}
+
+const ABSTRACT_MARK = "> **摘　要**"
+
+/** 阅读页底部操作栏「目录」按钮 → 本组件打开目录抽屉的事件名。 */
+export const TOC_OPEN_EVENT = 'rubbish:open-toc' 
+
+/**
+ * 把正文拆成「题录块」与「正文块」。
+ *
+ * 移动端一屏只有 ~660px，标题 + 期刊行 + DOI + 作者 + 三条机构 + 关键词
+ * 会占掉整整一屏，读者要点进来才看得到摘要。这里把标题之后、摘要之前
+ * 的题录行单独拎出来，移动端折进一个 details；桌面端仍原样铺开。
+ */
+function splitFrontMatter(main: string): { title: string; meta: string; rest: string } {
+  const idx = main.indexOf(ABSTRACT_MARK)
+  const head = idx >= 0 ? main.slice(0, idx) : ''
+  const rest = idx >= 0 ? main.slice(idx) : main
+  const lines = head.split('\n')
+  const titleIdx = lines.findIndex((l) => l.startsWith('# '))
+  if (titleIdx < 0) return { title: '', meta: '', rest: main }
+  const title = lines[titleIdx]
+  const meta = lines.slice(titleIdx + 1).join('\n').trim()
+  return { title, meta, rest }
 }
 
 function extractHeadings(md: string): TocEntry[] {
@@ -59,12 +86,27 @@ function extractHeadings(md: string): TocEntry[] {
   return entries
 }
 
-export function ManuscriptView({ resourceId, initialPercent, onProgress, useWindowScroll = false }: ManuscriptViewProps) {
+export function ManuscriptView({
+  resourceId,
+  initialPercent,
+  onProgress,
+  useWindowScroll = false,
+  onTocChange,
+}: ManuscriptViewProps) {
+  const isMobile = useIsMobile()
   const scrollRef = useRef<HTMLDivElement>(null)
   const restoredRef = useRef(false)
   const [scrollHost, setScrollHost] = useState<HTMLDivElement | null>(null)
   const [refsOpen, setRefsOpen] = useState(false)
   const [tocOpen, setTocOpen] = useState(false)
+
+  // 底部操作栏的「目录」按钮通过 window 事件唤出抽屉：目录条目是在
+  // 本组件里从 Markdown 解析出来的，把状态提上去反而要重解析一遍。
+  useEffect(() => {
+    const onOpen = () => setTocOpen(true)
+    window.addEventListener(TOC_OPEN_EVENT, onOpen)
+    return () => window.removeEventListener(TOC_OPEN_EVENT, onOpen)
+  }, [])
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['catalog', 'manuscript', resourceId],
@@ -84,12 +126,22 @@ export function ManuscriptView({ resourceId, initialPercent, onProgress, useWind
   const main = split.main
   const refs = split.refs
   const refCount = refs ? (refs.match(/^\[\d+\]/gm)?.length ?? 0) : 0
+  const front = (() => {
+    if (!main) return null
+    return splitFrontMatter(main)
+  })()
   const toc = (() => {
     if (!main) return []
     const entries = extractHeadings(main)
     if (refs) entries.push({ id: 'refs', level: 2, text: '参考文献' })
     return entries
   })()
+
+  // 目录条目数上报给阅读页：不足 3 条时底部不出现「目录」按钮，
+  // 避免按下去弹出一个几乎空白的抽屉。
+  useEffect(() => {
+    onTocChange?.(toc.length)
+  }, [toc.length, onTocChange])
 
   // 进入时按已保存的百分比恢复阅读位置（本地或服务端进度）。
   // 恢复是一次性副作用：走 timeout 异步执行（react-hooks 编译规则要求
@@ -181,19 +233,10 @@ export function ManuscriptView({ resourceId, initialPercent, onProgress, useWind
       }
     >
       <div className="mx-auto flex max-w-6xl items-start px-5 py-8">
-        {/* 目录侧栏：桌面端吸附 */}
-        {/* 移动端：浮动目录按钮 + 底部抽屉（桌面走左侧吸附栏） */}
+        {/* 目录：桌面端左侧吸附；移动端底部抽屉，由阅读页操作栏的
+            「目录」按钮通过 TOC_OPEN_EVENT 唤出（见下方 useEffect）。 */}
         {toc.length > 2 && (
           <>
-            <button
-              type="button"
-              onClick={() => setTocOpen(true)}
-              aria-label="打开目录"
-              className="fixed bottom-[calc(8rem+env(safe-area-inset-bottom))] right-4 z-30 flex items-center gap-1.5 rounded-full border bg-card/95 px-3 py-2 text-xs shadow-lg backdrop-blur lg:hidden"
-            >
-              <ListTree className="h-3.5 w-3.5" />
-              目录
-            </button>
             {tocOpen && (
               <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-label="文章目录">
                 <button
@@ -267,6 +310,35 @@ export function ManuscriptView({ resourceId, initialPercent, onProgress, useWind
         )}
 
         <article className="markdown-body min-w-0 flex-1">
+          {/* 移动端题录折叠：标题保留（读者要确认打开的是哪篇），
+              期刊/DOI/作者/机构/关键词收进一行摘要，点开再看。 */}
+          {isMobile && front && (
+            <>
+              <ReactMarkdown>{front.title}</ReactMarkdown>
+              {front.meta && (
+                <details className="my-3 rounded-lg border bg-muted/30">
+                  <summary className="cursor-pointer select-none px-3 py-2 text-xs text-muted-foreground">
+                    题录信息（作者、机构、DOI、关键词）
+                  </summary>
+                  <div className="border-t px-3 py-2 text-sm">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        a: ({ href, children }) => (
+                          <a href={href} target="_blank" rel="noopener noreferrer nofollow">
+                            {children}
+                          </a>
+                        ),
+                        img: () => null,
+                      }}
+                    >
+                      {front.meta}
+                    </ReactMarkdown>
+                  </div>
+                </details>
+              )}
+            </>
+          )}
           <ReactMarkdown
             urlTransform={(url) =>
               // 转换管线把图表内嵌为 data:image URI；默认清洗会剥掉 data: 协议
@@ -295,7 +367,7 @@ export function ManuscriptView({ resourceId, initialPercent, onProgress, useWind
               ),
             }}
           >
-            {main}
+            {isMobile && front ? front.rest : main}
           </ReactMarkdown>
 
           {refs && (

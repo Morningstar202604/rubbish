@@ -29,6 +29,12 @@ from app.core.metrics import inc_rate_limit_rejection
 from app.core.rate_limit_store import get_rate_limiter_store
 
 # Per-endpoint stricter limits: path -> max requests per minute
+#
+# 取值原则：按「一个人正常能点多快」定，而不是按「脚本能点多快」。
+# 同一办公网 / 校园网 / 运营商 NAT 后面的多个用户共享出口 IP，
+# 阈值压得太低会误伤整层楼。真正的暴力破解由账号锁定与
+# 6 位 2FA 的低尝试窗口兜住；发信轰炸由收件地址护栏
+# （app.core.mail_guard）按收件人计数，换 IP 绕不过去。
 STRICT_PATHS: dict[str, int] = {
     # 2FA 码只有 6 位数字：code 交换端点要比 /login 更紧，否则第二因子
     # 会在 pending token 的 5 分钟窗口内被暴力穷举。10 次/分 × 5 分 = 50 次
@@ -36,10 +42,10 @@ STRICT_PATHS: dict[str, int] = {
     "/api/comments": 20,
     "/api/auth/login/2fa": 10,
     "/api/auth/login": 10,
-    "/api/auth/register": 5,
-    "/api/auth/verify-email": 10,
-    "/api/auth/resend-verification": 5,
-    "/api/auth/forgot-password": 5,
+    "/api/auth/register": 10,
+    "/api/auth/verify-email": 20,
+    "/api/auth/resend-verification": 8,
+    "/api/auth/forgot-password": 8,
     "/api/auth/reset-password": 10,
     "/api/auth/refresh": 30,
 }

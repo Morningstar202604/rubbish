@@ -158,6 +158,23 @@ class Settings(BaseSettings):
     email_smtp_timeout: int = Field(default=15, ge=3, le=120)
     # 失败重试次数（不含首次）：网络抖动时自动重试，全部失败才静默降级。
     email_smtp_retries: int = Field(default=2, ge=0, le=5)
+    # 多账号发信池（JSON 数组）。每项字段：
+    # {"host","port","username","password","from_address","from_name",
+    #  "use_tls","starttls"}。配置后优先于上面的单账号字段，按轮询分发；
+    # 某个账号连续失败会被暂时摘除（熔断），其余账号继续发信，
+    # 因此单个邮箱被服务商限流不会让全站邮件停摆。
+    email_smtp_accounts: str = ""
+    # 账号熔断冷却（秒）：连续失败达到 email_smtp_breaker_threshold 次后
+    # 暂停使用该账号这么久。取值偏短，避免一次网络抖动把账号长期摘除。
+    email_smtp_breaker_cooldown: int = Field(default=180, ge=10, le=3600)
+    email_smtp_breaker_threshold: int = Field(default=2, ge=1, le=10)
+    # 同一收件地址的发信冷却（秒）：验证邮件 / 重置邮件共用。
+    # 超限时仍然返回 200（不泄露账号是否存在），只是不再真正发信。
+    # 0 = 关闭冷却（仅测试用）。默认 45 秒：够挡住连点与脚本，
+    # 又不至于让「没收到，再点一次」的正常用户白等。
+    email_per_address_cooldown: int = Field(default=45, ge=0, le=3600)
+    email_per_address_window_minutes: int = Field(default=30, ge=1, le=1440)
+    email_per_address_limit: int = Field(default=6, ge=1, le=100)
     email_verification_expire_hours: int = Field(default=24, ge=1)
     password_reset_expire_minutes: int = Field(default=60, ge=1)
     # 站内信/邮件共用的站点名，出现在邮件标题与正文。

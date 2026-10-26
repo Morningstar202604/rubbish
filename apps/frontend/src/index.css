@@ -315,6 +315,20 @@ textarea {
   }
 }
 /* 减弱动效：所有过渡/动画降到最短，保留最终状态 */
+/* 移动端正文：手机上正文占满 100% 宽度后，1.6rem 的标题会占三到四行、
+   把摘要整个推出首屏。按屏宽下调一级，并收紧段落间距。 */
+@media (max-width: 767px) {
+  .markdown-body { font-size: 0.95rem; line-height: 1.85; }
+  .markdown-body h1 { font-size: 1.25rem; }
+  .markdown-body h2 { font-size: 1.1rem; }
+  .markdown-body h3 { font-size: 1rem; }
+  .markdown-body h1,
+  .markdown-body h2,
+  .markdown-body h3 { margin: 1.5em 0 0.5em; }
+  .markdown-body p { margin: 0.7em 0; }
+  .markdown-body img { max-width: 100%; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -396,6 +410,8 @@ html {
   left: 0;
   height: 2px;
   z-index: 60;
+  /* 纯装饰：绝不拦截顶部边缘的点击/滑动手势 */
+  pointer-events: none;
   background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
   transition: width 120ms linear;
 }
@@ -412,6 +428,20 @@ html {
 }
 .badge-pop:hover {
   transform: scale(1.06);
+}
+
+/* 移动端正文：手机上正文占满 100% 宽度后，1.6rem 的标题会占三到四行、
+   把摘要整个推出首屏。按屏宽下调一级，并收紧段落间距。 */
+@media (max-width: 767px) {
+  .markdown-body { font-size: 0.95rem; line-height: 1.85; }
+  .markdown-body h1 { font-size: 1.25rem; }
+  .markdown-body h2 { font-size: 1.1rem; }
+  .markdown-body h3 { font-size: 1rem; }
+  .markdown-body h1,
+  .markdown-body h2,
+  .markdown-body h3 { margin: 1.5em 0 0.5em; }
+  .markdown-body p { margin: 0.7em 0; }
+  .markdown-body img { max-width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

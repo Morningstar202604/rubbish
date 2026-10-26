@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import {
   Bookmark,
   BookOpen,
+  ChevronDown,
   ChevronLeft,
   Download,
   ExternalLink,
@@ -55,6 +56,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { AddToListDialog } from '@/components/common/add-to-list-dialog'
+import { BottomSheet } from '@/components/common/bottom-sheet'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { Comments } from '@/components/common/comments'
 import { MetaItem } from '@/components/common/meta-item'
@@ -154,7 +156,8 @@ function CatalogDetailPage() {
               <Badge variant="outline">{statusLabel(data.publication_status)}</Badge>
             )}
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">{data.title}</h1>
+          {/* 手机上标题占三到四行会把摘要挤出首屏，降到 xl 后两行内可见 */}
+          <h1 className="text-xl font-semibold leading-snug tracking-tight sm:text-2xl">{data.title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {data.authors.join(', ')}
           </p>
@@ -164,19 +167,9 @@ function CatalogDetailPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* 主体 */}
         <div className="space-y-6 lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">摘要</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm leading-7 whitespace-pre-wrap">{data.abstract}</p>
-            </CardContent>
-          </Card>
+          <AbstractCard text={data.abstract} collapsible={isMobile} />
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">元数据</CardTitle>
-            </CardHeader>
+          <FoldCard title="元数据" defaultOpen={!isMobile}>
             <CardContent>
               <MetaItem label="年份" value={String(data.year)} />
               <MetaItem label="出版物" value={data.venue} />
@@ -198,14 +191,11 @@ function CatalogDetailPage() {
               <MetaItem label="ISSN" value={data.issn} />
               <MetaItem label="ISBN" value={data.isbn} />
             </CardContent>
-          </Card>
+          </FoldCard>
 
           {/* R 指数：只有真实事件才算数；分区样本不足时明确写出来，
               不用一个看着漂亮的字母糊弄读者。 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">阅读与影响</CardTitle>
-            </CardHeader>
+          <FoldCard title="阅读与影响" defaultOpen={!isMobile}>
             <CardContent>
               <MetaItem label="R 指数" value={data.r_index != null ? String(data.r_index) : '—'} />
               <MetaItem
@@ -228,7 +218,7 @@ function CatalogDetailPage() {
                 后者由编辑部评定内容气质；口径属编辑部内部标准，不等同于影响因子。
               </p>
             </CardContent>
-          </Card>
+          </FoldCard>
 
           {data.tags.length > 0 && (
             <Card>
@@ -349,10 +339,7 @@ function CatalogDetailPage() {
             </Card>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">引用与分享</CardTitle>
-            </CardHeader>
+          <FoldCard title="引用与分享" defaultOpen={!isMobile}>
             <CardContent className="space-y-2">
               <p className="rounded-md bg-muted/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
                 {data.authors.join('，')}：{data.title}[Z]．Rubbish，{data.year}．
@@ -405,7 +392,7 @@ function CatalogDetailPage() {
                 </Button>
               </div>
             </CardContent>
-          </Card>
+          </FoldCard>
 
           {isAuthenticated && (
           <Card>
@@ -463,6 +450,7 @@ function CatalogDetailPage() {
         <MobileDetailActions
           resourceId={id}
           isAdmin={isAdmin}
+          hasFile={Boolean(data.has_file)}
           externalUrl={data.external_url}
           onEdit={() => setEditOpen(true)}
           onDelete={() => setDeleteOpen(true)}
@@ -795,65 +783,183 @@ function SubscribeDisciplineRow({ discipline }: { discipline: string }) {
   )
 }
 
-// 移动端底部固定操作栏：在线阅读（主操作）+ 更多菜单（外部链接/编辑/删除）。
+// 摘要卡：桌面端完整铺开；移动端超过 5 行先截断，点「展开全文」再看。
+// 详情页真正的正文在阅读器里，首屏只需要让人判断「要不要点进去」。
+function AbstractCard({ text, collapsible }: { text: string; collapsible: boolean }) {
+  const [open, setOpen] = useState(false)
+  const [overflowing, setOverflowing] = useState(false)
+  const ref = useRef<HTMLParagraphElement>(null)
+
+  useEffect(() => {
+    if (!collapsible) return
+    const el = ref.current
+    if (!el) return
+    setOverflowing(el.scrollHeight > el.clientHeight + 4)
+  }, [collapsible, text])
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">摘要</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p
+          ref={ref}
+          className={
+            'text-sm leading-7 whitespace-pre-wrap' +
+            (collapsible && !open ? ' line-clamp-5' : '')
+          }
+        >
+          {text}
+        </p>
+        {collapsible && (overflowing || open) && (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="mt-2 text-xs font-medium text-primary hover:underline"
+          >
+            {open ? '收起' : '展开全文'}
+          </button>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// 可折叠信息卡：桌面端默认展开（信息完整），移动端默认收起（把首屏
+// 让给摘要与正文）。用原生 <details> 而非 Radix Collapsible——不需要
+// 额外依赖、键盘与读屏行为天然正确，也避免再引入一个受控状态。
+function FoldCard({
+  title,
+  defaultOpen = true,
+  children,
+}: {
+  title: string
+  defaultOpen?: boolean
+  children: ReactNode
+}) {
+  return (
+    <details open={defaultOpen} className="group rounded-xl border bg-card text-card-foreground shadow-sm">
+      <summary className="flex cursor-pointer select-none items-center justify-between gap-2 px-6 py-4 text-base font-semibold [&::-webkit-details-marker]:hidden">
+        {title}
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="pb-6">{children}</div>
+    </details>
+  )
+}
+
+// 移动端底部固定操作栏：在线阅读（主操作）+ 下载 + 更多。
 // 仅移动端渲染；桌面端沿用右侧"操作"卡片，互不复用。
+//
+// 为什么「更多」用底部抽屉而不是 DropdownMenu：触发器贴在屏幕下沿，
+// Radix 计算出的可用高度只有 ~10px，点开等于什么都不显示。抽屉从底部
+// 整宽展开，天然避开了这个定位问题。
 function MobileDetailActions({
   resourceId,
   isAdmin,
+  hasFile,
   externalUrl,
   onEdit,
   onDelete,
 }: {
   resourceId: number
   isAdmin: boolean
+  hasFile: boolean
   externalUrl?: string | null
   onEdit: () => void
   onDelete: () => void
 }) {
+  const [moreOpen, setMoreOpen] = useState(false)
   return (
-    <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex items-center gap-2 border-t bg-background/95 p-3 backdrop-blur">
-      <Button asChild className="flex-1">
-        <Link
-          to="/reader/$resourceId"
-          params={{ resourceId: String(resourceId) }}
-        >
-          <BookOpen className="h-4 w-4" />
-          在线阅读
-        </Link>
-      </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon" aria-label="更多操作">
-            <MoreVertical className="h-5 w-5" />
+    <>
+      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex items-center gap-2 border-t bg-background/95 p-3 backdrop-blur">
+        <Button asChild className="flex-1">
+          <Link
+            to="/reader/$resourceId"
+            params={{ resourceId: String(resourceId) }}
+          >
+            <BookOpen className="h-4 w-4" />
+            在线阅读
+          </Link>
+        </Button>
+        {hasFile && (
+          <Button asChild variant="outline" className="shrink-0 gap-1 px-3">
+            <a href={`/api/catalog/${resourceId}/file`} download aria-label="下载 PDF">
+              <Download className="h-4 w-4" />
+              下载
+            </a>
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        )}
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="更多操作"
+          onClick={() => setMoreOpen(true)}
+        >
+          <MoreVertical className="h-5 w-5" />
+        </Button>
+      </div>
+
+      <BottomSheet open={moreOpen} onClose={() => setMoreOpen(false)} title="更多操作">
+        <div className="flex flex-col">
+          <button
+            type="button"
+            onClick={async () => {
+              setMoreOpen(false)
+              try {
+                await navigator.clipboard.writeText(window.location.href)
+                toast.success('链接已复制')
+              } catch {
+                toast.error('复制失败')
+              }
+            }}
+            className="flex min-h-[48px] items-center gap-3 rounded-md px-2 text-left text-sm hover:bg-accent"
+          >
+            <Share2 className="h-5 w-5 shrink-0 text-muted-foreground" />
+            复制分享链接
+          </button>
           {externalUrl && (
-            <DropdownMenuItem asChild>
-              <a href={externalUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" />
-                外部链接
-              </a>
-            </DropdownMenuItem>
+            <a
+              href={externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setMoreOpen(false)}
+              className="flex min-h-[48px] items-center gap-3 rounded-md px-2 text-left text-sm hover:bg-accent"
+            >
+              <ExternalLink className="h-5 w-5 shrink-0 text-muted-foreground" />
+              外部链接
+            </a>
           )}
           {isAdmin && (
             <>
-              <DropdownMenuItem onClick={onEdit}>
-                <Pencil className="h-4 w-4" />
-                编辑
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={onDelete}
-                className="text-destructive focus:text-destructive"
+              <button
+                type="button"
+                onClick={() => {
+                  setMoreOpen(false)
+                  onEdit()
+                }}
+                className="flex min-h-[48px] items-center gap-3 rounded-md px-2 text-left text-sm hover:bg-accent"
               >
-                <Trash2 className="h-4 w-4" />
+                <Pencil className="h-5 w-5 shrink-0 text-muted-foreground" />
+                编辑
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMoreOpen(false)
+                  onDelete()
+                }}
+                className="flex min-h-[48px] items-center gap-3 rounded-md px-2 text-left text-sm text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-5 w-5 shrink-0" />
                 删除
-              </DropdownMenuItem>
+              </button>
             </>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+        </div>
+      </BottomSheet>
+    </>
   )
 }
 

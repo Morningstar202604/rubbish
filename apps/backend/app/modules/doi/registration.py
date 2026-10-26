@@ -18,7 +18,7 @@ from typing import Any
 
 import httpx
 
-from app.core.config import get_settings
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -28,21 +28,19 @@ HTTP_TIMEOUT = 15.0
 
 def datacite_enabled() -> bool:
     """True when a DataCite API URL is configured."""
-    s = get_settings()
-    return bool(s.datacite_api_url) and bool(s.datacite_prefix)
+    return bool(settings.datacite_api_url) and bool(settings.datacite_prefix)
 
 
 def _auth_headers() -> dict[str, str]:
-    s = get_settings()
     return {
         "Content-Type": "application/vnd.api+json",
-        "Authorization": f"Basic {s.datacite_api_key}",
+        "Authorization": f"Basic {settings.datacite_api_key}",
     }
 
 
 def _build_doi(suffix: str) -> str:
     """Build a full DOI from the configured prefix and the given suffix."""
-    return f"{get_settings().datacite_prefix}/{suffix}"
+    return f"{settings.datacite_prefix}/{suffix}"
 
 
 def _build_datacite_metadata(resource: Any, doi: str) -> dict[str, Any]:

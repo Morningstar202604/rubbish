@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { ChevronLeft, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, ListTree, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { typeLabel } from '@/lib/resource-labels'
 import { ReadingProgressBar } from '@/components/common/reading-progress-bar'
@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { EmptyState, ErrorState, Loading } from '@/components/common/state'
 import PdfViewer from '@/components/pdf-viewer'
-import { ManuscriptView } from '@/components/common/manuscript-view'
+import { ManuscriptView, TOC_OPEN_EVENT } from '@/components/common/manuscript-view'
 
 // Restrict reader iframe to http(s) scheme so data:/blob:/javascript:
 // URLs cannot execute content inside the PDF viewer frame.
@@ -103,6 +103,7 @@ function ReaderPage() {
   // 本地累加器：仅跟踪本次会话新增的秒数，flush 后清零
   const [localDuration, setLocalDuration] = useState(0)
   const [removeOpen, setRemoveOpen] = useState(false)
+  const [tocCount, setTocCount] = useState(0)
   const isMobile = useIsMobile()
 
   // 标记是否已从服务端同步过进度。
@@ -278,15 +279,19 @@ function ReaderPage() {
     >
       <ReadingProgressBar />
       {!isAuthenticated && (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground">
-          <span>游客模式：阅读进度保存在本设备，登录后可跨设备同步并参与评论。</span>
-          <Link to="/login" search={{ redirect: `/reader/${id}` }} className="text-primary hover:underline">
+        <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-4 py-1 text-[11px] text-muted-foreground">
+          {/* 移动端只留一句，把纵向空间还给正文 */}
+          <span className="truncate">
+            <span className="hidden sm:inline">游客模式：阅读进度保存在本设备，登录后可跨设备同步并参与评论。</span>
+            <span className="sm:hidden">游客模式 · 进度存在本设备</span>
+          </span>
+          <Link to="/login" search={{ redirect: `/reader/${id}` }} className="shrink-0 text-primary hover:underline">
             登录
           </Link>
         </div>
       )}
       {/* 顶部标题栏 */}
-      <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2 sm:gap-3">
+      <div className="flex flex-wrap items-center gap-2 border-b px-3 py-1.5 sm:gap-3 sm:px-4 sm:py-2">
         <Link
           to="/catalog/$resourceId"
           params={{ resourceId: String(id) }}
@@ -303,7 +308,7 @@ function ReaderPage() {
         data-reader-scroll
         className={
           'flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden' +
-          (isMobile ? ' pb-36' : '')
+          (isMobile ? ' pb-44' : '')
         }
       >
         {/* 主体：Markdown 在线阅读（0.6.2 起）或 pdf.js 视图（兜底） */}
@@ -344,6 +349,7 @@ function ReaderPage() {
               resourceId={id}
               useWindowScroll={windowScroll}
               initialPercent={progressPercent}
+              onTocChange={setTocCount}
               onProgress={(p, done) => {
                 setProgressPercent(p)
                 if (done) setCompleted(true)
@@ -355,6 +361,7 @@ function ReaderPage() {
               initialPage={progress.data?.page ?? 1}
               onLoaded={handleLoaded}
               onPageChange={(p) => goToPage(p)}
+              showPager={!isMobile}
             />
           ) : (
             <EmptyState
@@ -368,8 +375,10 @@ function ReaderPage() {
           )}
         </div>
 
-        {/* 右侧进度栏：桌面端固定侧栏，移动端堆叠到下方全宽 */}
-        <aside className="w-full shrink-0 overflow-y-auto border-t p-4 lg:w-72 lg:border-l lg:border-t-0">
+        {/* 右侧进度栏：桌面端固定侧栏。移动端整块折叠——手机上它会把正文
+            挤到只剩一屏，而其中的控件（页码、进度、保存）已由底部操作栏
+            与「进度」抽屉覆盖，重复展示只会遮挡正文。 */}
+        <aside className="hidden w-full shrink-0 overflow-y-auto border-t p-4 lg:block lg:w-72 lg:border-l lg:border-t-0">
           <Card className="mb-4">
             <CardHeader>
               <CardTitle className="text-base">阅读进度</CardTitle>
@@ -500,7 +509,9 @@ function ReaderPage() {
         </aside>
       </div>
 
-      {/* 移动端底部阅读操作栏：PDF 模式翻页 + 保存进度；富文本模式滚动即进度 */}
+      {/* 移动端底部阅读操作栏：PDF 翻页 + 下载 + 保存进度。
+          刻意不用整宽登录按钮：它会占掉一整行高度、把正文尾部压住，
+          而游客提示已经在页面顶部出现过一次。 */}
       {isMobile && (
         <div
           role="toolbar"
@@ -509,27 +520,51 @@ function ReaderPage() {
         >
           {mode === 'pdf' && (
             <>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => goToPage(page - 1)}
-            aria-label="上一页"
-          >
-            上一页
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            {page}
-            {totalPages ? ` / ${totalPages}` : ''} 页
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => goToPage(page + 1)}
-            aria-label="下一页"
-          >
-            下一页
-          </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="px-2"
+                onClick={() => goToPage(page - 1)}
+                aria-label="上一页"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                {page}
+                {totalPages ? `/${totalPages}` : ''}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="px-2"
+                onClick={() => goToPage(page + 1)}
+                aria-label="下一页"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </>
+          )}
+          {mode === 'md' && tocCount > 2 && (
+            // 目录入口放在操作栏里，而不是正文右侧常驻悬浮按钮——
+            // 后者会一直压住两三个字。
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1 px-2"
+              onClick={() => window.dispatchEvent(new Event(TOC_OPEN_EVENT))}
+              aria-label="打开目录"
+            >
+              <ListTree className="h-4 w-4" />
+              <span className="text-xs">目录</span>
+            </Button>
+          )}
+          {data.has_file && (
+            <Button asChild variant="outline" size="sm" className="shrink-0 gap-1 px-2">
+              <a href={`/api/catalog/${id}/file`} download aria-label="下载 PDF">
+                <Download className="h-4 w-4" />
+                <span className="text-xs">下载</span>
+              </a>
+            </Button>
           )}
           {isAuthenticated ? (
             <Button
@@ -538,16 +573,14 @@ function ReaderPage() {
               onClick={onManualUpdate}
               disabled={updateMut.isPending}
             >
-              {updateMut.isPending ? '保存中…' : '保存进度'}
+              {updateMut.isPending ? '保存中…' : `保存进度 · ${progressPercent}%`}
             </Button>
           ) : (
-            <Link
-              to="/login"
-              search={{ redirect: `/reader/${id}` }}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
-            >
-              登录以同步阅读进度
-            </Link>
+            <Button asChild variant="outline" size="sm" className="flex-1">
+              <Link to="/login" search={{ redirect: `/reader/${id}` }}>
+                登录以同步进度
+              </Link>
+            </Button>
           )}
         </div>
       )}

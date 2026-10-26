@@ -41,6 +41,7 @@ from app.core.email_templates import (
     verify_email as verify_email_tpl,
 )
 from app.core.logging import get_logger
+from app.core.mail_guard import allow_email_to
 from app.core.schemas import MessageResponse
 from app.core.security import (
     create_access_token,
@@ -549,7 +550,13 @@ def _reset_link(token: str) -> str:
 
 
 async def _send_verification_email(user: User) -> None:
-    """Send the verify-email message via the configured sender."""
+    """Send the verify-email message via the configured sender.
+
+    收件地址护栏：同地址 60 秒内不重复发、30 分钟内最多 8 封。
+    超限直接返回（调用方仍回 200），避免把「这个地址被限流」暴露出去。
+    """
+    if not allow_email_to(user.email):
+        return
     token = create_email_verification_token(user.id, user.token_version)
     link = _verify_link(token)
     subject, text, html = verify_email_tpl(
@@ -560,6 +567,8 @@ async def _send_verification_email(user: User) -> None:
 
 async def _send_password_reset_email(user: User) -> None:
     """Send the password-reset message via the configured sender."""
+    if not allow_email_to(user.email):
+        return
     token = create_password_reset_token(user.id, user.token_version)
     link = _reset_link(token)
     subject, text, html = reset_password_tpl(
@@ -590,6 +599,10 @@ async def _notify_duplicate_registration(
     )
     existing = result.scalar_one_or_none()
     if existing is None:
+        return
+    # 重复注册通知也是「用户可反复触发」的信件：不设护栏时，攻击者只要
+    # 拿受害者邮箱反复注册，就能给受害者灌邮件。走同一套收件护栏。
+    if not allow_email_to(existing.email):
         return
     subject, text, html = duplicate_registration(existing.username)
     try:

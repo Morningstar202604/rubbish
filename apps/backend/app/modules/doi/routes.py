@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_admin, require_tenant_id
+from app.core.config import settings
 from app.core.db import get_db
 from app.core.time import utcnow
 from app.models import User
@@ -188,11 +189,9 @@ async def doi_config(
     _: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Return the DOI configuration status (whether DataCite is enabled)."""
-    from app.core.config import get_settings
-
     return {
         "enabled": datacite_enabled(),
-        "prefix": get_settings().datacite_prefix or "not configured",
+        "prefix": settings.datacite_prefix or "not configured",
     }
 
 

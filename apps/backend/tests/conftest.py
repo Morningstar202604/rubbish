@@ -21,6 +21,11 @@ from collections.abc import AsyncGenerator
 # Must run before any `app.*` import so Settings() reads test env.
 os.environ.setdefault("RUBBISH_ENVIRONMENT", "test")
 os.environ.setdefault("RUBBISH_DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+# 收件护栏默认关闭：多个用例会用同一个 example.com 地址连续触发注册与
+# 重发邮件，60 秒冷却会让第二个请求静默跳过发送。护栏本身的行为由
+# tests/test_email_pool.py 显式设置阈值来覆盖。
+os.environ.setdefault("RUBBISH_EMAIL_PER_ADDRESS_COOLDOWN", "0")
+os.environ.setdefault("RUBBISH_EMAIL_PER_ADDRESS_LIMIT", "100")
 # Uploads must go to a writable location in ANY environment (CI runners
 # have no permission to create /data). tmpdir is per-OS writable.
 os.environ.setdefault(
@@ -91,10 +96,16 @@ async def fresh_database() -> AsyncGenerator[None, None]:
     models at app import time registered ``resources`` + ``resource_stats``
     on the same metadata, so a single create_all covers both.
     """
+    # 收件护栏是进程级状态：不清空的话，前一个用例发过 user@example.com，
+    # 后一个用同一地址的用例会被 60s 冷却挡掉，断言「邮件已发送」直接失败。
+    from app.core.mail_guard import reset_mail_guard
+
+    reset_mail_guard()
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
+    reset_mail_guard()
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 

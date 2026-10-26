@@ -22,6 +22,14 @@ interface PdfViewerProps {
   onPageChange?: (page: number) => void
   /** 文档加载完成回调（报告总页数，父组件可做"已读完"判断） */
   onLoaded?: (totalPages: number) => void
+  /**
+   * 是否渲染组件自带的翻页条。移动端由页面底部固定操作栏独占翻页，
+   * 这里必须关掉，否则同一屏出现两组「上一页/下一页」，且下面那组
+   * 会被固定操作栏盖住，用户点了没反应。
+   */
+  showPager?: boolean
+  /** 额外的底部留白（移动端用来避开固定操作栏） */
+  bottomInsetClass?: string
 }
 
 export default function PdfViewer({
@@ -29,6 +37,8 @@ export default function PdfViewer({
   initialPage = 1,
   onPageChange,
   onLoaded,
+  showPager = true,
+  bottomInsetClass = '',
 }: PdfViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // docRef 持有加载好的文档对象，卸载时销毁释放内存
@@ -131,7 +141,7 @@ export default function PdfViewer({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className={cn('flex h-full flex-col', bottomInsetClass)}>
       <div className="relative flex min-h-[40vh] flex-1 items-start justify-center overflow-auto rounded-md border bg-muted/30 p-2">
         {/* canvas 常驻挂载：loading/error 只是覆盖层，保证 renderPage 拿得到元素 */}
         <canvas
@@ -150,7 +160,7 @@ export default function PdfViewer({
           </div>
         )}
       </div>
-      {totalPages > 0 && !error && (
+      {showPager && totalPages > 0 && !error && (
         <div className="flex items-center justify-center gap-2 pt-2 text-sm">
           <button
             type="button"

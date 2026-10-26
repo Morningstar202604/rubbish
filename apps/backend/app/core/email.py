@@ -24,8 +24,11 @@ speak SMTP, so one backend covers them. Ports: 465 = implicit TLS
 from __future__ import annotations
 
 import asyncio
+import json
 import smtplib
 import ssl
+import time
+from dataclasses import dataclass
 from email.message import EmailMessage
 from typing import Protocol, runtime_checkable
 
@@ -158,13 +161,224 @@ class SMTPEmailSender:
 _sender: EmailSender | None = None
 
 
+@dataclass(frozen=True)
+class SmtpAccount:
+    """One sender identity in the outbound pool."""
+
+    host: str
+    port: int
+    username: str
+    password: str
+    from_address: str
+    from_name: str = "Rubbish"
+    use_tls: bool = True
+    starttls: bool = False
+
+    @property
+    def key(self) -> str:
+        return f"{self.username}@{self.host}"
+
+
+def _account_from_settings() -> SmtpAccount:
+    return SmtpAccount(
+        host=settings.email_smtp_host,
+        port=settings.email_smtp_port,
+        username=settings.email_smtp_username,
+        password=settings.email_smtp_password,
+        from_address=settings.email_from_address,
+        from_name=settings.email_from_name,
+        use_tls=settings.email_smtp_use_tls,
+        starttls=settings.email_smtp_starttls,
+    )
+
+
+def parse_smtp_accounts(raw: str) -> list[SmtpAccount]:
+    """Parse ``email_smtp_accounts`` (JSON array) into account objects.
+
+    Malformed input is logged and ignored rather than raised: a typo in one
+    optional env var must not take the whole mail subsystem down.
+    """
+    raw = (raw or "").strip()
+    if not raw:
+        return []
+    try:
+        items = json.loads(raw)
+    except ValueError:
+        logger.warning("email_smtp_accounts_invalid_json", length=len(raw))
+        return []
+    if not isinstance(items, list):
+        logger.warning("email_smtp_accounts_not_a_list")
+        return []
+    accounts: list[SmtpAccount] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        host = str(item.get("host") or "").strip()
+        username = str(item.get("username") or "").strip()
+        from_address = str(item.get("from_address") or username).strip()
+        if not host or not from_address:
+            continue
+        try:
+            port = int(item.get("port") or 465)
+        except (TypeError, ValueError):
+            port = 465
+        accounts.append(
+            SmtpAccount(
+                host=host,
+                port=port,
+                username=username,
+                password=str(item.get("password") or ""),
+                from_address=from_address,
+                from_name=str(item.get("from_name") or settings.email_from_name),
+                use_tls=bool(item.get("use_tls", True)),
+                starttls=bool(item.get("starttls", False)),
+            )
+        )
+    return accounts
+
+
+def configured_accounts() -> list[SmtpAccount]:
+    """Accounts available for delivery, pool first, single account as fallback."""
+    pool = parse_smtp_accounts(settings.email_smtp_accounts)
+    if pool:
+        return pool
+    if settings.email_smtp_host and settings.email_from_address:
+        return [_account_from_settings()]
+    return []
+
+
+class SmtpPoolEmailSender:
+    """Round-robin SMTP sender with per-account circuit breaking.
+
+    Why a pool: a single free mailbox (QQ/126) throttles aggressively and
+    sometimes rejects connections outright. Rotating between two identities
+    spreads the load and keeps verification / reset mail flowing when one
+    provider has a bad minute. Failures are counted per account; after
+    ``breaker_threshold`` consecutive failures the account is parked for
+    ``breaker_cooldown`` seconds and the next account takes over.
+
+    The rotation is deliberately *sticky-fair*: every send advances the
+    cursor, so two accounts get roughly half the traffic each.
+    """
+
+    def __init__(
+        self,
+        accounts: list[SmtpAccount],
+        *,
+        timeout: int = 15,
+        retries: int = 1,
+        breaker_threshold: int = 2,
+        breaker_cooldown: int = 180,
+    ) -> None:
+        if not accounts:
+            raise ValueError("SmtpPoolEmailSender needs at least one account")
+        self._accounts = accounts
+        self._timeout = timeout
+        self._retries = retries
+        self._breaker_threshold = breaker_threshold
+        self._breaker_cooldown = breaker_cooldown
+        self._cursor = 0
+        self._failures: dict[str, int] = {a.key: 0 for a in accounts}
+        self._cooldown_until: dict[str, float] = {a.key: 0.0 for a in accounts}
+
+    @property
+    def account_count(self) -> int:
+        return len(self._accounts)
+
+    def _available(self, now: float) -> list[SmtpAccount]:
+        live = [a for a in self._accounts if self._cooldown_until[a.key] <= now]
+        # All accounts parked (total provider outage): try them all anyway
+        # rather than fail fast — better one slow success than none.
+        return live or list(self._accounts)
+
+    def _order(self, now: float) -> list[SmtpAccount]:
+        live = self._available(now)
+        n = len(live)
+        start = self._cursor % n
+        self._cursor = (self._cursor + 1) % max(1, len(self._accounts))
+        return live[start:] + live[:start]
+
+    def _record_success(self, account: SmtpAccount) -> None:
+        self._failures[account.key] = 0
+        self._cooldown_until[account.key] = 0.0
+
+    def _record_failure(self, account: SmtpAccount) -> None:
+        self._failures[account.key] = self._failures[account.key] + 1
+        if self._failures[account.key] >= self._breaker_threshold:
+            self._cooldown_until[account.key] = time.monotonic() + self._breaker_cooldown
+            logger.warning(
+                "email_account_parked",
+                account=account.key,
+                failures=self._failures[account.key],
+                cooldown=self._breaker_cooldown,
+            )
+
+    def _send_sync(self, account: SmtpAccount, msg: EmailMessage) -> None:
+        if account.use_tls:
+            client: smtplib.SMTP = smtplib.SMTP_SSL(
+                account.host,
+                account.port,
+                timeout=self._timeout,
+                context=ssl.create_default_context(),
+            )
+        else:
+            client = smtplib.SMTP(account.host, account.port, timeout=self._timeout)
+        with client:
+            if not account.use_tls and account.starttls:
+                client.starttls(context=ssl.create_default_context())
+            if account.username and account.password:
+                client.login(account.username, account.password)
+            client.send_message(msg)
+
+    async def send(
+        self,
+        *,
+        to: str,
+        subject: str,
+        body: str,
+        html: str | None = None,
+    ) -> None:
+        last_error: Exception | None = None
+        order = self._order(time.monotonic())
+        for account in order:
+            sender = SMTPEmailSender(
+                host=account.host,
+                port=account.port,
+                username=account.username,
+                password=account.password,
+                from_addr=account.from_address,
+                from_name=account.from_name,
+                use_tls=account.use_tls,
+                starttls=account.starttls,
+                timeout=self._timeout,
+                retries=self._retries,
+            )
+            try:
+                await sender.send(to=to, subject=subject, body=body, html=html)
+                self._record_success(account)
+                logger.info("email_sent_pool", to=to, account=account.key)
+                return
+            except Exception as exc:
+                last_error = exc
+                self._record_failure(account)
+                logger.warning(
+                    "email_account_failed",
+                    account=account.key,
+                    error=str(exc)[:200],
+                )
+        logger.error(
+            "email_pool_gave_up",
+            to=to,
+            subject=subject,
+            accounts=len(order),
+            error=str(last_error)[:200],
+        )
+        raise last_error if last_error else RuntimeError("smtp pool send failed")
+
+
 def smtp_configured() -> bool:
     """True when the operator has supplied enough env for real delivery."""
-    return bool(
-        settings.email_backend == "smtp"
-        and settings.email_smtp_host
-        and settings.email_from_address
-    )
+    return bool(settings.email_backend == "smtp" and configured_accounts())
 
 
 def get_email_sender() -> EmailSender:
@@ -178,7 +392,8 @@ def get_email_sender() -> EmailSender:
         return _sender
 
     if settings.email_backend == "smtp":
-        if not settings.email_smtp_host or not settings.email_from_address:
+        accounts = configured_accounts()
+        if not accounts:
             logger.warning(
                 "email_smtp_misconfigured_fallback_to_console",
                 reason="missing host or from_address",
@@ -186,13 +401,25 @@ def get_email_sender() -> EmailSender:
             _sender = ConsoleEmailSender()
             return _sender
 
+        if len(accounts) > 1:
+            _sender = SmtpPoolEmailSender(
+                accounts,
+                timeout=settings.email_smtp_timeout,
+                retries=min(settings.email_smtp_retries, 1),
+                breaker_threshold=settings.email_smtp_breaker_threshold,
+                breaker_cooldown=settings.email_smtp_breaker_cooldown,
+            )
+            logger.info("email_sender_pool", accounts=len(accounts))
+            return _sender
+
+        account = accounts[0]
         _sender = SMTPEmailSender(
-            host=settings.email_smtp_host,
-            port=settings.email_smtp_port,
-            username=settings.email_smtp_username,
-            password=settings.email_smtp_password,
-            from_addr=settings.email_from_address,
-            from_name=settings.email_from_name,
+            host=account.host,
+            port=account.port,
+            username=account.username,
+            password=account.password,
+            from_addr=account.from_address,
+            from_name=account.from_name,
             use_tls=settings.email_smtp_use_tls,
             starttls=settings.email_smtp_starttls,
             timeout=settings.email_smtp_timeout,
@@ -212,35 +439,44 @@ def reset_email_sender() -> None:
 
 
 async def verify_smtp_connection() -> tuple[bool, str]:
-    """Startup/ops self-check: open a connection and (if creds exist) log in.
+    """Startup/ops self-check: probe every configured account.
 
-    Returns ``(ok, detail)``. Never raises — callers log the result.
-    With the console backend this returns ``(False, "console backend")``.
+    Returns ``(ok, detail)``. ``ok`` is True when at least one account
+    answers, so a single throttled mailbox does not read as "mail is down".
+    Never raises — callers log the result.
     """
-    if not smtp_configured():
+    accounts = configured_accounts()
+    if not accounts:
         return False, "SMTP 未配置（email_backend=console 或缺少 host/from）"
-    try:
-        await asyncio.to_thread(_probe_smtp)
-        return True, f"{settings.email_smtp_host}:{settings.email_smtp_port} 连接成功"
-    except Exception as exc:
-        return False, f"连接失败：{str(exc)[:160]}"
+    results: list[str] = []
+    any_ok = False
+    for account in accounts:
+        try:
+            await asyncio.to_thread(_probe_account, account)
+            any_ok = True
+            results.append(f"{account.key} 连接成功")
+        except Exception as exc:
+            results.append(f"{account.key} 失败：{str(exc)[:120]}")
+    return any_ok, "；".join(results)
 
 
-def _probe_smtp() -> None:
-    if settings.email_smtp_use_tls:
+def _probe_account(account: SmtpAccount) -> None:
+    if account.use_tls:
         client: smtplib.SMTP = smtplib.SMTP_SSL(
-            settings.email_smtp_host,
-            settings.email_smtp_port,
+            account.host,
+            account.port,
             timeout=settings.email_smtp_timeout,
             context=ssl.create_default_context(),
         )
     else:
-        client = smtplib.SMTP(
-            settings.email_smtp_host, settings.email_smtp_port, timeout=settings.email_smtp_timeout
-        )
+        client = smtplib.SMTP(account.host, account.port, timeout=settings.email_smtp_timeout)
     with client:
-        if not settings.email_smtp_use_tls and settings.email_smtp_starttls:
+        if not account.use_tls and account.starttls:
             client.starttls(context=ssl.create_default_context())
-        if settings.email_smtp_username and settings.email_smtp_password:
-            client.login(settings.email_smtp_username, settings.email_smtp_password)
+        if account.username and account.password:
+            client.login(account.username, account.password)
         client.noop()
+
+
+def _probe_smtp() -> None:
+    _probe_account(_account_from_settings())

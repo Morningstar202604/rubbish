@@ -135,6 +135,17 @@ test.describe('mobile shell · 已登录', () => {
     await expect(page.getByRole('link', { name: '在线阅读' })).toBeVisible()
     await expect(page.getByRole('button', { name: '更多操作' })).toBeVisible()
 
+    // 三个点打开的是底部抽屉，且必须真的可见（回归：Radix 下拉在屏幕下沿
+    // 只算出 ~10px 可用高度，点开什么都看不到）
+    await page.getByRole('button', { name: '更多操作' }).click()
+    const sheet = page.getByRole('dialog', { name: '更多操作' })
+    await expect(sheet).toBeVisible()
+    await expect(sheet.getByRole('button', { name: '复制分享链接' })).toBeVisible()
+    const sheetBox = await sheet.boundingBox()
+    expect(sheetBox!.height).toBeGreaterThan(120)
+    await page.keyboard.press('Escape')
+    await expect(sheet).toBeHidden()
+
     // 在线阅读 → 阅读页
     await page.getByRole('link', { name: '在线阅读' }).click()
     await expect(page).toHaveURL(/\/reader\/\d+/)
@@ -144,6 +155,14 @@ test.describe('mobile shell · 已登录', () => {
     await expect(readerBar.getByRole('button', { name: '上一页' })).toBeVisible()
     await expect(readerBar.getByRole('button', { name: '下一页' })).toBeVisible()
     await expect(readerBar.getByRole('button', { name: '保存进度' })).toBeVisible()
+
+    // 阅读进度条是纯装饰：绝不能拦截顶部区域的点击/滑动
+    const progressPointerEvents = await page
+      .locator('.reading-progress')
+      .evaluate((el) => getComputedStyle(el).pointerEvents)
+    expect(progressPointerEvents).toBe('none')
+    // 移动端进度侧栏整块折叠，避免把正文挤到只剩半屏
+    await expect(page.getByRole('heading', { name: '阅读进度' })).toHaveCount(0)
 
     // 全程桌面壳层未渲染
     await expectDesktopShellAbsent(page)

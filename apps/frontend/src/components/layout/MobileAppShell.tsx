@@ -119,6 +119,17 @@ export function MobileAppShell() {
   const hasOwnBottomBar =
     /^\/reader\//.test(location.pathname) || /^\/catalog\/\d+/.test(location.pathname)
 
+  // FAB 只在「浏览类」页面出现。表单页（设置、账号安全、后台、投稿）
+  // 的输入框经常落在屏幕中下部，悬浮按钮正好压在上面——实测在
+  // /account/security 的「当前密码」输入框中心点能命中 FAB。
+  // 导入入口在「我的」抽屉里也有一份，收起 FAB 不会断掉任何路径。
+  const FAB_ROUTES = ['/dashboard', '/catalog', '/library', '/follows', '/recommendations', '/notifications']
+  const showFab =
+    showChrome &&
+    isAuthenticated &&
+    !hasOwnBottomBar &&
+    FAB_ROUTES.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))
+
   // 期刊门面模式：首页走独立的全宽 editorial 版式，不套移动端 Tab 壳（与桌面端一致）。
   // 提前返回必须放在全部 hooks 之后（rules of hooks）。
   const AUTH_FACADE = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email']
@@ -175,8 +186,8 @@ export function MobileAppShell() {
         </div>
       </main>
 
-      {/* 中心悬浮按钮：仅登录用户且在非认证页可见，跳导入（创建类操作） */}
-      {showChrome && isAuthenticated && !hasOwnBottomBar && (
+      {/* 中心悬浮按钮：仅登录用户、且在浏览类页面可见，跳导入（创建类操作） */}
+      {showFab && (
         <Button
           aria-label="导入"
           onClick={() => go(MOBILE_FAB_TO)}
