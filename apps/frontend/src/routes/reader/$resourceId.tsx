@@ -523,7 +523,7 @@ function ReaderPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="px-2"
+                className="h-9 px-2"
                 onClick={() => goToPage(page - 1)}
                 aria-label="上一页"
               >
@@ -536,7 +536,7 @@ function ReaderPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="px-2"
+                className="h-9 px-2"
                 onClick={() => goToPage(page + 1)}
                 aria-label="下一页"
               >
@@ -550,7 +550,7 @@ function ReaderPage() {
             <Button
               variant="outline"
               size="sm"
-              className="shrink-0 gap-1 px-2"
+              className="h-9 shrink-0 gap-1 px-2"
               onClick={() => window.dispatchEvent(new Event(TOC_OPEN_EVENT))}
               aria-label="打开目录"
             >
@@ -559,7 +559,7 @@ function ReaderPage() {
             </Button>
           )}
           {data.has_file && (
-            <Button asChild variant="outline" size="sm" className="shrink-0 gap-1 px-2">
+            <Button asChild variant="outline" size="sm" className="h-9 shrink-0 gap-1 px-2">
               <a href={`/api/catalog/${id}/file`} download aria-label="下载 PDF">
                 <Download className="h-4 w-4" />
                 <span className="text-xs">下载</span>
@@ -569,14 +569,14 @@ function ReaderPage() {
           {isAuthenticated ? (
             <Button
               size="sm"
-              className="flex-1"
+              className="h-9 flex-1"
               onClick={onManualUpdate}
               disabled={updateMut.isPending}
             >
               {updateMut.isPending ? '保存中…' : `保存进度 · ${progressPercent}%`}
             </Button>
           ) : (
-            <Button asChild variant="outline" size="sm" className="flex-1">
+            <Button asChild variant="outline" size="sm" className="h-9 flex-1">
               <Link to="/login" search={{ redirect: `/reader/${id}` }}>
                 登录以同步进度
               </Link>
