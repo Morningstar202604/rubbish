@@ -9,6 +9,54 @@
 
 ## [Unreleased]
 
+## [0.9.1] — 2026-10-26
+
+### Added
+
+- **AI 写作核查表**（`docs/ai-writing-checklist.md`，线上
+  `/templates/rubbish-ai-writing-checklist.md`）：把「AI 味」拆成可检查的症状——
+  因果断裂、循环论证、编造引用、小数位过度精确、三段式空转、段落长度均匀等十余项，
+  每项给出坏例、好例与核查方法；并明确「不使用 AI 检测工具分数做判定」及理由。
+  作者指南新增「关于 AI 辅助写作」板块与下载卡片，编辑规范新增第十一节。
+- **上传能力扩展**：允许 PDF/Word/ODT/RTF/TXT/Markdown/LaTeX/PS/PPTX/Excel/CSV/
+  JSON/BibTeX/PNG/JPG/SVG/TIFF/ZIP/GZ/TAR/7Z/IPYNB（26 种扩展名，MIME 与扩展名
+  双通道判定，浏览器报错 content-type 不再误拒）；单文件上限 50 MB。
+  `/api/capabilities` 新增 `upload_max_bytes` 与 `upload_extensions`，前端 accept、
+  体积预校验与提示文案全部由服务端下发，不再两处写死。
+- 投稿表单新增「代码与数据链接（推荐）」说明，鼓励填 GitHub/GitLab/Gitee/Zenodo/OSF
+  或网盘地址；「下载链接」改名为「稿件直链」并给出用途。
+- **5 篇补充论文**（p9–p13，短篇 2,000–2,900 字，各 1 图 1 表）：
+  图表色觉可及性审计、长文渲染基线、截稿日效应、署名排序协商成本、审稿人指派专长匹配。
+  使 管理学/计算机科学/信息科学 三学科各达 4 篇，**分区（R1–R4）首次可计算**。
+- **ECharts 6.1 可视化**：封装 `components/charts/echart.tsx`（按需引入
+  Bar/Line/Pie/Radar/Scatter + Canvas 渲染器，统一配色与中文字体）。指标页新增
+  「一眼看全刊」三图（荒诞气质环图 / 读者行为雷达 / 学科构成条形），
+  首页指标区新增学科构成图并 **懒加载**（190 KB gzip 不拖首屏）。
+- **动效与交互层**：路由级过渡（180ms 淡入上浮，`AnimatePresence mode="wait"`）、
+  卡片 hover 抬升（`card-lift`）、导航下划线生长（`link-underline`）、
+  骨架屏扫光（`skeleton-shimmer`）、阅读页顶部进度条（双滚动容器兼容）、
+  徽章 hover 微缩放。全部在 `prefers-reduced-motion` 下关闭。
+- 长列表/详情/指标/通知页由转圈改为三行骨架屏（`LoadingSkeleton`）。
+
+### Fixed
+
+- **期刊详情页下载文件名**：此前返回存储 UUID（如 `9cd5d1a3….pdf`），
+  现按资源标题生成可读名并附 RFC 5987 `filename*`（中文名可正常保存）。
+- **上传 MIME 误拒**：`.md/.tex/.csv/.ipynb` 在浏览器里常被报成
+  `application/octet-stream` 或空串，旧逻辑只认 MIME 会拒收合法稿件。
+
+### Tests
+
+- 后端新增/更新 4 例：多格式上传（md/tex/csv/png/zip 全通过）、未知扩展名 400
+  且错误信息列出可接受清单、capabilities 暴露上传约束、非法类型改用 .exe 样例
+  （图片自本版起合法）。
+- **人工式全量 QA（Playwright，94 项断言，双视口）全通过**：12 个公开页 +
+  18 个登录后页面的渲染/无 console error、首页全部链接无死链、目录关键词检索、
+  筛选控件、阅读器富文本/PDF 双模式切换、阅读进度条、主题切换、错误密码提示、
+  登录成功、用户管理搜索、编辑工作台详情弹窗、分配审稿人下拉（2 候选）、
+  审稿人接受邀请并提交报告、投稿表单新建弹窗、上传格式与体积提示、
+  评论区发布、13 篇论文阅读器图片 13/13 加载、移动端 12 页无横向溢出 + 底部 Tab 栏。
+
 ## [0.9.0] — 2026-10-26
 
 ### Added

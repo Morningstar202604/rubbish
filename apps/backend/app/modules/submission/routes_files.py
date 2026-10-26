@@ -30,15 +30,52 @@ from app.modules.submission.schemas import SubmissionResponse
 
 _ALLOWED_UPLOAD_MIMES = frozenset(
     {
+        # 稿件本体：PDF / Word / 纯文本 / Markdown / LaTeX 源文件 / PostScript
         "application/pdf",
         "application/msword",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/postscript",
         "text/plain",
+        "text/markdown",
+        "text/x-markdown",
+        "application/x-tex",
+        "application/x-latex",
+        # 富文本与幻灯片：审稿人常收到 .rtf / .odt / .pptx
+        "application/rtf",
+        "text/rtf",
+        "application/vnd.oasis.opendocument.text",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        # 表格与数据：附录与可复现材料
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "text/csv",
+        "application/json",
+        "application/x-bibtex",
+        # 图表：单独提交的高分辨率图（期刊常要求 300dpi 独立图文件）
+        "image/png",
+        "image/jpeg",
+        "image/svg+xml",
+        "image/tiff",
+        # 代码与材料：源码压缩包、补充材料、Jupyter notebook
         "application/zip",
+        "application/x-zip-compressed",
+        "application/gzip",
+        "application/x-tar",
+        "application/x-7z-compressed",
+        "application/x-ipynb+json",
     }
 )
+# 单文件 50 MB 上限：足够容纳 300 dpi 图集与源码包，又不会让上传走满
+# 整个请求超时窗口。前端从 /capabilities 读取同一数值，避免两边写死不一致。
 _MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
+
+# 前端 accept 属性与错误文案共用这份扩展名清单（由 /capabilities 下发）。
+_ALLOWED_UPLOAD_EXTENSIONS = (
+    ".pdf .doc .docx .odt .rtf .txt .md .tex .ps "
+    ".pptx .xls .xlsx .csv .json .bib "
+    ".png .jpg .jpeg .svg .tif .tiff "
+    ".zip .gz .tar .7z .ipynb"
+).split()
 
 
 @router.post(
@@ -78,10 +115,21 @@ async def upload_submission_file(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot upload files in status '{entry.status}'",
         )
-    if file.content_type not in _ALLOWED_UPLOAD_MIMES:
+    # MIME 白名单 + 扩展名兜底：浏览器对 .md/.tex/.csv/.ipynb 报的
+    # content-type 千奇百怪（从 application/octet-stream 到空串都有），
+    # 只认 MIME 会把合法稿件拒之门外。扩展名命中即放行。
+    upload_name = file.filename or "upload"
+    upload_ext = os.path.splitext(upload_name)[1].lower()
+    mime_ok = file.content_type in _ALLOWED_UPLOAD_MIMES
+    ext_ok = upload_ext in set(_ALLOWED_UPLOAD_EXTENSIONS)
+    if not (mime_ok or ext_ok):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported file type: {file.content_type}",
+            detail=(
+                f"Unsupported file type: {file.content_type or 'unknown'} "
+                f"({upload_ext or 'no extension'}). "
+                f"Accepted: {' '.join(_ALLOWED_UPLOAD_EXTENSIONS)}"
+            ),
         )
 
     # 流式读 + 大小校验，避免一次性 OOM
@@ -94,7 +142,11 @@ async def upload_submission_file(
         if len(contents) > _MAX_UPLOAD_BYTES:
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"File exceeds {_MAX_UPLOAD_BYTES} bytes",
+                detail=(
+                    f"File exceeds the {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit. "
+                    "Put large datasets or repositories on a hosting service and paste "
+                    "the link into the submission form instead."
+                ),
             )
 
     # 存储 key：{tenant_id}/{submission_id}/{uuid}{ext}
@@ -109,7 +161,14 @@ async def upload_submission_file(
     old_path = entry.file_path  # 可能为 None（首次上传）
     if old_path == rel_path:  # uuid 碰撞极不可能，但保险起见跳过自删
         old_path = None
-    await get_storage().save(rel_path, contents, content_type=file.content_type)
+    # 浏览器常常不带 content-type（.md/.tex），此时按扩展名回填一份，
+    # 否则存储层会把它标成二进制，之后下载头也猜不出正确类型。
+    stored_type = (
+        file.content_type
+        or mimetypes.guess_type(original_filename)[0]
+        or "application/octet-stream"
+    )
+    await get_storage().save(rel_path, contents, content_type=stored_type)
     entry.file_path = rel_path
 
     # 在线阅读用 Markdown：尽力转换，失败静默（阅读器回退 PDF 视图）。

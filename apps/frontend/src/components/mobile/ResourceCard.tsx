@@ -16,7 +16,7 @@ export function ResourceCard({ resource }: { resource: ResourceResponse }) {
     <Link
       to="/catalog/$resourceId"
       params={{ resourceId: String(resource.id) }}
-      className="block overflow-hidden rounded-xl border bg-card transition active:scale-[0.99]"
+      className="card-lift block overflow-hidden rounded-xl border bg-card active:scale-[0.99]"
     >
       <CoverArt
         seed={resource.id}
@@ -30,7 +30,7 @@ export function ResourceCard({ resource }: { resource: ResourceResponse }) {
           <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{authors}</p>
         )}
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <Badge variant="secondary" className="text-[10px]">
+          <Badge variant="secondary" className="badge-pop text-[10px]">
             {typeLabel(resource.type)}
           </Badge>
           {level ? (

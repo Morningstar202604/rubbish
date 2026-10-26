@@ -640,21 +640,26 @@ async def test_upload_file_pdf(client: AsyncClient, test_user: dict, tmp_path) -
 
 
 async def test_upload_file_invalid_mime(client: AsyncClient, test_user: dict) -> None:
-    """非法 MIME 应 400。"""
+    """非法类型应 400。
+
+    注意：图片（.png/.svg 等）自 0.9.1 起是**允许**的——期刊常要求单独提交
+    300 dpi 图件。这里用可执行文件作为非法样例，并断言错误信息给出可接受清单。
+    """
     submission = await _create_submission(client, test_user)
     resp = await client.post(
         f"/api/submissions/{submission['id']}/files",
         files={
             "file": (
-                "image.png",
-                BytesIO(b"\x89PNG\r\n\x1a\n" + b"0" * 100),
-                "image/png",
+                "installer.exe",
+                BytesIO(b"MZ\x90\x00" + b"0" * 100),
+                "application/x-msdownload",
             )
         },
         headers=auth_headers(test_user),
     )
     assert resp.status_code == 400
     assert "Unsupported file type" in resp.json()["detail"]
+    assert ".pdf" in resp.json()["detail"]
 
 
 async def test_upload_file_non_owner_403(

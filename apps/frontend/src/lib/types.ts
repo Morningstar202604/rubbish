@@ -130,6 +130,10 @@ export interface CapabilitiesResponse {
   email_verification_required: boolean
   oidc_enabled: boolean
   registration_open: boolean
+  /** 服务端允许的单文件上限（字节）；前端据此做预校验与文案 */
+  upload_max_bytes: number
+  /** 服务端接受的扩展名清单（含点号），用于 <input accept> 与文案 */
+  upload_extensions: string[]
 }
 
 // --- Catalog ---

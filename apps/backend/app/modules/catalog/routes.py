@@ -9,6 +9,7 @@ on every query) AND by RLS in production.
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -50,6 +51,13 @@ router.include_router(ontology_router)
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
+
+
+def _download_name(title: str, suffix: str) -> str:
+    """把资源标题变成可读的下载文件名（不含路径分隔符，长度受限）。"""
+    cleaned = "".join(ch for ch in (title or "manuscript") if ch not in '\\/:*?"<>|\r\n\t')
+    cleaned = " ".join(cleaned.split())[:80] or "manuscript"
+    return f"{cleaned}.{suffix}"
 
 
 async def _can_preview_unpublished(
@@ -430,6 +438,15 @@ async def download_resource_file(
 
     filename = submission.file_path.rsplit("/", 1)[-1]
     media_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    # 存储键是 uuid，直接返回会让用户下载到 `9cd5d1a3....pdf`。
+    # 用资源标题生成可读文件名（RFC 5987 的 filename* 支持中文），
+    # 同时保留 ASCII 回退名给不认 filename* 的老客户端。
+    suffix = filename.rsplit(".", 1)[-1] if "." in filename else "bin"
+    readable = _download_name(resource.title, suffix)
+    disposition = (
+        f'attachment; filename="{resource.id}-manuscript.{suffix}"; '
+        f"filename*=UTF-8''{quote(readable)}"
+    )
 
     range_header = request.headers.get("Range")
     if range_header and range_header.startswith("bytes="):
@@ -454,6 +471,7 @@ async def download_resource_file(
                 headers={
                     "Content-Range": f"bytes {start}-{end}/{len(data)}",
                     "Accept-Ranges": "bytes",
+                    "Content-Disposition": disposition,
                 },
             )
         except ValueError:
@@ -462,7 +480,7 @@ async def download_resource_file(
     return StreamingResponse(
         iter([data]),
         media_type=media_type,
-        headers={"Accept-Ranges": "bytes"},
+        headers={"Accept-Ranges": "bytes", "Content-Disposition": disposition},
     )
 
 

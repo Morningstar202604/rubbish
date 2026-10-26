@@ -13,7 +13,7 @@ import {
 import { extractError } from '@/lib/utils'
 import { PageHeader } from '@/components/common/page-header'
 import { Pagination } from '@/components/common/pagination'
-import { EmptyState, ErrorState, Loading } from '@/components/common/state'
+import { EmptyState, ErrorState, LoadingSkeleton } from '@/components/common/state'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -119,7 +119,7 @@ function NotificationsPage() {
       </div>
 
       {isLoading ? (
-        <Loading />
+        <LoadingSkeleton rows={5} />
       ) : isError ? (
         <ErrorState message="加载通知失败" onRetry={() => refetch()} />
       ) : !data || data.data.length === 0 ? (

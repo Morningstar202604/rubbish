@@ -329,3 +329,104 @@ textarea {
 html {
   scroll-behavior: smooth;
 }
+
+/* ---------------------------------------------------------------------------
+ * 0.9.1 视觉层：把「静态页面」变成「有反馈的页面」
+ * 原则：动效只做两件事——提示可交互、掩盖加载；不做装饰性乱动。
+ * 全部在 prefers-reduced-motion 下自动关闭（见文件末尾的媒体查询）。
+ * ------------------------------------------------------------------------- */
+
+/* 卡片：轻微的抬升 + 边缘高光，只在 hover 可交互卡片上生效 */
+.card-lift {
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 220ms ease;
+  will-change: transform;
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 2px rgba(20, 40, 70, 0.04),
+    0 8px 24px -8px rgba(20, 40, 70, 0.18);
+  border-color: color-mix(in oklab, var(--color-primary) 28%, var(--color-border));
+}
+
+/* 链接下划线：从左到右生长，而不是瞬间出现 */
+.link-underline {
+  position: relative;
+}
+.link-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  height: 1px;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: currentColor;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.link-underline:hover::after,
+.link-underline:focus-visible::after {
+  transform: scaleX(1);
+}
+
+/* 骨架屏：比 animate-pulse 更柔和的横向扫光 */
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--color-muted) 60%, transparent) 0%,
+    color-mix(in oklab, var(--color-muted) 30%, transparent) 40%,
+    color-mix(in oklab, var(--color-muted) 60%, transparent) 80%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* 阅读进度：顶部一根 2px 的进度条，滚动时随页面推进 */
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  z-index: 60;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  transition: width 120ms linear;
+}
+
+/* 数字突出显示：tabular-nums 让滚动计数不抖动 */
+.stat-number {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* 徽章微动：hover 时轻微放大，提示可点 */
+.badge-pop {
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.badge-pop:hover {
+  transform: scale(1.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-lift,
+  .link-underline::after,
+  .badge-pop {
+    transition: none;
+  }
+  .card-lift:hover {
+    transform: none;
+  }
+  .skeleton-shimmer {
+    animation: none;
+  }
+  .reading-progress {
+    transition: none;
+  }
+}

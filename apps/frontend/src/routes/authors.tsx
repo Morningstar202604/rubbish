@@ -227,6 +227,27 @@ function AuthorsPage() {
         </RevealSection>
 
         <RevealSection>
+          <h2 className="text-xl font-medium">关于 AI 辅助写作</h2>
+          <div className="mt-3 space-y-3 text-sm leading-relaxed text-muted-foreground">
+            <p>
+              本刊不禁止 AI 辅助写作，但禁止<strong className="text-foreground">用 AI 掩盖内容的空洞</strong>。
+              两者的区别在初审时很容易看出来：真正改过的稿子有具体的人、地、时与真实数据；
+              生成后没碰过的稿子，语法无瑕但读完不知道作者到底做了什么。
+            </p>
+            <p>
+              我们的判断只看三件事：<strong className="text-foreground">因果是否成立</strong>、
+              <strong className="text-foreground">引用是否可核实</strong>、
+              <strong className="text-foreground">结论是否超出证据</strong>。
+              这三项不过，文风再好也退；三项都过，用不用 AI 不是问题。
+            </p>
+            <p>
+              完整的核查项（含常见症状与改写示例）见下方「AI 写作核查表」。
+              我们不使用 AI 检测工具的分数做判定——已有研究显示这类工具对非英语母语作者存在系统性误判。
+            </p>
+          </div>
+        </RevealSection>
+
+        <RevealSection>
           <h2 className="text-xl font-medium">格式模板</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             不强制使用，但用模板能显著降低编辑部的排版时间——你的论文会更快见刊。
@@ -250,6 +271,12 @@ function AuthorsPage() {
                 icon: BookOpenCheck,
                 title: '编辑规范（完整版）',
                 body: '篇幅分档、结构规范、图表与引用细则、提交清单——投稿前必读。',
+              },
+              {
+                href: '/templates/rubbish-ai-writing-checklist.md',
+                icon: ShieldCheck,
+                title: 'AI 写作核查表',
+                body: '把「AI 味」逐条拆成可检查的项：因果、引用、数据、语气、结构。含编辑部判定流程。',
               },
             ].map((t) => (
               <Card key={t.href}>

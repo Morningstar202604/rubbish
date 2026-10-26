@@ -24,6 +24,10 @@ class CapabilitiesResponse(BaseModel):
     email_verification_required: bool
     oidc_enabled: bool
     registration_open: bool
+    # 上传约束对外暴露：前端不再把 50 MB / 扩展名列表写死在两处，
+    # 后端改规则时前端自动跟随。
+    upload_max_bytes: int
+    upload_extensions: list[str]
 
 
 @router.get("", response_model=CapabilitiesResponse)
@@ -36,6 +40,11 @@ async def get_capabilities() -> CapabilitiesResponse:
     console when SMTP is half-configured. Either way the console sender
     means "nothing leaves this process".
     """
+    from app.modules.submission.routes_files import (
+        _ALLOWED_UPLOAD_EXTENSIONS,
+        _MAX_UPLOAD_BYTES,
+    )
+
     sender = get_email_sender()
     delivers = not isinstance(sender, ConsoleEmailSender)
     return CapabilitiesResponse(
@@ -46,6 +55,8 @@ async def get_capabilities() -> CapabilitiesResponse:
         email_verification_required=False,
         oidc_enabled=settings.oidc_enabled,
         registration_open=True,
+        upload_max_bytes=_MAX_UPLOAD_BYTES,
+        upload_extensions=list(_ALLOWED_UPLOAD_EXTENSIONS),
     )
 
 

@@ -3,9 +3,10 @@ import { ArrowLeft, BookOpen, Download, Lock, Quote, Sparkles, TrendingUp } from
 import { useJournalMetrics } from '@/hooks/api/use-modules'
 import { PageHeader } from '@/components/common/page-header'
 import { RevealSection } from '@/components/common/reveal-section'
-import { ErrorState, Loading } from '@/components/common/state'
+import { ErrorState, LoadingSkeleton } from '@/components/common/state'
 import { Card, CardContent } from '@/components/ui/card'
 import { typeLabel } from '@/lib/resource-labels'
+import { AbsurdityDonut, DisciplineBar, EngagementRadar } from '@/components/charts/metrics-charts'
 
 export const Route = createFileRoute('/journal-metrics')({
   component: JournalMetricsPage,
@@ -33,7 +34,7 @@ function JournalMetricsPage() {
       />
 
       {isLoading ? (
-        <Loading />
+        <LoadingSkeleton rows={4} />
       ) : isError || !data ? (
         <ErrorState message="加载指标失败" onRetry={() => refetch()} />
       ) : (
@@ -77,6 +78,33 @@ function JournalMetricsPage() {
               </Card>
             </RevealSection>
           ) : null}
+
+          <RevealSection>
+            <h2 className="text-lg font-medium">一眼看全刊</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              同样的数字，换一种看法。环形看荒诞气质，雷达看读者行为分布，条形看学科构成。
+            </p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-xs font-medium text-muted-foreground">荒诞气质</p>
+                  <AbsurdityDonut median={data.absurdity_index_median} />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-xs font-medium text-muted-foreground">读者行为分布</p>
+                  <EngagementRadar data={data} />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-xs font-medium text-muted-foreground">学科构成</p>
+                  <DisciplineBar data={data.by_discipline} />
+                </CardContent>
+              </Card>
+            </div>
+          </RevealSection>
 
           <RevealSection>
             <h2 className="text-lg font-medium">指标一览</h2>

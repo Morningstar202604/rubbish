@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { AnimatePresence, motion, MotionConfig, type Variants } from 'motion/react'
 import { useInViewReveal } from '@/hooks/use-in-view-reveal'
@@ -31,6 +31,11 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { EmptyState, ErrorState } from '@/components/common/state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { absurdityLevel, typeLabel } from '@/lib/resource-labels'
+// 图表库（ECharts）约 190 KB gzip：只在真的滚动到指标区时才加载，
+// 不拖慢首页首屏。
+const DisciplineBar = lazy(() =>
+  import('@/components/charts/metrics-charts').then((m) => ({ default: m.DisciplineBar })),
+)
 
 export const Route = createFileRoute('/')({
   component: HomePage,
@@ -439,7 +444,7 @@ function HomePage() {
               </span>
               <Link
                 to="/catalog"
-                className="text-muted-foreground transition-colors hover:text-foreground"
+                className="link-underline text-muted-foreground transition-colors hover:text-foreground"
               >
                 资源目录
               </Link>
@@ -457,13 +462,13 @@ function HomePage() {
               </a>
               <Link
                 to="/journal-metrics"
-                className="text-muted-foreground transition-colors hover:text-foreground"
+                className="link-underline text-muted-foreground transition-colors hover:text-foreground"
               >
                 期刊指标
               </Link>
               <Link
                 to="/authors"
-                className="text-muted-foreground transition-colors hover:text-foreground"
+                className="link-underline text-muted-foreground transition-colors hover:text-foreground"
               >
                 作者指南
               </Link>
@@ -545,7 +550,7 @@ function HomePage() {
                   variants={card}
                   animate={revealLatest ? 'show' : 'hidden'}
                   whileHover={{ y: -5 }}
-                  className="group relative flex flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-colors hover:border-primary/40"
+                  className="card-lift group relative flex flex-col overflow-hidden rounded-lg border bg-card shadow-sm hover:border-primary/40"
                 >
                   {/* 整卡可点：覆盖整张卡片的链接（视觉内容在其上、不拦截点击） */}
                   <Link
@@ -960,6 +965,21 @@ function HomePage() {
                 </p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-lg border bg-card p-5 shadow-sm sm:col-span-2">
+                  <h4 className="text-sm font-medium">学科构成</h4>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    同一学科满 4 篇才生成分区；颜色不影响排名，只为分辨。
+                  </p>
+                  {metrics && Object.keys(metrics.by_discipline).length > 0 ? (
+                    <Suspense
+                      fallback={<div className="mt-3 h-[180px] animate-pulse rounded-md bg-muted/50" />}
+                    >
+                      <DisciplineBar data={metrics.by_discipline} />
+                    </Suspense>
+                  ) : (
+                    <p className="mt-3 text-sm text-muted-foreground">暂无已发表文章</p>
+                  )}
+                </div>
                 <div className="rounded-lg border bg-card p-5 shadow-sm">
                   <h4 className="text-sm font-medium">学科分区（按 R 指数）</h4>
                   <ul className="mt-3 space-y-2.5 text-sm">

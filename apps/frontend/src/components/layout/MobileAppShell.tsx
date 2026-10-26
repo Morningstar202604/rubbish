@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { BrandMark } from '@/components/common/brand-mark'
 import { ModuleErrorBoundary } from '@/components/common/error-boundary'
+import { PageTransition } from '@/components/common/page-transition'
 import { CookieBanner } from '@/components/common/cookie-banner'
 import { filterNav } from '@/lib/nav'
 import { MOBILE_TABS, MOBILE_MORE, MOBILE_FAB_TO, type MobileTab } from './mobile-nav'
@@ -167,7 +168,9 @@ export function MobileAppShell() {
         <div className="mx-auto w-full max-w-screen-sm px-4 py-4">
           {/* 页面级错误边界：崩溃时底部 Tab 栏仍可用，换页自动复位 */}
           <ModuleErrorBoundary name="页面" resetKeys={[location.pathname]}>
-            <Outlet />
+            <PageTransition>
+              <Outlet />
+            </PageTransition>
           </ModuleErrorBoundary>
         </div>
       </main>

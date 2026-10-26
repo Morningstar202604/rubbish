@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { ChevronLeft, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { typeLabel } from '@/lib/resource-labels'
+import { ReadingProgressBar } from '@/components/common/reading-progress-bar'
 import { formatDateTime } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import { useIsMobile } from '@/hooks/use-is-mobile'
@@ -275,6 +276,7 @@ function ReaderPage() {
         (windowScroll ? 'min-h-[calc(100dvh-3.5rem)]' : 'h-[calc(100vh-3.5rem)]')
       }
     >
+      <ReadingProgressBar />
       {!isAuthenticated && (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground">
           <span>游客模式：阅读进度保存在本设备，登录后可跨设备同步并参与评论。</span>
@@ -298,6 +300,7 @@ function ReaderPage() {
       </div>
 
       <div
+        data-reader-scroll
         className={
           'flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden' +
           (isMobile ? ' pb-36' : '')

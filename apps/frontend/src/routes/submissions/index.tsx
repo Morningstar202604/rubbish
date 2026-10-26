@@ -40,6 +40,7 @@ import type {
   SubmissionType,
 } from '@/lib/types'
 import { typeLabel } from '@/lib/resource-labels'
+import { useCapabilities } from '@/hooks/use-capabilities'
 import { extractError, parseListField } from '@/lib/utils'
 import { PageHeader } from '@/components/common/page-header'
 import { Pagination } from '@/components/common/pagination'
@@ -237,6 +238,11 @@ function statusBadge(status: SubmissionStatus) {
 
 function SubmissionsPage() {
   const navigate = useNavigate()
+  // 上传约束来自服务端（/capabilities），前端不再维护第二份规则。
+  const caps = useCapabilities()
+  const uploadMaxMb = Math.round((caps.data?.upload_max_bytes ?? 50 * 1024 * 1024) / 1024 / 1024)
+  const maxUploadBytes = caps.data?.upload_max_bytes ?? 50 * 1024 * 1024
+  const acceptAttr = (caps.data?.upload_extensions ?? ['.pdf', '.docx', '.doc', '.txt', '.zip']).join(',')
   const search = useSearch({ strict: false }) as SubmissionSearch
   const statusTab = (search.status ?? 'all') as SubmissionStatus | 'all'
   const page = search.page ?? 1
@@ -665,15 +671,23 @@ function SubmissionsPage() {
                 ) && (
                   <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-primary hover:underline">
                     <Upload className="h-4 w-4" />
-                    {detail.file_path ? '替换文件' : '上传 PDF'}
+                    {detail.file_path ? '替换文件' : '上传稿件'}
                     <input
                       type="file"
                       className="hidden"
-                      accept=".pdf,.docx,.doc,.txt,.zip,.ps"
+                      accept={acceptAttr}
                       disabled={uploadMut.isPending}
                       onChange={(e) => {
                         const f = e.target.files?.[0]
-                        if (f) void onUploadFile(f)
+                        if (f) {
+                          if (f.size > maxUploadBytes) {
+                            toast.error(
+                              `文件 ${(f.size / 1024 / 1024).toFixed(1)} MB 超过 ${uploadMaxMb} MB 上限，请改用网盘或仓库链接`,
+                            )
+                          } else {
+                            void onUploadFile(f)
+                          }
+                        }
                         e.target.value = ''
                       }}
                     />
@@ -796,7 +810,11 @@ function SubmissionsPage() {
           <form onSubmit={onCreate} className="space-y-4">
             {/* 稿件文件：投稿的核心是先交论文，放在表单最前面（可选，提交后也可在详情里补传） */}
             <div className="space-y-2 rounded-md border border-dashed p-3">
-              <Label>稿件文件（可选，优先传 PDF）</Label>
+              <Label>稿件文件（可选；PDF / Word / Markdown / LaTeX / 图表 / 源码包均可）</Label>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                单文件上限 {uploadMaxMb} MB。更大的数据集、代码仓库或补充材料，
+                请在下方「代码与数据链接」里填网盘或开源仓库地址——比塞进压缩包更容易被审稿人复现。
+              </p>
               <div className="flex flex-wrap items-center gap-2">
                 <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border bg-muted/40 px-3 py-1.5 text-sm hover:bg-muted/70">
                   <Upload className="h-4 w-4" />
@@ -804,10 +822,18 @@ function SubmissionsPage() {
                   <input
                     type="file"
                     className="hidden"
-                    accept=".pdf,.docx,.doc,.txt,.zip,.ps"
+                    accept={acceptAttr}
                     onChange={(e) => {
                       const f = e.target.files?.[0]
-                      if (f) set('file', f)
+                      if (f) {
+                        if (f.size > maxUploadBytes) {
+                          toast.error(
+                            `文件 ${(f.size / 1024 / 1024).toFixed(1)} MB 超过 ${uploadMaxMb} MB 上限，请改用网盘或仓库链接`,
+                          )
+                        } else {
+                          set('file', f)
+                        }
+                      }
                       e.target.value = ''
                     }}
                   />
@@ -947,22 +973,32 @@ function SubmissionsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="download_url">下载链接</Label>
+                <Label htmlFor="download_url">稿件直链（可选）</Label>
                 <Input
                   id="download_url"
                   type="url"
+                  placeholder="https://…/paper.pdf"
                   value={form.download_url}
                   onChange={(e) => set('download_url', e.target.value)}
                 />
+                <p className="text-xs text-muted-foreground">
+                  已经托管在其他地方？填直链即可，不必重复上传。
+                </p>
               </div>
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="external_url">外部链接</Label>
+                <Label htmlFor="external_url">代码与数据链接（推荐）</Label>
                 <Input
                   id="external_url"
                   type="url"
+                  placeholder="https://github.com/you/paper-code 或 网盘分享链接"
                   value={form.external_url}
                   onChange={(e) => set('external_url', e.target.value)}
                 />
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  开源仓库（GitHub / GitLab / Gitee / Zenodo / OSF）、可复现脚本、
+                  原始数据、补充图表都放这里。审稿人与读者会先看这个链接：
+                  有仓库的稿件，评审意见通常更具体，也更容易被引用。
+                </p>
               </div>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

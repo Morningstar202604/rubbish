@@ -58,7 +58,7 @@ import { AddToListDialog } from '@/components/common/add-to-list-dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { Comments } from '@/components/common/comments'
 import { MetaItem } from '@/components/common/meta-item'
-import { EmptyState, ErrorState, Loading } from '@/components/common/state'
+import { EmptyState, ErrorState, LoadingSkeleton } from '@/components/common/state'
 
 // 详情页向访客开放（后端 GET /catalog/{id} 本就是公开接口）。
 // 需登录的能力（阅读、进度、关注）在组件内按 isAuthenticated 降级为登录引导。
@@ -99,7 +99,7 @@ function CatalogDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [listOpen, setListOpen] = useState(false)
 
-  if (isLoading) return <Loading />
+  if (isLoading) return <LoadingSkeleton rows={6} />
   if (isError || !data) {
     return (
       <ErrorState
@@ -414,7 +414,7 @@ function CatalogDetailPage() {
             </CardHeader>
             <CardContent>
               {progress.isLoading ? (
-                <Loading />
+                <LoadingSkeleton rows={6} />
               ) : progress.data ? (
                 <div className="space-y-1.5 text-sm">
                   <MetaItem

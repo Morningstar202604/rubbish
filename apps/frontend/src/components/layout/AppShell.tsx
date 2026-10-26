@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils'
 import { BrandMark } from '@/components/common/brand-mark'
 import { filterNav, resolveActiveNavPath, type NavItem } from '@/lib/nav'
 import { ModuleErrorBoundary } from '@/components/common/error-boundary'
+import { PageTransition } from '@/components/common/page-transition'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -317,7 +318,9 @@ export function AppShell() {
             {/* 页面级错误边界：单个路由崩溃时侧边栏/头部仍可用，
                 resetKeys 绑定 pathname —— 换页自动复位，无需手动点重试 */}
             <ModuleErrorBoundary name="页面" resetKeys={[location.pathname]}>
-              <Outlet />
+              <PageTransition>
+                <Outlet />
+              </PageTransition>
             </ModuleErrorBoundary>
           </div>
         </main>
