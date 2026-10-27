@@ -51,6 +51,30 @@ export async function loginViaUi(
   await page.getByRole('button', { name: '登录' }).click()
   // 等 dashboard 出现（admin 普通用户都会跳过去）
   await page.waitForURL(/\/dashboard/, { timeout: 15_000 })
+  await ensureAuthorReady(page)
+}
+
+/**
+ * 等级体系上线后，新注册用户是 L1：不能评论、不能投稿。
+ * E2E 里的"作者"用例假定账号已具备投稿权限，这里直接用页面内
+ * sessionStorage 里的 access token 调一次作者引导（幂等，admin 调也无害），
+ * 避免每个 spec 都去点个人中心的两步按钮。
+ */
+export async function ensureAuthorReady(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const raw = window.sessionStorage.getItem('rubbish-auth')
+    if (!raw) return
+    const token = JSON.parse(raw)?.state?.token
+    if (!token) return
+    await fetch('/api/gamification/onboarding/author', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ accept_rules: true }),
+    }).catch(() => {})
+  })
 }
 
 export async function logoutViaUi(page: Page): Promise<void> {
