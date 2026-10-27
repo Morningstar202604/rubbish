@@ -86,7 +86,12 @@ def convert_to_markdown(contents: bytes, filename: str) -> str | None:
     ext = os.path.splitext(filename or "")[1].lower()
     try:
         if ext == ".pdf":
-            return _pdf_to_markdown(contents)
+            md = _pdf_to_markdown(contents)
+            # 统一清洗：去 HTML 标签/刊头重跑行/页码，摘要升为 H2。
+            # 与历史 267 篇导入稿使用同一函数，保证新旧稿件阅读体验一致。
+            from app.modules.submission.markdown_clean import clean
+
+            return clean(md) if md else md
         if ext in (".docx",):
             return _docx_to_markdown(contents)
         if ext in (".txt", ".md", ".markdown"):
