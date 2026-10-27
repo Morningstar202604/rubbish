@@ -27,6 +27,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.catalog.models import Resource
+from app.modules.catalog.visibility import public_conditions
 from app.modules.reader.models import ReadingHistory
 
 TAG_WEIGHT = 0.6
@@ -171,7 +172,7 @@ async def _fallback_latest(
         (
             await db.execute(
                 select(Resource)
-                .where(Resource.tenant_id == tenant_id)
+                .where(Resource.tenant_id == tenant_id, *public_conditions())
                 .order_by(desc(Resource.created_at), Resource.id.asc())
                 .limit(limit)
             )

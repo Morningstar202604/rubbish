@@ -149,6 +149,7 @@ async def list_resources(
         if hit is not None:
             ids, total = hit
             rows_by_id: dict[int, Resource] = {}
+            hidden = 0
             if ids:
                 fetched = (
                     await db.execute(
@@ -157,16 +158,26 @@ async def list_resources(
                         )
                     )
                 ).scalars()
-                rows_by_id = {r.id: r for r in fetched}
+                for resource in fetched:
+                    # 索引里没有可见性字段：命中结果回表后按公开面过滤，
+                    # 否则排期中（publish_at 未来）或草稿会因搜索而泄漏。
+                    if is_admin or is_public(resource):
+                        rows_by_id[resource.id] = resource
+                    else:
+                        hidden += 1
             # Preserve Meilisearch relevance order.
             ranked = [rows_by_id[i] for i in ids if i in rows_by_id]
+            # 只扣除「确实存在但当前不可见」的条数；索引里的幽灵 id（已被
+            # 删除）维持原有口径，不改 total —— 那是搜索端的一致性问题，
+            # 不是可见性问题。
+            effective_total = max(len(ranked), total - hidden)
             return ResourceListResponse(
                 data=await _with_engagement(db, ranked),
                 meta=PaginationMeta(
-                    total=total,
+                    total=effective_total,
                     page=page,
                     page_size=page_size,
-                    total_pages=(total + page_size - 1) // page_size,
+                    total_pages=max(1, (effective_total + page_size - 1) // page_size),
                 ),
             )
 

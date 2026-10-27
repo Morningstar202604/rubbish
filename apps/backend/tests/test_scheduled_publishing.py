@@ -151,3 +151,34 @@ async def test_publish_missing_issue_404(client: AsyncClient, admin_user: dict) 
         headers=auth_headers(admin_user),
     )
     assert r.status_code == 404
+
+
+async def test_search_results_respect_visibility(
+    client: AsyncClient, admin_user: dict, monkeypatch
+) -> None:
+    """Meilisearch 命中排期稿时，回表必须补可见性过滤，不能泄漏。"""
+    from app.core import search as fulltext
+    from app.core.config import settings
+
+    future = (utcnow() + timedelta(days=20)).isoformat()
+    visible = await _create(client, admin_user, title="Visible Search Hit")
+    queued = await _create(client, admin_user, title="Queued Search Hit", publish_at=future)
+
+    monkeypatch.setattr(settings, "meilisearch_url", "http://localhost:7700", raising=False)
+
+    async def fake_search(**_kwargs):
+        return [queued["id"], visible["id"]], 2
+
+    monkeypatch.setattr(fulltext, "search_resource_ids", fake_search)
+    resp = await client.get("/api/catalog", params={"q": "Search Hit"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert [r["id"] for r in body["data"]] == [visible["id"]]
+    assert body["meta"]["total"] == 1
+
+
+async def test_export_excludes_scheduled(client: AsyncClient, admin_user: dict) -> None:
+    future = (utcnow() + timedelta(days=20)).isoformat()
+    queued = await _create(client, admin_user, title="Queued Export", publish_at=future)
+    resp = await client.get("/api/export", params={"ids": [queued["id"]], "format": "json"})
+    assert resp.status_code == 404

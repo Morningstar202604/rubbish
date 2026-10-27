@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_tenant_id
 from app.core.db import get_db
 from app.modules.catalog.models import Resource
+from app.modules.catalog.visibility import public_conditions
 from app.modules.export.exporters import (
     FILE_EXTENSIONS,
     MIME_TYPES,
@@ -63,6 +64,8 @@ async def export_endpoint(
         select(Resource).where(
             Resource.id.in_(requested_ids),
             Resource.tenant_id == tenant_id,
+            # 排期中的期号不导出：导出是公开面，等同于「能否被引用」。
+            *public_conditions(),
         )
     )
     resources_by_id = {r.id: r for r in result.scalars().all()}
