@@ -15,6 +15,8 @@ import type {
   GamificationProfile,
   IngestResource,
   IssueInfo,
+  IssuePlanEntry,
+  IssuePlanResponse,
   JournalMetrics,
   JournalSettings,
   LadderResponse,
@@ -128,6 +130,7 @@ export const keys = {
   quality: {
     rubric: () => ['quality', 'rubric'] as const,
   },
+  issuePlan: () => ['catalog', 'issue-plan'] as const,
 } as const
 
 // --- Catalog ---
@@ -1096,5 +1099,33 @@ export function useQualityRubric() {
     queryKey: keys.quality.rubric(),
     queryFn: async () => (await api.get<QualityRubric>('/quality/rubric')).data,
     staleTime: 30 * 60_000,
+  })
+}
+
+export function useIssuePlan() {
+  return useQuery<IssuePlanResponse>({
+    queryKey: keys.issuePlan(),
+    queryFn: async () => (await api.get<IssuePlanResponse>('/catalog/issue-plan')).data,
+    staleTime: 5 * 60_000,
+  })
+}
+
+export function usePublishIssue() {
+  const qc = useQueryClient()
+  return useMutation<
+    IssuePlanEntry,
+    unknown,
+    { volume: string; issue: string; publishAt: string | null }
+  >({
+    mutationFn: async ({ volume, issue, publishAt }) =>
+      (
+        await api.post(`/catalog/issues/${volume}/${issue}/publish`, {
+          publish_at: publishAt,
+        })
+      ).data,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['catalog'] })
+      void qc.invalidateQueries({ queryKey: keys.issuePlan() })
+    },
   })
 }

@@ -779,3 +779,21 @@ export interface QualityRubric {
   abstract_band: [number, number]
   coefficient_formula: string
 }
+
+// --- Issue plan（发布日历）---
+export interface IssuePlanEntry {
+  volume: string
+  issue: string
+  label: string
+  publish_at: string | null
+  total: number
+  published: number
+  scheduled: number
+  state: 'live' | 'scheduled' | 'empty'
+}
+
+export interface IssuePlanResponse {
+  volume: string
+  now: string
+  entries: IssuePlanEntry[]
+}

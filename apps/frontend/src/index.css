@@ -213,14 +213,25 @@ h4 {
 }
 .markdown-body img {
   display: block;
-  max-width: 88%;
-  margin: 1.6em auto 0.4em;
+  max-width: 100%;
+  height: auto;
+  margin: 1.6em auto 0.5em;
   border-radius: 0.5rem;
   border: 1px solid var(--color-border);
+  /* 白底只给图本身，暗色主题下不刺眼 */
   background: white;
 }
+/* 图注：图片后紧跟的一行斜体/短段落按期刊图注处理（居中、小号、灰） */
 .markdown-body img + em,
-.markdown-body p > img:only-child { display: block; }
+.markdown-body p:has(> img:only-child) + p {
+  display: block;
+  text-align: center;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--color-muted-foreground);
+  margin: 0.35em auto 1.6em;
+  max-width: 92%;
+}
 .markdown-body table {
   width: 100%;
   margin: 1.4em 0;
@@ -250,6 +261,17 @@ h4 {
 .markdown-body hr { margin: 2em 0; border-color: var(--color-border); }
 .markdown-body .katex { font-size: 1.05em; }
 .markdown-body .katex-display { margin: 1.2em 0; overflow-x: auto; overflow-y: hidden; }
+
+@media (max-width: 767px) {
+  .markdown-body img {
+    max-width: 100%;
+    margin: 1.2em auto 0.4em;
+  }
+  .markdown-body table {
+    font-size: 0.8125rem;
+  }
+}
+
 
 /* 参考文献折叠块（manuscript-view） */
 .refs-collapse summary {

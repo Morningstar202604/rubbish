@@ -1,30 +1,23 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { ArrowRight, CalendarDays, Layers } from 'lucide-react'
-import { useResources } from '@/hooks/api/use-modules'
+import { ArrowRight, CalendarDays, Clock3, Layers, Lock } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
+import { useIssuePlan, usePublishIssue, useResources } from '@/hooks/api/use-modules'
 import { PageHeader } from '@/components/common/page-header'
 import { EmptyState, ErrorState, Loading } from '@/components/common/state'
 import { ArticleCover } from '@/components/common/article-cover'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { qualityGrade } from '@/lib/resource-labels'
 import { cn } from '@/lib/utils'
+import type { IssuePlanEntry } from '@/lib/types'
 
 export const Route = createFileRoute('/archive')({
   component: ArchivePage,
 })
 
-// 卷期归档：2026 年创刊，第 1 卷按月度分 10 期（每月一期）。
-// 期号与 article.issue 字段一一对应，服务端按 volume=1&issue=NN 过滤。
-const YEAR = 2026
-const MONTHS = Array.from({ length: 10 }, (_, i) => {
-  const m = i + 1
-  return {
-    issue: String(m).padStart(2, '0'),
-    label: `${m} 月号`,
-    short: `${m} 月`,
-  }
-})
-
+// 卷期归档 = 公开的出版日历：已发期次可点开读全文，排期中的期次只显示
+// 上线日期与篇数（服务端 publish_at 未到点前，这些记录对公众不存在）。
 const ISSUE_TITLES: Record<string, string> = {
   '01': '创刊号 · 荒诞的正当性',
   '02': '方法之争',
@@ -38,15 +31,37 @@ const ISSUE_TITLES: Record<string, string> = {
   '10': '一年之后',
 }
 
+function fmtDate(iso: string | null): string {
+  if (!iso) return '已上线'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '已上线'
+  return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`
+}
+
+function daysUntil(iso: string | null): number | null {
+  if (!iso) return null
+  const d = new Date(iso).getTime()
+  if (Number.isNaN(d)) return null
+  return Math.max(0, Math.ceil((d - Date.now()) / 86_400_000))
+}
+
 function ArchivePage() {
-  const [issue, setIssue] = useState(MONTHS[MONTHS.length - 1].issue)
+  const plan = useIssuePlan()
+  const { isAdmin } = useAuth()
+  const entries = useMemo(() => plan.data?.entries ?? [], [plan.data])
+  const liveEntries = useMemo(() => entries.filter((e) => e.state === 'live'), [entries])
+  const [issue, setIssue] = useState<string>('')
+  const activeIssue = issue || liveEntries[liveEntries.length - 1]?.issue || ''
+  const activeEntry = entries.find((e) => e.issue === activeIssue)
+
   const { data, isLoading, isError, refetch } = useResources({
     volume: '1',
-    issue,
+    issue: activeIssue || undefined,
     page: 1,
     page_size: 50,
     sort: 'issue',
   })
+  const publishIssue = usePublishIssue()
 
   const items = data?.data ?? []
 
@@ -54,125 +69,233 @@ function ArchivePage() {
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-10 sm:px-6">
       <PageHeader
         title="卷期归档"
-        description="第 1 卷（2026）· 月刊 · 每月一期的完整目录。本刊按收稿顺序编期，不设影响因子门槛。"
+        description="第 1 卷（2026–2027）· 月刊 · 每月 1 日上线一期。已刊出期次可读全文，排期中的期次显示上线日期。"
       />
 
-      {/* 期号切换：横向滚动，不撑破页面 */}
+      {/* 出版日历：横向滚动，不撑破视口 */}
       <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <div className="flex min-w-max gap-2 pb-1">
-          {MONTHS.map((m) => (
-            <button
-              key={m.issue}
-              type="button"
-              onClick={() => setIssue(m.issue)}
-              className={cn(
-                'flex min-h-11 flex-col items-start rounded-lg border px-3.5 py-2 text-left transition-colors',
-                issue === m.issue
-                  ? 'border-primary bg-primary/[0.06]'
-                  : 'border-border bg-card hover:border-primary/40',
-              )}
-            >
-              <span className="text-[11px] tabular-nums text-muted-foreground">
-                第 {m.issue} 期
-              </span>
-              <span className="text-sm font-medium">{m.short}</span>
-            </button>
-          ))}
+          {entries.map((entry) => {
+            const isLive = entry.state === 'live'
+            const isActive = entry.issue === activeIssue && isLive
+            return (
+              <button
+                key={entry.issue}
+                type="button"
+                disabled={!isLive}
+                onClick={() => isLive && setIssue(entry.issue)}
+                className={cn(
+                  'flex min-h-16 min-w-[92px] flex-col items-start justify-center rounded-lg border px-3.5 py-2 text-left transition-colors',
+                  isActive
+                    ? 'border-primary bg-primary/[0.06]'
+                    : isLive
+                      ? 'border-border bg-card hover:border-primary/40'
+                      : 'cursor-not-allowed border-dashed border-border/60 bg-muted/30 opacity-80',
+                )}
+                title={isLive ? '已上线' : `预计 ${fmtDate(entry.publish_at)} 上线`}
+              >
+                <span className="text-[11px] tabular-nums text-muted-foreground">
+                  第 {entry.issue} 期
+                </span>
+                <span className="flex items-center gap-1 text-sm font-medium">
+                  {isLive ? (
+                    <>已上线</>
+                  ) : (
+                    <>
+                      <Lock className="h-3 w-3" />
+                      {entry.publish_at ? `${new Date(entry.publish_at).getMonth() + 1} 月` : '排期中'}
+                    </>
+                  )}
+                </span>
+                <span className="text-[10px] tabular-nums text-muted-foreground">
+                  {entry.published || entry.scheduled} 篇
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* 当期封面条 */}
-      <div className="overflow-hidden rounded-xl border bg-card">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/30 px-5 py-3">
-          <div>
-            <p className="flex items-center gap-2 text-sm font-medium">
-              <CalendarDays className="h-4 w-4 text-primary" />
-              {YEAR} 年 {MONTHS.find((m) => m.issue === issue)?.label}
-              <span className="text-muted-foreground">· 第 1 卷 第 {Number(issue)} 期</span>
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {ISSUE_TITLES[issue] ?? '本期目录'}
-            </p>
+      {/* 当前期头 */}
+      {activeEntry && (
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/30 px-5 py-3">
+            <div>
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                第 1 卷 第 {Number(activeEntry.issue)} 期
+                <span className="text-muted-foreground">
+                  · {fmtDate(activeEntry.publish_at)}
+                </span>
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {ISSUE_TITLES[activeEntry.issue] ?? '本期目录'}
+              </p>
+            </div>
+            <Badge variant="outline" className="tabular-nums">
+              {items.length} 篇
+            </Badge>
           </div>
-          <Badge variant="outline" className="tabular-nums">
-            {items.length} 篇
-          </Badge>
-        </div>
 
-        {isLoading ? (
-          <div className="p-6">
-            <Loading />
-          </div>
-        ) : isError ? (
-          <div className="p-6">
-            <ErrorState message="加载本期目录失败" onRetry={() => refetch()} />
-          </div>
-        ) : items.length === 0 ? (
-          <div className="p-8">
-            <EmptyState title="本期暂无文章" description="尝试切换其他月份，或浏览全部目录。" />
-          </div>
-        ) : (
-          <ol className="divide-y">
-            {items.map((r, idx) => {
-              const grade = qualityGrade(r.quality_grade)
-              return (
-                <li key={r.id}>
-                  <Link
-                    to="/catalog/$resourceId"
-                    params={{ resourceId: String(r.id) }}
-                    className="group flex gap-4 p-4 transition-colors hover:bg-muted/40 sm:p-5"
-                  >
-                    <span className="w-6 shrink-0 pt-1 text-right font-serif text-sm tabular-nums text-muted-foreground">
-                      {idx + 1}
-                    </span>
-                    <div className="hidden w-32 shrink-0 sm:block">
-                      <ArticleCover resource={r} showDiscipline={false} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {grade ? (
-                          <Badge
-                            variant="outline"
-                            className={`text-[10px] ${grade.className}`}
-                            title={`RQS ${r.quality_score ?? ''} / 100`}
-                          >
-                            {grade.label}
-                          </Badge>
-                        ) : null}
-                        <Badge variant="outline" className="text-[10px]">
-                          {r.discipline}
-                        </Badge>
-                        {r.subdiscipline ? (
-                          <span className="text-[10px] text-muted-foreground">{r.subdiscipline}</span>
-                        ) : null}
+          {isLoading ? (
+            <div className="p-6">
+              <Loading />
+            </div>
+          ) : isError ? (
+            <div className="p-6">
+              <ErrorState message="加载本期目录失败" onRetry={() => refetch()} />
+            </div>
+          ) : items.length === 0 ? (
+            <div className="p-8">
+              <EmptyState title="本期暂无文章" description="切换其他已上线期次，或浏览全部目录。" />
+            </div>
+          ) : (
+            <ol className="divide-y">
+              {items.map((r, idx) => {
+                const grade = qualityGrade(r.quality_grade)
+                return (
+                  <li key={r.id}>
+                    <Link
+                      to="/catalog/$resourceId"
+                      params={{ resourceId: String(r.id) }}
+                      className="group flex gap-4 p-4 transition-colors hover:bg-muted/40 sm:p-5"
+                    >
+                      <span className="w-6 shrink-0 pt-1 text-right font-serif text-sm tabular-nums text-muted-foreground">
+                        {idx + 1}
+                      </span>
+                      <div className="hidden w-32 shrink-0 sm:block">
+                        <ArticleCover resource={r} showDiscipline={false} />
                       </div>
-                      <p className="mt-1.5 line-clamp-2 font-medium leading-snug group-hover:text-primary">
-                        {r.title}
-                      </p>
-                      <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                        {r.authors.join('、')}
-                      </p>
-                      <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground/90">
-                        {r.abstract}
-                      </p>
-                    </div>
-                    <ArrowRight className="mt-1 hidden h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary sm:block" />
-                  </Link>
-                </li>
-              )
-            })}
-          </ol>
-        )}
-      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {grade ? (
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] ${grade.className}`}
+                              title={`RQS ${r.quality_score ?? ''} / 100`}
+                            >
+                              {grade.label}
+                            </Badge>
+                          ) : null}
+                          <Badge variant="outline" className="text-[10px]">
+                            {r.discipline}
+                          </Badge>
+                          {r.subdiscipline ? (
+                            <span className="text-[10px] text-muted-foreground">{r.subdiscipline}</span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1.5 line-clamp-2 font-medium leading-snug group-hover:text-primary">
+                          {r.title}
+                        </p>
+                        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                          {r.authors.join('、')}
+                        </p>
+                        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground/90">
+                          {r.abstract}
+                        </p>
+                      </div>
+                      <ArrowRight className="mt-1 hidden h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary sm:block" />
+                    </Link>
+                  </li>
+                )
+              })}
+            </ol>
+          )}
+        </div>
+      )}
+
+      {/* 排期表 */}
+      <section className="space-y-3">
+        <h2 className="flex items-center gap-2 text-base font-semibold">
+          <Clock3 className="h-4 w-4 text-primary" /> 发刊计划
+        </h2>
+        <div className="overflow-hidden rounded-xl border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs text-muted-foreground">
+              <tr>
+                <th className="px-4 py-2 text-left font-medium">期次</th>
+                <th className="px-4 py-2 text-left font-medium">主题</th>
+                <th className="px-4 py-2 text-left font-medium">上线日期</th>
+                <th className="px-4 py-2 text-right font-medium">篇数</th>
+                <th className="px-4 py-2 text-right font-medium">状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry) => (
+                <IssueRow
+                  key={entry.issue}
+                  entry={entry}
+                  isAdmin={isAdmin}
+                  publishing={publishIssue.isPending}
+                  onPublish={() =>
+                    publishIssue.mutate({
+                      volume: entry.volume,
+                      issue: entry.issue,
+                      publishAt: null,
+                    })
+                  }
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <div className="flex flex-wrap gap-3 text-sm">
         <Link to="/catalog" className="inline-flex items-center gap-1 text-primary hover:underline">
           <Layers className="h-3.5 w-3.5" /> 浏览全部条目
         </Link>
-        <Link to="/levels" className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">
+        <Link
+          to="/levels"
+          className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+        >
           评分与等级规范 <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
     </div>
+  )
+}
+
+function IssueRow({
+  entry,
+  isAdmin,
+  publishing,
+  onPublish,
+}: {
+  entry: IssuePlanEntry
+  isAdmin: boolean
+  publishing: boolean
+  onPublish: () => void
+}) {
+  const wait = daysUntil(entry.publish_at)
+  return (
+    <tr className="border-t">
+      <td className="px-4 py-2.5 font-medium tabular-nums">第 {entry.issue} 期</td>
+      <td className="px-4 py-2.5 text-muted-foreground">
+        {ISSUE_TITLES[entry.issue] ?? '—'}
+      </td>
+      <td className="px-4 py-2.5 tabular-nums text-muted-foreground">
+        {fmtDate(entry.publish_at)}
+        {entry.state === 'scheduled' && wait !== null && wait > 0 ? (
+          <span className="ml-2 text-[11px] text-muted-foreground/80">还有 {wait} 天</span>
+        ) : null}
+      </td>
+      <td className="px-4 py-2.5 text-right tabular-nums">
+        {entry.published || entry.scheduled}
+      </td>
+      <td className="px-4 py-2.5 text-right">
+        {entry.state === 'live' ? (
+          <Badge className="text-[10px]">已上线</Badge>
+        ) : isAdmin ? (
+          <Button size="sm" variant="outline" onClick={onPublish} disabled={publishing}>
+            立即发布
+          </Button>
+        ) : (
+          <Badge variant="outline" className="text-[10px]">
+            排期中
+          </Badge>
+        )}
+      </td>
+    </tr>
   )
 }

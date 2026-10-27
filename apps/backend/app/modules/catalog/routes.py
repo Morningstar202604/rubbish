@@ -422,13 +422,14 @@ async def get_issue_plan(db: AsyncSession = Depends(get_db)) -> IssuePlanRespons
         if pub_status != "published":
             continue
         release = as_aware(publish_at)
+        if release is not None:
+            current_release = first_release.get(key)
+            if current_release is None or release < current_release:
+                first_release[key] = release
         if release is None or release <= now:
             live[key] = live.get(key, 0) + int(count)
         else:
             queued[key] = queued.get(key, 0) + int(count)
-            current = first_release.get(key)
-            if current is None or release < current:
-                first_release[key] = release
 
     entries: list[IssuePlanEntry] = []
     for volume, issue in sorted(totals):
