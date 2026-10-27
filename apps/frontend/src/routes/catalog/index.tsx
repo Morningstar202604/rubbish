@@ -7,7 +7,7 @@ import { useIsMobile } from '@/hooks/use-is-mobile'
 import { exportResources, useCatalogStats, useResources } from '@/hooks/api/use-modules'
 import type { ResourceType } from '@/lib/types'
 import { extractError, formatAuthors } from '@/lib/utils'
-import { absurdityLevel, typeLabel } from '@/lib/resource-labels'
+import { absurdityLevel, qualityGrade, typeLabel } from '@/lib/resource-labels'
 import { PageHeader } from '@/components/common/page-header'
 import { EmptyState, ErrorState } from '@/components/common/state'
 import { Pagination } from '@/components/common/pagination'
@@ -261,6 +261,18 @@ function CatalogListPage() {
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           <Badge variant="secondary">{typeLabel(r.type)}</Badge>
+                          {(() => {
+                            const grade = qualityGrade(r.quality_grade)
+                            return grade ? (
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] ${grade.className}`}
+                                title={`RQS ${r.quality_score ?? ''} / 100 · ${grade.description}`}
+                              >
+                                {grade.label}
+                              </Badge>
+                            ) : null
+                          })()}
                           {(() => {
                             const level = absurdityLevel(r.absurdity_index)
                             return level ? (

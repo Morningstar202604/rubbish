@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 from app.modules.quality.rubric import (
+    PROFILES,
     PaperMetrics,
     evaluate,
     grade_for,
+    ratio_length,
+    ratio_references,
     rubric_payload,
-    score_abstract,
-    score_length,
-    score_references,
 )
 
 
-def _full_paper() -> PaperMetrics:
+def _full_paper(article_type: str = "research") -> PaperMetrics:
     return PaperMetrics(
+        article_type=article_type,
         cjk_chars=9000,
         total_chars=12000,
         pages=10,
@@ -63,40 +64,46 @@ def test_grade_bands_are_fixed() -> None:
     assert grade_for(20) == ("D", "待改进")
 
 
-def test_length_tiers() -> None:
-    assert score_length(PaperMetrics(cjk_chars=1000)) == 2.5
-    assert score_length(PaperMetrics(cjk_chars=2600)) == 8.0
-    assert score_length(PaperMetrics(cjk_chars=6000)) == 10.0
-    assert score_length(PaperMetrics(cjk_chars=9000)) == 12.0
+def test_fractional_scores_do_not_fall_through_bands() -> None:
+    """79.5 必须落在 B，而不是因为没有闭区间命中掉进 D。"""
+    assert grade_for(79.5) == ("B", "良好")
+    assert grade_for(69.9) == ("C", "合格")
+    assert grade_for(89.5) == ("A", "优秀")
+    assert grade_for(0.0) == ("D", "待改进")
+
+
+def test_length_tiers_per_profile() -> None:
+    assert ratio_length(PaperMetrics(cjk_chars=1000)) == 0.18
+    assert ratio_length(PaperMetrics(cjk_chars=2600)) == 0.66
+    assert ratio_length(PaperMetrics(cjk_chars=6000)) == 0.82
+    assert ratio_length(PaperMetrics(cjk_chars=9000)) == 1.0
+    # 随笔画像的门槛更低：3000 字即中篇
+    assert ratio_length(PaperMetrics(cjk_chars=3200, article_type="essay")) == 0.82
 
 
 def test_references_reward_doi_verifiability() -> None:
     base = PaperMetrics(references=10, reference_style="bracket", reference_dois=10)
-    unverified = score_references(base)
-    verified = score_references(
+    unverified = ratio_references(base)
+    verified = ratio_references(
         PaperMetrics(references=10, reference_style="bracket", reference_dois=10, doi_resolved=10)
     )
     assert verified > unverified
-    assert verified <= 22
+    assert verified <= 1.0
 
 
-def test_abstract_requires_four_elements() -> None:
-    full = score_abstract(
-        PaperMetrics(
-            abstract_chars=300,
-            has_problem=True,
-            has_method=True,
-            has_result=True,
-            has_conclusion=True,
-            keywords=4,
-        )
-    )
-    partial = score_abstract(PaperMetrics(abstract_chars=300, has_problem=True, keywords=4))
-    assert full == 11
-    assert partial < full
+def test_profile_weights_all_sum_to_100() -> None:
+    for name, weights in PROFILES.items():
+        assert sum(weights.values()) == 100, name
 
 
-def test_rubric_payload_weights_sum_to_100() -> None:
+def test_essay_profile_weights_language_heavier() -> None:
+    assert PROFILES["essay"]["language"] > PROFILES["research"]["language"]
+    assert PROFILES["essay"]["references"] < PROFILES["research"]["references"]
+
+
+def test_rubric_payload_exposes_profiles() -> None:
     payload = rubric_payload()
-    assert sum(d["weight"] for d in payload["dimensions"]) == 100
+    assert payload["version"] == "1.0"
+    assert set(payload["profiles"]) == set(PROFILES)
     assert payload["coefficient_formula"] == "RQS / 50"
+    assert [g["code"] for g in payload["grades"]] == ["A+", "A", "B", "C", "D"]

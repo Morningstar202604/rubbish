@@ -123,9 +123,42 @@
   * {
     border-color: var(--border);
   }
+  html {
+    /* 防横向滚动：移动端任何 100vw / 负 margin / 超长 URL 都不该把视口撑宽。
+       用 clip 而非 hidden：hidden 会让 html 成为滚动容器，破坏 iOS 上的
+       吸顶导航与地址栏收合；clip 只裁剪不改变滚动模型。 */
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+  }
   body {
     background-color: var(--background);
     color: var(--foreground);
+    overflow-x: clip;
+    /* 滚动条出现/消失不再引起布局横向抖动 */
+    scrollbar-gutter: stable;
+  }
+  /* 长单词 / 长 URL / 中文混排统一切断，避免把容器撑破 */
+  p,
+  li,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  /* 图片与内嵌内容永不超出容器（封面/图表/公式都适用） */
+  img,
+  video,
+  canvas,
+  iframe {
+    max-width: 100%;
+  }
+  table {
+    /* 桌面表格允许横向滚动，但不撑破页面 */
+    max-width: 100%;
   }
 }
 

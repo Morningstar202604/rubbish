@@ -2,24 +2,29 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { downloadBlob } from '@/lib/utils'
 import type {
+  Announcement,
+  AssignableRole,
   AssignmentCreate,
   AssignmentListResponse,
   AssignmentResponse,
-  AssignableRole,
   AuditLogEntry,
   AuthorFollowListResponse,
   DisciplineSubscriptionListResponse,
   FetchRequest,
   FollowStatusResponse,
+  GamificationProfile,
   IngestResource,
   IssueInfo,
   JournalMetrics,
   JournalSettings,
+  LadderResponse,
+  LevelSnapshot,
   MessageResponse,
   NotificationListResponse,
   NotificationResponse,
   ParseRequest,
   ParseResponse,
+  QualityRubric,
   ReadingListCreate,
   ReadingListDetailResponse,
   ReadingListItemCreate,
@@ -111,6 +116,17 @@ export const keys = {
     discipline: (slug: string) => ['follows', 'discipline', slug] as const,
     myAuthors: (page = 1) => ['follows', 'my-authors', page] as const,
     myDisciplines: () => ['follows', 'my-disciplines'] as const,
+  },
+  gamification: {
+    profile: () => ['gamification', 'profile'] as const,
+    ladder: () => ['gamification', 'ladder'] as const,
+  },
+  announcements: {
+    active: () => ['announcements', 'active'] as const,
+    all: () => ['announcements', 'all'] as const,
+  },
+  quality: {
+    rubric: () => ['quality', 'rubric'] as const,
   },
 } as const
 
@@ -1018,5 +1034,67 @@ export function useJournalSettings() {
       return { issn, publisher, short_container_title }
     },
     staleTime: 5 * 60_000,
+  })
+}
+
+// --- Gamification / 等级体系 ---
+export function useGamificationProfile(options?: { enabled?: boolean }) {
+  return useQuery<GamificationProfile>({
+    queryKey: keys.gamification.profile(),
+    queryFn: async () => (await api.get<GamificationProfile>('/gamification/me')).data,
+    enabled: options?.enabled ?? true,
+    staleTime: 60_000,
+  })
+}
+
+export function useLadder() {
+  return useQuery<LadderResponse>({
+    queryKey: keys.gamification.ladder(),
+    queryFn: async () => (await api.get<LadderResponse>('/gamification/ladder')).data,
+    staleTime: 10 * 60_000,
+  })
+}
+
+export function useAcknowledgeCommunity() {
+  const qc = useQueryClient()
+  return useMutation<{ level: LevelSnapshot }, unknown, void>({
+    mutationFn: async () => (await api.post('/gamification/onboarding/community')).data,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: keys.gamification.profile() })
+      void qc.invalidateQueries({ queryKey: ['auth', 'me'] })
+    },
+  })
+}
+
+export function useAcceptAuthorRules() {
+  const qc = useQueryClient()
+  return useMutation<{ level: LevelSnapshot; rules_version: string }, unknown, void>({
+    mutationFn: async () =>
+      (await api.post('/gamification/onboarding/author', { accept_rules: true })).data,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: keys.gamification.profile() })
+      void qc.invalidateQueries({ queryKey: ['auth', 'me'] })
+    },
+  })
+}
+
+// --- Announcements ---
+export function useActiveAnnouncement() {
+  return useQuery<Announcement | null>({
+    queryKey: keys.announcements.active(),
+    queryFn: async () => {
+      const res = await api.get<Announcement | null>('/announcements/active')
+      return res.data
+    },
+    staleTime: 5 * 60_000,
+  })
+}
+
+// --- Quality rubric ---
+export function useQualityRubric() {
+  return useQuery<QualityRubric>({
+    queryKey: keys.quality.rubric(),
+    queryFn: async () => (await api.get<QualityRubric>('/quality/rubric')).data,
+    staleTime: 30 * 60_000,
   })
 }

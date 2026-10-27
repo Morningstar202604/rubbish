@@ -11,11 +11,13 @@ import {
   Sparkles,
   XCircle,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { PageHeader } from '@/components/common/page-header'
 import { RevealSection } from '@/components/common/reveal-section'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/hooks/use-auth'
+import { useAcceptAuthorRules, useGamificationProfile } from '@/hooks/api/use-modules'
 
 export const Route = createFileRoute('/authors')({
   component: AuthorsPage,
@@ -63,6 +65,10 @@ const NOT_ACCEPTED = [
 
 function AuthorsPage() {
   const { isAuthenticated } = useAuth()
+  const profile = useGamificationProfile({ enabled: isAuthenticated })
+  const acceptRules = useAcceptAuthorRules()
+  const rulesAccepted = profile.data?.rules_accepted ?? false
+  const currentLevel = profile.data?.level.level ?? 0
 
   return (
     <div className="mx-auto max-w-4xl py-8">
@@ -330,15 +336,49 @@ function AuthorsPage() {
         <RevealSection className="rounded-xl border bg-gradient-to-br from-primary/5 to-accent/10 p-8 text-center">
           <PenLine className="mx-auto h-8 w-8 text-primary" />
           <h2 className="mt-3 text-xl font-medium">准备好了？</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            注册账号即可投稿。已有账号？直接进入我的提交开始写。
-          </p>
-          <Button asChild className="mt-5">
-            <Link to={isAuthenticated ? '/submissions' : '/register'}>
-              {isAuthenticated ? '进入我的投稿' : '免费注册投稿'}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          {!isAuthenticated ? (
+            <>
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                注册后先确认社区规范（L2），再来这里确认投稿规范（L3），即可投稿。
+              </p>
+              <Button asChild className="mt-5">
+                <Link to="/register">
+                  免费注册 <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </>
+          ) : rulesAccepted ? (
+            <>
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                你已确认本版《投稿与编辑规范》。{currentLevel < 3 ? '完成作者引导后即可投稿。' : '现在可以新建投稿了。'}
+              </p>
+              <Button asChild className="mt-5">
+                <Link to={currentLevel >= 3 ? '/submissions' : '/profile'}>
+                  {currentLevel >= 3 ? '进入我的投稿' : '完成作者引导'}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                读完本页即视为了解规则。点下方按钮确认后，你的账号会升到 L3 并开放投稿入口。
+              </p>
+              <Button
+                className="mt-5"
+                disabled={acceptRules.isPending}
+                onClick={() =>
+                  acceptRules.mutate(undefined, {
+                    onSuccess: () => toast.success('已确认投稿规范，投稿权限已解锁'),
+                    onError: () => toast.error('确认失败，请稍后重试'),
+                  })
+                }
+              >
+                {acceptRules.isPending ? '提交中…' : '我已读完并接受投稿规范'}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </RevealSection>
       </div>
     </div>

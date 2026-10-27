@@ -29,6 +29,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { EmptyState, ErrorState } from '@/components/common/state'
+import { WelcomeNotice } from '@/components/common/welcome-notice'
+import { ArticleCover } from '@/components/common/article-cover'
+import { qualityGrade } from '@/lib/resource-labels'
 import { Skeleton } from '@/components/ui/skeleton'
 import { absurdityLevel, typeLabel } from '@/lib/resource-labels'
 // 图表库（ECharts）约 190 KB gzip：只在真的滚动到指标区时才加载，
@@ -316,6 +319,11 @@ function HomePage() {
           </div>
         </header>
 
+        {/* ── 首访公告：迁移与创刊说明（localStorage 记住已阅） ── */}
+        <div className="mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6">
+          <WelcomeNotice />
+        </div>
+
         {/* ── 刊头 Hero：展示级衬线大字 + 打字机口号 + 数据卡 ── */}
         <motion.section
           initial="hidden"
@@ -352,17 +360,19 @@ function HomePage() {
               Rubbish
             </motion.h1>
 
-            {/* 打字机口号（等宽占位避免布局跳动） */}
+            {/* 打字机口号：固定两行高度 + 移动端降字号。
+                之前只有 min-h-7，长句在 390px 上换行→高度跳变，
+                每打一个字整页就抖一下（用户实测的「页面抖动」来源之一）。 */}
             <motion.p
               variants={slideInRight}
-              className="mx-auto mt-5 flex min-h-7 items-center justify-center text-base text-muted-foreground sm:text-lg"
+              className="mx-auto mt-5 flex h-14 max-w-[22rem] items-center justify-center px-2 text-sm leading-snug text-muted-foreground sm:h-8 sm:max-w-none sm:text-lg"
             >
-              <span className="mr-1" style={{ fontFamily: DISPLAY_FONT }}>
+              <span className="mr-1 line-clamp-2" style={{ fontFamily: DISPLAY_FONT }}>
                 {typed}
               </span>
               <span
                 aria-hidden
-                className="inline-block h-5 w-[2px] animate-pulse bg-primary sm:h-6"
+                className="inline-block h-4 w-[2px] shrink-0 animate-pulse bg-primary sm:h-6"
               />
             </motion.p>
 
@@ -559,20 +569,29 @@ function HomePage() {
                     aria-label={`阅读《${r.title}》`}
                     className="absolute inset-0 z-20 rounded-lg focus-visible:ring-2 focus-visible:ring-ring"
                   />
-                  {/* 卡片顶部学科色条 */}
-                  <span
-                    aria-hidden
-                    className="h-1 w-full bg-gradient-to-r from-primary via-primary/60 to-transparent opacity-70"
-                  />
+                  {/* 主题封面：16:9 固定比例，图片懒加载不引起版面跳动 */}
+                  <ArticleCover resource={r} priority={i < 3} />
                   <div className="pointer-events-none relative z-10 flex flex-1 flex-col p-5 [&_a]:pointer-events-auto">
                     <div className="mb-3 flex items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-1.5">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                         <Badge
                           variant="outline"
                           className="rounded-full px-2.5 text-[10px] font-normal uppercase tracking-widest text-muted-foreground"
                         >
                           {typeLabel(r.type)}
                         </Badge>
+                        {(() => {
+                          const grade = qualityGrade(r.quality_grade)
+                          return grade ? (
+                            <Badge
+                              variant="outline"
+                              className={`rounded-full px-2.5 text-[10px] font-normal ${grade.className}`}
+                              title={`RQS ${r.quality_score ?? ''} / 100 · ${grade.description}`}
+                            >
+                              {grade.label}
+                            </Badge>
+                          ) : null
+                        })()}
                         {(() => {
                           const level = absurdityLevel(r.absurdity_index)
                           return level ? (

@@ -17,9 +17,9 @@ from app.api.deps import get_current_user
 from app.core.db import get_db
 from app.models import User
 
-# 投稿规范版本：与 docs/editorial-standards.md 的「版本 1.0」一致。
+# 投稿规范版本：与 docs/editorial-standards.md 的「版本 1.1」一致。
 # 规范改版时同步 +1，所有作者需重新确认。
-CURRENT_RULES_VERSION = "1.0"
+CURRENT_RULES_VERSION = "1.1"
 
 
 async def level_of(db: AsyncSession, user: User) -> int:

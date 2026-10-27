@@ -23,6 +23,8 @@ import {
   TrendingUp,
   User,
   Users,
+  Award,
+  Compass,
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -53,7 +55,10 @@ const NAV: NavItem[] = [
   { to: '/policies', label: '政策规范', icon: Scroll, group: '期刊' },
   { to: '/about', label: '关于本刊', icon: Building2, group: '期刊' },
   { to: '/journal-metrics', label: '期刊指标', icon: TrendingUp, group: '期刊' },
+  { to: '/archive', label: '卷期归档', icon: CalendarDays, group: '期刊' },
+  { to: '/levels', label: '等级与规范', icon: Compass, group: '期刊' },
   { to: '/catalog', label: '资源目录', icon: BookOpen, group: '内容' },
+  { to: '/profile', label: '个人中心', icon: Award, auth: true, group: '我的工作' },
   { to: '/library', label: '阅读列表', icon: Library, auth: true, group: '内容' },
   { to: '/follows', label: '关注与订阅', icon: Heart, auth: true, group: '内容' },
   { to: '/recommendations', label: '推荐', icon: Lightbulb, auth: true, group: '内容' },
@@ -281,6 +286,12 @@ export function AppShell() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile">
+                      <Award className="h-4 w-4" />
+                      个人中心
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/settings">
                       <User className="h-4 w-4" />

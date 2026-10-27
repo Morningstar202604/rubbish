@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.time import utcnow
@@ -18,6 +18,8 @@ from app.models import Base, TenantScopedMixin
 
 class Announcement(Base, TenantScopedMixin):
     __tablename__ = "announcements"
+    # 与迁移 010 的命名约束一致：alembic check 不应报漂移。
+    __table_args__ = (UniqueConstraint("tenant_id", "slug", name="uq_announcements_tenant_slug"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     slug: Mapped[str] = mapped_column(String(80), nullable=False)

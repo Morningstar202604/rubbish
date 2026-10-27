@@ -226,6 +226,8 @@ async def test_quality_rubric_is_public_and_frozen(client: AsyncClient) -> None:
     assert r.status_code == 200
     body = r.json()
     assert body["version"] == "1.0"
-    assert sum(d["weight"] for d in body["dimensions"]) == 100
+    assert set(body["profiles"]) == {"research", "review", "essay", "note"}
+    for profile in body["profiles"].values():
+        assert sum(profile["weights"].values()) == 100
     assert [g["code"] for g in body["grades"]] == ["A+", "A", "B", "C", "D"]
-    assert body["min_references"] == 8
+    assert body["min_references"]["research"] == 8

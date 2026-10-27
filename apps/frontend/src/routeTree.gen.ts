@@ -11,13 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as ArchiveRouteImport } from './routes/archive'
 import { Route as AuthorsRouteImport } from './routes/authors'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as JournalMetricsRouteImport } from './routes/journal-metrics'
+import { Route as LevelsRouteImport } from './routes/levels'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PoliciesRouteImport } from './routes/policies'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RecommendationsRouteImport } from './routes/recommendations'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -53,6 +56,11 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ArchiveRoute = ArchiveRouteImport.update({
+  id: '/archive',
+  path: '/archive',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthorsRoute = AuthorsRouteImport.update({
   id: '/authors',
   path: '/authors',
@@ -73,6 +81,11 @@ const JournalMetricsRoute = JournalMetricsRouteImport.update({
   path: '/journal-metrics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LevelsRoute = LevelsRouteImport.update({
+  id: '/levels',
+  path: '/levels',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -86,6 +99,11 @@ const NotificationsRoute = NotificationsRouteImport.update({
 const PoliciesRoute = PoliciesRouteImport.update({
   id: '/policies',
   path: '/policies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RecommendationsRoute = RecommendationsRouteImport.update({
@@ -212,13 +230,16 @@ const AuthOidcCallbackRoute = AuthOidcCallbackRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/archive': typeof ArchiveRoute
   '/authors': typeof AuthorsRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/journal-metrics': typeof JournalMetricsRoute
+  '/levels': typeof LevelsRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/policies': typeof PoliciesRoute
+  '/profile': typeof ProfileRoute
   '/recommendations': typeof RecommendationsRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -247,13 +268,16 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/archive': typeof ArchiveRoute
   '/authors': typeof AuthorsRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/journal-metrics': typeof JournalMetricsRoute
+  '/levels': typeof LevelsRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/policies': typeof PoliciesRoute
+  '/profile': typeof ProfileRoute
   '/recommendations': typeof RecommendationsRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -283,13 +307,16 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/archive': typeof ArchiveRoute
   '/authors': typeof AuthorsRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/journal-metrics': typeof JournalMetricsRoute
+  '/levels': typeof LevelsRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/policies': typeof PoliciesRoute
+  '/profile': typeof ProfileRoute
   '/recommendations': typeof RecommendationsRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -320,13 +347,16 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/archive'
     | '/authors'
     | '/dashboard'
     | '/forgot-password'
     | '/journal-metrics'
+    | '/levels'
     | '/login'
     | '/notifications'
     | '/policies'
+    | '/profile'
     | '/recommendations'
     | '/register'
     | '/reset-password'
@@ -355,13 +385,16 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/archive'
     | '/authors'
     | '/dashboard'
     | '/forgot-password'
     | '/journal-metrics'
+    | '/levels'
     | '/login'
     | '/notifications'
     | '/policies'
+    | '/profile'
     | '/recommendations'
     | '/register'
     | '/reset-password'
@@ -390,13 +423,16 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/archive'
     | '/authors'
     | '/dashboard'
     | '/forgot-password'
     | '/journal-metrics'
+    | '/levels'
     | '/login'
     | '/notifications'
     | '/policies'
+    | '/profile'
     | '/recommendations'
     | '/register'
     | '/reset-password'
@@ -426,13 +462,16 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  ArchiveRoute: typeof ArchiveRoute
   AuthorsRoute: typeof AuthorsRoute
   DashboardRoute: typeof DashboardRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   JournalMetricsRoute: typeof JournalMetricsRoute
+  LevelsRoute: typeof LevelsRoute
   LoginRoute: typeof LoginRoute
   NotificationsRoute: typeof NotificationsRoute
   PoliciesRoute: typeof PoliciesRoute
+  ProfileRoute: typeof ProfileRoute
   RecommendationsRoute: typeof RecommendationsRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -475,6 +514,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/archive': {
+      id: '/archive'
+      path: '/archive'
+      fullPath: '/archive'
+      preLoaderRoute: typeof ArchiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/authors': {
       id: '/authors'
       path: '/authors'
@@ -503,6 +549,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JournalMetricsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/levels': {
+      id: '/levels'
+      path: '/levels'
+      fullPath: '/levels'
+      preLoaderRoute: typeof LevelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -522,6 +575,13 @@ declare module '@tanstack/react-router' {
       path: '/policies'
       fullPath: '/policies'
       preLoaderRoute: typeof PoliciesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/recommendations': {
@@ -698,13 +758,16 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  ArchiveRoute: ArchiveRoute,
   AuthorsRoute: AuthorsRoute,
   DashboardRoute: DashboardRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   JournalMetricsRoute: JournalMetricsRoute,
+  LevelsRoute: LevelsRoute,
   LoginRoute: LoginRoute,
   NotificationsRoute: NotificationsRoute,
   PoliciesRoute: PoliciesRoute,
+  ProfileRoute: ProfileRoute,
   RecommendationsRoute: RecommendationsRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,

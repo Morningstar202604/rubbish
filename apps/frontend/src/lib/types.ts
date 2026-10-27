@@ -41,6 +41,10 @@ export interface UserResponse {
   created_at: string
   // admin 端点会填入；普通 /auth/* 端点保持空数组
   roles: string[]
+  /** 等级体系：XP 与生效等级（1–9） */
+  xp?: number
+  level?: number
+  rules_accepted?: boolean
 }
 
 // 可分配的角色名（与 backend ASSIGNABLE_ROLES 一致；admin 不在此处，由 is_admin 控制）
@@ -166,6 +170,13 @@ export interface ResourceBase {
   publication_status: PublicationStatus
   /** 荒诞指数：编辑部评定（0–10），未评定为 null */
   absurdity_index?: number | null
+  /** 质量评分（RQS v1.0，0–100）与等级 A+/A/B/C/D */
+  quality_score?: number | null
+  quality_grade?: string | null
+  quality_breakdown?: Record<string, { label: string; score: number; max: number }> | null
+  /** 主题封面图（/covers/xx.jpg）；为空时回退生成式封面 */
+  cover_image?: string | null
+  cover_theme?: string | null
 }
 
 export interface ResourceCreate extends ResourceBase {
@@ -242,10 +253,12 @@ export interface ResourceListParams {
   type?: ResourceType
   discipline?: string
   year?: number
+  volume?: string
+  issue?: string
   q?: string
   page?: number
   page_size?: number
-  sort?: 'created_at' | 'year' | 'title'
+  sort?: 'created_at' | 'year' | 'title' | 'issue'
   order?: 'asc' | 'desc'
 }
 
@@ -687,3 +700,82 @@ export interface JournalSettings {
 }
 
 // --- Export ---
+
+// --- Gamification / 等级体系 ---
+export interface LevelCapability {
+  level: number
+  code: string
+  name: string
+  title: string
+  track: 'merit' | 'staff'
+  xp_floor?: number
+  roles?: string[]
+  capabilities: string[]
+  description: string
+}
+
+export interface LevelSnapshot extends LevelCapability {
+  xp: number
+  merit_level: number
+  next_level_xp: number | null
+  progress: number
+  roles: string[]
+}
+
+export interface BadgeItem {
+  key: string
+  name: string
+  tier: 'bronze' | 'silver' | 'gold' | 'special'
+  category: string
+  description: string
+  threshold: number
+  secret: boolean
+  unlocked: boolean
+  unlocked_at: string | null
+  current: number
+}
+
+export interface GamificationProfile {
+  user_id: number
+  username: string
+  level: LevelSnapshot
+  ladder: LevelCapability[]
+  badges: BadgeItem[]
+  unlocked_count: number
+  total_badges: number
+  metrics: Record<string, number>
+  recent_xp: { action: string; points: number; note: string | null; created_at: string }[]
+  rules_version: string
+  rules_accepted: boolean
+}
+
+export interface LadderResponse {
+  version: string
+  levels: LevelCapability[]
+}
+
+// --- Announcements ---
+export interface Announcement {
+  id: number
+  slug: string
+  title: string
+  body: string
+  level: 'info' | 'success' | 'warning' | 'critical'
+  is_active: boolean
+  starts_at: string
+  ends_at: string | null
+}
+
+// --- Quality rubric ---
+export interface QualityRubric {
+  version: string
+  dimensions: { key: string; label: string }[]
+  profiles: Record<string, { label: string; weights: Record<string, number> }>
+  grades: { code: string; label: string; min: number; max: number }[]
+  required_sections: string[]
+  profile_sections: Record<string, string[]>
+  min_references: Record<string, number>
+  length_tiers: Record<string, { short: number; medium: number; long: number }>
+  abstract_band: [number, number]
+  coefficient_formula: string
+}

@@ -109,10 +109,12 @@ async def list_resources(
     type: str | None = None,
     discipline: str | None = None,
     year: int | None = None,
+    volume: str | None = None,
+    issue: str | None = None,
     q: str | None = None,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
-    sort: str | None = Query(default=None, pattern=r"^(year|title|created_at)$"),
+    sort: str | None = Query(default=None, pattern=r"^(year|title|created_at|issue)$"),
     order: str | None = Query(default=None, pattern=r"^(asc|desc)$"),
     db: AsyncSession = Depends(get_db),
     viewer: User | None = Depends(get_current_user_optional),
@@ -175,6 +177,23 @@ async def list_resources(
         stmt = stmt.where(Resource.discipline == discipline)
     if year is not None:
         stmt = stmt.where(Resource.year == year)
+    # 卷/期筛选：目录页与卷期归档页共用。空串按 None 处理（前端清空下拉框会传 ""）。
+    if volume:
+        stmt = stmt.where(Resource.volume == volume)
+    if issue:
+        stmt = stmt.where(Resource.issue == issue)
+    # 排序扩展：卷期归档按「卷 → 期 → 期内序号」排（pages 存三位期内序号）。
+    # 注意不能先 stmt.order_by(...) 再交给 paginate：paginate 会以传入的
+    # order_by 覆盖（空元组等于清空排序）。
+    if sort == "issue":
+        rows, meta = await paginate(
+            db,
+            stmt,
+            page=page,
+            page_size=page_size,
+            order_by=(Resource.volume.asc(), Resource.issue.asc(), Resource.pages.asc()),
+        )
+        return ResourceListResponse(data=await _with_engagement(db, rows), meta=meta)
     if q is not None:
         pattern = f"%{q}%"
         stmt = stmt.where((Resource.title.ilike(pattern)) | (Resource.abstract.ilike(pattern)))

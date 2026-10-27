@@ -95,3 +95,46 @@ export function absurdityLevel(index: number | null | undefined): AbsurdityLevel
 export function absurdityLabel(index: number | null | undefined): string {
   return absurdityLevel(index)?.label ?? '—'
 }
+
+// ---------------------------------------------------------------------------
+// 质量评分（RQS v1.0）：等级徽章的展示映射。数值口径见 /api/quality/rubric。
+// ---------------------------------------------------------------------------
+
+export interface QualityGrade {
+  label: string
+  description: string
+  className: string
+}
+
+const QUALITY_GRADES: Record<string, QualityGrade> = {
+  'A+': {
+    label: 'A+ 卓越',
+    description: '结构、引用与图表均达期刊级；可直接作为范例',
+    className: 'bg-primary text-primary-foreground border-transparent',
+  },
+  A: {
+    label: 'A 优秀',
+    description: '规范完整，个别维度仍有提升空间',
+    className: 'bg-primary/85 text-primary-foreground border-transparent',
+  },
+  B: {
+    label: 'B 良好',
+    description: '达到发表门槛，格式或引用存在可修正的缺口',
+    className: 'bg-primary/15 text-primary border-primary/30',
+  },
+  C: {
+    label: 'C 合格',
+    description: '内容成立，但格式、引用或图表需要编辑加工',
+    className: 'bg-muted text-foreground border-border',
+  },
+  D: {
+    label: 'D 待改进',
+    description: '结构或引用不完整，排版需重做后重评',
+    className: 'bg-destructive/10 text-destructive border-destructive/30',
+  },
+}
+
+export function qualityGrade(grade: string | null | undefined): QualityGrade | null {
+  if (!grade) return null
+  return QUALITY_GRADES[grade] ?? null
+}

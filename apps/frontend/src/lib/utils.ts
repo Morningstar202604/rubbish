@@ -75,8 +75,14 @@ export function translateBackendError(detail: string): string {
 // into a user-facing toast message. Used by every mutation catch block.
 export function extractError(err: unknown, fallback: string): string {
   if (err instanceof AxiosError) {
-    const detail = (err.response?.data as { detail?: string } | undefined)?.detail
-    if (detail) return translateBackendError(detail)
+    const detail = (err.response?.data as { detail?: unknown } | undefined)?.detail
+    if (typeof detail === 'string') return translateBackendError(detail)
+    // 等级门禁等结构化错误：{ code, required_level, current_level, message }
+    // 直接把 message 抛给用户；没有 message 时退回固定文案。
+    if (detail && typeof detail === 'object') {
+      const message = (detail as { message?: unknown }).message
+      if (typeof message === 'string' && message) return message
+    }
   }
   return fallback
 }

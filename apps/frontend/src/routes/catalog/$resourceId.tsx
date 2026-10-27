@@ -34,7 +34,13 @@ import {
 } from '@/hooks/api/use-modules'
 import type { ResourceUpdate } from '@/lib/types'
 import { extractError, formatDateTime, parseListField } from '@/lib/utils'
-import { absurdityLevel, languageLabel, statusLabel, typeLabel } from '@/lib/resource-labels'
+import {
+  absurdityLevel,
+  languageLabel,
+  qualityGrade,
+  statusLabel,
+  typeLabel,
+} from '@/lib/resource-labels'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -59,6 +65,7 @@ import { AddToListDialog } from '@/components/common/add-to-list-dialog'
 import { BottomSheet } from '@/components/common/bottom-sheet'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { Comments } from '@/components/common/comments'
+import { ArticleCover } from '@/components/common/article-cover'
 import { MetaItem } from '@/components/common/meta-item'
 import { EmptyState, ErrorState, LoadingSkeleton } from '@/components/common/state'
 
@@ -131,6 +138,11 @@ function CatalogDetailPage() {
         返回目录
       </Link>
 
+      {/* 专题封面：详情页只作为视觉锚点，不占首屏正文空间（移动端 16:7 压缩） */}
+      <div className="mb-5 overflow-hidden rounded-xl border">
+        <ArticleCover resource={data} showDiscipline={false} className="aspect-[16/7] sm:aspect-[16/5]" />
+      </div>
+
       <div className="mb-6 flex items-start justify-between gap-4">
         <div className="flex-1">
           <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -195,7 +207,57 @@ function CatalogDetailPage() {
 
           {/* R 指数：只有真实事件才算数；分区样本不足时明确写出来，
               不用一个看着漂亮的字母糊弄读者。 */}
-          <FoldCard title="阅读与影响" defaultOpen={!isMobile}>
+          {/* 质量评分：RQS v1.0 七维明细（口径公开在 /levels） */}
+          <FoldCard title="质量评分（RQS v1.0）" defaultOpen={!isMobile}>
+            <CardContent>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                {(() => {
+                  const grade = qualityGrade(data.quality_grade)
+                  if (!grade) {
+                    return <span className="text-sm text-muted-foreground">尚未评分</span>
+                  }
+                  return (
+                    <>
+                      <Badge variant="outline" className={grade.className}>
+                        {grade.label}
+                      </Badge>
+                      <span className="font-serif text-2xl font-semibold tabular-nums">
+                        {data.quality_score?.toFixed(1)}
+                        <span className="ml-1 text-sm font-normal text-muted-foreground">/ 100</span>
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        纯度系数 {((data.quality_score ?? 0) / 50).toFixed(2)}
+                      </span>
+                    </>
+                  )
+                })()}
+              </div>
+              {data.quality_breakdown && (
+                <div className="space-y-1.5">
+                  {Object.entries(data.quality_breakdown).map(([key, dim]) => (
+                    <div key={key} className="flex items-center gap-2 text-xs">
+                      <span className="w-24 shrink-0 text-muted-foreground">{dim.label}</span>
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary/70"
+                          style={{ width: `${Math.min(100, (dim.score / Math.max(dim.max, 1)) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="w-14 shrink-0 text-right tabular-nums text-muted-foreground">
+                        {dim.score} / {dim.max}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                评分为七维加权（结构 20 / 篇幅 12 / 引用 22 / 图表 15 / 摘要 11 / 排版 10 / 语言 10，
+                按稿件类型另有分档权重）；口径冻结在评分规范 v1.0，不随月份变化。
+              </p>
+            </CardContent>
+          </FoldCard>
+
+          <FoldCard title="阅读与影响" defaultOpen={false}>
             <CardContent>
               <MetaItem label="R 指数" value={data.r_index != null ? String(data.r_index) : '—'} />
               <MetaItem

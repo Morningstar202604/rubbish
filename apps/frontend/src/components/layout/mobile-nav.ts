@@ -15,6 +15,9 @@ import {
   ShieldCheck,
   Upload,
   Users,
+  Award,
+  CalendarDays,
+  Compass,
   type LucideIcon,
   User,
 } from 'lucide-react'
@@ -48,6 +51,9 @@ export const MOBILE_TABS: MobileTab[] = [
 // "更多"底部抽屉的次级导航（按 isAdmin + 角色过滤）。
 export const MOBILE_MORE: MobileMoreItem[] = [
   { to: '/dashboard', label: '概览', icon: Home },
+  { to: '/profile', label: '个人中心', icon: Award },
+  { to: '/archive', label: '卷期归档', icon: CalendarDays },
+  { to: '/levels', label: '等级与规范', icon: Compass },
   { to: '/authors', label: '作者指南', icon: PenLine },
   { to: '/policies', label: '政策规范', icon: Scroll },
   { to: '/about', label: '关于本刊', icon: Building2 },
