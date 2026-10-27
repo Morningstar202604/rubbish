@@ -116,7 +116,7 @@ function LevelsPage() {
           <CardContent className="space-y-3 py-5 text-sm leading-relaxed text-muted-foreground">
             <p>
               成就分四档：铜（入门）· 银（常态参与）· 金（长期贡献）· 特别（稀有行为）。
-              共覆盖阅读、讨论、收藏、投稿、审稿、编辑、习惯、探索八类。
+              共 27 枚，覆盖阅读、讨论、收藏、关注、投稿、审稿、编辑、习惯、探索九类。
             </p>
             <p>
               解法不一：有的是累计量（读完 50 篇），有的是连续行为（连续 30 天有阅读），

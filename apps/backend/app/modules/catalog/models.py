@@ -94,9 +94,9 @@ class Resource(Base, TenantScopedMixin):
     publication_status: Mapped[str] = mapped_column(String(20), nullable=False, default="published")
     # 定时发布：published 但 publish_at 在未来 = 已排期、尚未对公众可见。
     # 编辑部把整期排在月初，到点自动上线（判定见 catalog/visibility.py）。
-    publish_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True, index=True
-    )
+    # 单列索引不需要：公开面过滤永远是 (tenant_id, publish_at) 组合，
+    # 复合索引已覆盖；多余的 index=True 会让 alembic metadata 与迁移漂移。
+    publish_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # 下载计数：公开 /api/catalog/{id}/file 每次命中 +1，用于 R 指数
     # （见 app/modules/catalog/engagement.py）。只做原子自增，不做行锁。
     download_count: Mapped[int] = mapped_column(

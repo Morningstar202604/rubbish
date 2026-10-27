@@ -76,3 +76,26 @@ def test_abstract_promoted_to_h2() -> None:
 def test_cjk_gaps_collapsed() -> None:
     md = "本文 讨论 中文 排版\n"
     assert clean(md).strip() == "本文讨论中文排版"
+
+
+def test_drops_volume_footer_variants() -> None:
+    for line in (
+        "RUBBISH | Volume XX | February 2026 | XXXX",
+        "> RUBBISH | Volume XX | March 2026 | XXXX",
+        "**1** Rubbish | Volume XX | February 2026 | XXXX",
+        "_Rubbish_ | Volume 9 | October 2026 | 2609",
+    ):
+        assert clean(line) == "", line
+
+
+def test_drops_footer_merged_into_paragraph() -> None:
+    md = "正文结束居民区的 _Rubbish_ | Volume 9 | October 2026 | 2609\n下一段"
+    out = clean(md)
+    assert "Volume" not in out
+    assert "正文结束居民区的" in out
+    assert "下一段" in out
+
+
+def test_drops_english_tagline() -> None:
+    md = "**Where the absurd dwells, fellow wayfarers meet.**"
+    assert clean(md) == ""

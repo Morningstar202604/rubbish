@@ -53,7 +53,7 @@ Rubbish 是一个**模块化、多租户的学术期刊发表平台**:核心只�
 ## 1.0.0 新增模块（等级 / 公告 / 评分）
 
 - **gamification** — 九级双轨阶梯（`ladder.py`，代码即口径）、XP 台账
-  （`user_xp_events`，唯一约束保证幂等）、成就定义（`badges.py`，31 枚）与
+  （`user_xp_events`，唯一约束保证幂等）、成就定义（`badges.py`，27 枚）与
   渐进展示。级别门禁通过 `app/api/levels.py` 的 `require_level(n)` 注入到
   评论（L2）、阅读列表（L2）、投稿（L3）三条写路径；`require_rules_ack`
   与 `users.rules_ack_version` 绑定，规范改版后旧确认自动失效。
