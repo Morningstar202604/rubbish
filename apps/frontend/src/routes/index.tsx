@@ -471,6 +471,18 @@ function HomePage() {
                 投稿流程
               </a>
               <Link
+                to="/archive"
+                className="link-underline text-muted-foreground transition-colors hover:text-foreground"
+              >
+                卷期归档
+              </Link>
+              <Link
+                to="/levels"
+                className="link-underline text-muted-foreground transition-colors hover:text-foreground"
+              >
+                等级与规范
+              </Link>
+              <Link
                 to="/journal-metrics"
                 className="link-underline text-muted-foreground transition-colors hover:text-foreground"
               >
@@ -627,7 +639,10 @@ function HomePage() {
                     <div className="mt-4 flex items-center justify-between border-t pt-3 text-xs text-muted-foreground">
                       <span className="truncate">
                         {r.discipline}
-                        {r.r_index != null && r.r_index > 0 ? (
+                        {/* R 指数只在有真实阅读样本时展示：仅 1 次下载也会算出
+                            R 30.0，满屏同号会被误读成假指标。 */}
+                        {r.r_index != null &&
+                        (r.reads ?? 0) + (r.downloads ?? 0) + (r.saves ?? 0) >= 3 ? (
                           <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 font-medium tabular-nums text-primary">
                             R {r.r_index.toFixed(1)}
                           </span>

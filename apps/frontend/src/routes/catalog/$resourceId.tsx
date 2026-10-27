@@ -158,7 +158,8 @@ function CatalogDetailPage() {
                 </Badge>
               ) : null
             })()}
-            {data.r_index != null && data.r_index > 0 ? (
+            {data.r_index != null &&
+            (data.reads ?? 0) + (data.downloads ?? 0) + (data.saves ?? 0) >= 3 ? (
               <Badge variant="outline" className="tabular-nums">
                 R {data.r_index.toFixed(1)}
                 {data.quartile ? ` · ${data.quartile}` : ''}
