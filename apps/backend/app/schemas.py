@@ -168,6 +168,11 @@ class UserResponse(BaseModel):
     # 当前用户在本租户内被授予的角色名列表（如 ["reviewer", "editor"]）
     # 默认空列表：未填充时视为"无角色"，向后兼容旧调用点
     roles: list[str] = Field(default_factory=list)
+    # 等级体系：XP 总分与生效等级（1–9）。/auth/me、/users/me 现算填充；
+    # ORM 直出路径取默认值（0 / 1），admin 列表另有显式填充。
+    xp: int = 0
+    level: int = 1
+    rules_accepted: bool = False
 
     @model_validator(mode="before")
     @classmethod
@@ -189,6 +194,7 @@ class UserResponse(BaseModel):
                 "is_email_verified": data.is_email_verified,
                 "created_at": data.created_at,
                 "orcid": data.orcid,
+                "xp": int(getattr(data, "xp", 0) or 0),
                 # roles 不在此填：让默认空列表生效；admin 路径用 _user_with_roles 显式覆盖
             }
         return data

@@ -141,6 +141,15 @@ async def test_user(client: AsyncClient) -> dict[str, str | int | bool]:
     )
     response.raise_for_status()
     data = response.json()
+    # 等级体系上线后，新用户是 L1；投稿/评论/阅读列表分别要求 L3/L2/L2。
+    # 测试主体默认代表"已完成引导的作者"，因此在这里走一次作者引导，
+    # 让 L1→L3 的规则不被每个用例重复实现。
+    onboard = await client.post(
+        "/api/gamification/onboarding/author",
+        json={"accept_rules": True},
+        headers={"Authorization": f"Bearer {data['access_token']}"},
+    )
+    onboard.raise_for_status()
     return {
         "email": "user@example.com",
         "username": "testuser",

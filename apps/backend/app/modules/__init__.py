@@ -32,4 +32,7 @@ ENABLED_MODULES: list[str] = [
     "ingest",
     "recommendations",
     "doi",
+    "gamification",
+    "announcements",
+    "quality",
 ]

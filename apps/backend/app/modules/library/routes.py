@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user
+from app.api.levels import require_level
 from app.core.db import get_db, paginate
 from app.models import User
 from app.modules.catalog.models import Resource
@@ -111,10 +112,10 @@ async def list_my_lists(
 )
 async def create_list(
     payload: ReadingListCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_level(2)),
     db: AsyncSession = Depends(get_db),
 ) -> ReadingListDetailResponse:
-    """Create a new reading list owned by the current user."""
+    """Create a new reading list owned by the current user (L2+)."""
     rl = ReadingList(
         tenant_id=current_user.tenant_id,
         user_id=current_user.id,
@@ -123,6 +124,12 @@ async def create_list(
     )
     db.add(rl)
     try:
+        await db.flush()
+        from app.modules.gamification import service as gamification
+
+        await gamification.award(
+            db, current_user, "library.create", ref_type="list", ref_id=str(rl.id)
+        )
         await db.commit()
     except IntegrityError as exc:
         # (tenant, user, name) collision — same name already exists.

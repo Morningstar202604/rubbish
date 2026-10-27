@@ -23,6 +23,7 @@ from app.api.deps import (
     get_current_user,
     user_has_role,
 )
+from app.api.levels import require_level
 from app.core.db import get_db
 from app.models import Role, User, UserRole
 from app.modules.notifications import services as notifications
@@ -64,10 +65,26 @@ from app.modules.submission import routes_editor, routes_files  # noqa: E402,F40
 )
 async def create_submission(
     body: SubmissionCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_level(3)),
     db: AsyncSession = Depends(get_db),
 ) -> SubmissionResponse:
-    """Submit a record for editor review (auth required)."""
+    """Submit a record for editor review.
+
+    等级门禁：L3（作者）。L1/L2 读者需先在个人中心确认《投稿规范》，
+    该动作同时授予作者引导积分（见 /gamification/onboarding/author）。
+    规范版本变更后需重新确认（rules_ack_version 不匹配则拒绝）。
+    """
+    from app.api.levels import CURRENT_RULES_VERSION
+
+    if current_user.rules_ack_version != CURRENT_RULES_VERSION:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "rules_ack_required",
+                "version": CURRENT_RULES_VERSION,
+                "message": "投稿前请先阅读并确认《Rubbish 投稿与编辑规范》。",
+            },
+        )
     submission = Submission(
         tenant_id=current_user.tenant_id,
         submitted_by=current_user.id,
@@ -93,6 +110,11 @@ async def create_submission(
     await db.flush()  # 拿到 submission.id 供 v1 快照引用
     # v1 快照：保证「最初提交了什么」永远可查（版本历史从创建开始）
     await _snapshot_submission(db, submission, created_by=current_user.id)
+    from app.modules.gamification import service as gamification
+
+    await gamification.award(
+        db, current_user, "submission.create", ref_type="submission", ref_id=str(submission.id)
+    )
     await db.commit()
     await db.refresh(submission)
     return _to_response(submission)

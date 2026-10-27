@@ -24,5 +24,7 @@ async def test_modules_returns_loaded_modules(client: AsyncClient, test_user: di
     by_name = {m["name"]: m for m in body}
     assert set(by_name) == set(ENABLED_MODULES)
     for name in ENABLED_MODULES:
-        assert by_name[name]["version"] == "0.1.0"
+        # 版本号是模块自述（0.1.0 为既有模块基线，1.0.0 为 2026-10 新增的
+        # gamification / announcements / quality 模块），这里只校验「有值」。
+        assert by_name[name]["version"]
     assert "follow" in by_name["follows"]["description"].lower()

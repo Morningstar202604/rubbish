@@ -315,6 +315,12 @@ async def submit_review_report(
     a.status = "completed"
     a.completed_at = utcnow()
     try:
+        await db.flush()
+        from app.modules.gamification import service as gamification
+
+        await gamification.award(
+            db, current_user, "review.completed", ref_type="assignment", ref_id=str(a.id)
+        )
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()

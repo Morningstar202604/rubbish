@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_tenant_id
+from app.api.levels import require_level
 from app.core.db import get_db, paginate
 from app.models import AuditLog, User
 from app.modules.comments.models import Comment
@@ -91,9 +92,9 @@ async def list_comments(
 async def create_comment(
     payload: CommentCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_level(2)),
 ) -> CommentResponse:
-    """Post a comment (logged-in users only; published resources only)."""
+    """Post a comment (L2+; published resources only)."""
     tenant_id = require_tenant_id()
     body = payload.body.strip()
     if not body:
@@ -110,6 +111,16 @@ async def create_comment(
     )
     db.add(comment)
     try:
+        await db.flush()
+        from app.modules.gamification import service as gamification
+
+        await gamification.award(
+            db,
+            current_user,
+            "comment.create",
+            ref_type="comment",
+            ref_id=str(comment.id),
+        )
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()

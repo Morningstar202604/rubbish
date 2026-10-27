@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import (
     JSON,
@@ -99,6 +100,16 @@ class Resource(Base, TenantScopedMixin):
     # 荒诞指数：编辑部对单篇内容离谱程度的评定（0–10，一位小数）。
     # 与 R 指数（读者注意力）相互独立；可空——正经论文可以不评定。
     absurdity_index: Mapped[Decimal | None] = mapped_column(Numeric(4, 1), nullable=True)
+    # --- 质量评分（quality 模块 RQS v1.0，冻结口径） ---
+    # 0–100；grade = A+/A/B/C/D；breakdown 存各维度得分明细（可复现）。
+    quality_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 1), nullable=True)
+    quality_grade: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    quality_breakdown: Mapped[dict[str, Any] | None] = mapped_column(JSONBVariant, nullable=True)
+    # 封面：主题图本地化的相对路径（/assets/covers/xxx.jpg）。
+    # 为空时前端回退到生成的纸面卡（CoverArt），不会出现破图。
+    cover_image: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # 归类键：封面主题、专题聚合使用（如 universe / lab / ocean / society）。
+    cover_theme: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False

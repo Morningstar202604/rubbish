@@ -187,6 +187,18 @@ async def record_view(
             entry.visit_count = (entry.visit_count or 1) + 1
             await db.flush()
     await db.commit()
+    # 阅读积分：同一篇只记一次（ledger 唯一约束保证幂等）。
+    # 放在 commit 之后按 id 重新取 user：上面的 rollback 分支会 expire
+    # current_user 的属性，直接访问会触发 async lazy-load。
+    from app.models import User as UserModel
+    from app.modules.gamification import service as gamification
+
+    fresh_user = await db.get(UserModel, user_id)
+    if fresh_user is not None:
+        await gamification.award(
+            db, fresh_user, "read.article", ref_type="resource", ref_id=str(resource_id)
+        )
+        await db.commit()
     return MessageResponse(message="Added to history")
 
 

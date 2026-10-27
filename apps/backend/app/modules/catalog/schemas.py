@@ -8,7 +8,7 @@ pagination metadata.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 from pydantic import (
@@ -118,6 +118,13 @@ class ResourceBase(BaseModel):
     publication_status: PublicationStatus = "published"
     # 荒诞指数：编辑部评定（0–10，一位小数），None 表示未评定。
     absurdity_index: float | None = Field(default=None, ge=0, le=10)
+    # 质量评分（quality 模块 RQS v1.0）：0–100 与等级 A+/A/B/C/D。
+    quality_score: float | None = Field(default=None, ge=0, le=100)
+    quality_grade: str | None = Field(default=None, max_length=4)
+    quality_breakdown: dict[str, Any] | None = None
+    # 封面：主题图相对路径（/assets/covers/xxx.jpg）；为空时前端用生成式封面。
+    cover_image: str | None = Field(default=None, max_length=500)
+    cover_theme: str | None = Field(default=None, max_length=50)
 
     @model_validator(mode="after")
     def _fill_preview_from_abstract(self) -> ResourceBase:
@@ -166,6 +173,12 @@ class ResourceUpdate(BaseModel):
     authors_meta: list[AuthorMeta] | None = Field(default=None, max_length=200)
     # 荒诞指数：编辑部评定（0–10，一位小数），None 表示未评定。
     absurdity_index: float | None = Field(default=None, ge=0, le=10)
+    # 质量评分与封面（编辑可修正评分；评分口径见 /api/quality/rubric）。
+    quality_score: float | None = Field(default=None, ge=0, le=100)
+    quality_grade: str | None = Field(default=None, max_length=4)
+    quality_breakdown: dict[str, Any] | None = None
+    cover_image: str | None = Field(default=None, max_length=500)
+    cover_theme: str | None = Field(default=None, max_length=50)
 
 
 class ResourceResponse(ResourceBase):

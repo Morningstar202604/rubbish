@@ -190,6 +190,14 @@ class User(Base, TenantScopedMixin):
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True
     )
+    # --- 等级体系（gamification 模块） ---
+    # 运行中的 XP 总分：ledger（user_xp_events）是事实源，这里是热路径快照。
+    xp: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    # 投稿规范确认：作者必须读过当前版本的《投稿规范》才能提交。
+    # 版本号与 docs/editorial-standards.md 的 front-matter 对齐。
+    rules_ack_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    rules_ack_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False
     )

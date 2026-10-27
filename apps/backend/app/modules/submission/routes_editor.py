@@ -586,6 +586,29 @@ async def editor_decision(
             detail=f"Unknown decision: {decision}",
         )
 
+    # 积分结算：作者侧（录用 60 / 拒稿 5）+ 编辑侧（每次裁决 8）。
+    # 与业务同一事务，决策失败不会留下孤立积分。
+    from app.modules.gamification import service as gamification
+
+    author = (
+        await db.execute(select(User).where(User.id == entry.submitted_by))
+    ).scalar_one_or_none()
+    if author is not None:
+        await gamification.award(
+            db,
+            author,
+            "submission.accepted" if decision == "accept" else "submission.rejected",
+            ref_type="submission",
+            ref_id=str(entry.id),
+        )
+    await gamification.award(
+        db,
+        current_user,
+        "editor.decision",
+        ref_type="submission",
+        ref_id=str(entry.id),
+    )
+
     # 通知作者。录用时 related 指向物化出的公开目录条目而非 submission，
     # 作者点通知即可直达自己已发表的文章（目录详情页对访客也公开）。
     decision_labels = {
