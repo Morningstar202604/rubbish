@@ -20,7 +20,7 @@ from __future__ import annotations
 import re
 
 BOILER = re.compile(
-    r"^\s*(?:#{1,6}\s*)?\**\s*(?:"
+    r"^\s*(?:[>*_#]{0,3}\s*)*(?:#{1,6}\s*)?\**\s*(?:"
     r"Rubbish\s*[-—]\s*于荒诞处见同路人|"
     r"Open Access(\s*Research Article)?|Research Article|"
     r"Received\s+\d|Accepted\s+\d|"
@@ -28,6 +28,9 @@ BOILER = re.compile(
     r"RUBBISH\s*$|RUBBIS\s*H\s*$|"
     r"MID:\s*\S*|"
     r"Volume\s+\S+\s*\|.*|"
+    r"(?:\*\*\d+\*\*\s*)?Rubbish\s*\|\s*Volume.*|"
+    r"于荒诞处[，,]?\s*见同路人|"
+    r"Where the absurd dwells.*|"
     r"\d{1,3}"
     r")\s*\**\s*$",
     re.I,
@@ -70,9 +73,25 @@ def _is_running_head(line: str) -> bool:
         "Rubbish-于荒诞处见同路人",
         "Rubbish—于荒诞处见同路人",
         "于荒诞处见同路人",
+        "于荒诞处，见同路人",
         "RUBBISH",
         "RUBBISHVolume",
     }
+
+
+INLINE_FOOTER = re.compile(
+    r"[ 	]*[_*]*[ 	]*Rubbish[ 	]*[_*]*[ 	]*\|[ 	]*Volume.*$",
+    re.I | re.M,
+)
+
+
+def strip_inline_footers(md: str) -> str:
+    """Footers occasionally get merged into the tail of a body paragraph.
+
+    ``…居民区的 _Rubbish_ | Volume 9 | October 2026 | 2609`` — a line-anchored
+    rule cannot catch that, so also remove the fragment anywhere it appears.
+    """
+    return INLINE_FOOTER.sub("", md)
 
 
 def drop_running_heads(md: str) -> str:
@@ -109,6 +128,7 @@ def clean(md: str) -> str:
     md = strip_tags(md)
     md = drop_prefix(md)
     md = drop_running_heads(md)
+    md = strip_inline_footers(md)
     md = tidy_inline(md)
     md = re.sub(
         r"^(#{1,6})([^\s#])",
