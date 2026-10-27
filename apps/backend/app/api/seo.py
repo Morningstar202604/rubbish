@@ -27,6 +27,7 @@ from app.core.config import settings
 from app.core.db import get_db
 from app.models import Tenant
 from app.modules.catalog.models import Resource
+from app.modules.catalog.visibility import public_conditions
 
 router = APIRouter(tags=["seo"])
 
@@ -56,7 +57,7 @@ async def _published_resources(db: AsyncSession, limit: int = 5000) -> list[Reso
                 select(Resource)
                 .where(
                     Resource.tenant_id == tenant.id,
-                    Resource.publication_status == "published",
+                    *public_conditions(),
                 )
                 .order_by(Resource.created_at.desc())
                 .limit(limit)
@@ -257,7 +258,7 @@ async def build_index_html(
                     select(Resource).where(
                         Resource.id == int(path.split("/", 1)[1]),
                         Resource.tenant_id == tenant.id,
-                        Resource.publication_status == "published",
+                        *public_conditions(),
                     )
                 )
             ).scalar_one_or_none()

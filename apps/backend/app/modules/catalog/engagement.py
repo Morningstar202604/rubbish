@@ -33,6 +33,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.catalog.models import Resource
+from app.modules.catalog.visibility import public_conditions
 
 # ``library`` and ``reader`` depend on ``catalog`` (they reference its
 # Resource rows), so importing their models at module scope would trigger
@@ -181,8 +182,8 @@ async def compute_engagement(db: AsyncSession, rows: list[Resource]) -> dict[int
                 await db.execute(
                     select(Resource).where(
                         Resource.tenant_id == tenant_id,
-                        Resource.publication_status == "published",
                         Resource.discipline.in_(disciplines),
+                        *public_conditions(),
                     )
                 )
             )
@@ -214,10 +215,7 @@ async def journal_metrics(db: AsyncSession, tenant_id: Any) -> dict[str, Any]:
     from app.modules.reader.models import ReadingHistory
     from app.modules.submission.models import Submission
 
-    published_filter = (
-        Resource.tenant_id == tenant_id,
-        Resource.publication_status == "published",
-    )
+    published_filter = (Resource.tenant_id == tenant_id, *public_conditions())
     total = (
         await db.execute(select(func.count(Resource.id)).where(*published_filter))
     ).scalar_one()

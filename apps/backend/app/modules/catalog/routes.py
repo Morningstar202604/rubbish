@@ -8,12 +8,14 @@ on every query) AND by RLS in production.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
+from pydantic import BaseModel
 from sqlalchemy import desc, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,6 +30,7 @@ from app.api.deps import (
 from app.core import search as fulltext
 from app.core.db import get_db, paginate
 from app.core.schemas import PaginationMeta
+from app.core.time import utcnow
 from app.models import AuditLog, User
 from app.modules.catalog.engagement import compute_engagement, journal_metrics
 from app.modules.catalog.models import Resource
@@ -42,6 +45,7 @@ from app.modules.catalog.schemas import (
     ResourceStats,
     ResourceUpdate,
 )
+from app.modules.catalog.visibility import as_aware, is_public, public_conditions
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
 
@@ -168,9 +172,10 @@ async def list_resources(
 
     stmt = select(Resource).where(Resource.tenant_id == tenant_id)
     if not is_admin:
-        # Public surface: only published records exist as far as anonymous
-        # and non-admin callers are concerned.
-        stmt = stmt.where(Resource.publication_status == "published")
+        # 公开面：只存在「已刊出且已到发布时刻」的记录。排期中的期号
+        # （publish_at 在未来）对读者不可见，也不确认存在性。
+        for condition in public_conditions():
+            stmt = stmt.where(condition)
     if type is not None:
         stmt = stmt.where(Resource.type == type)
     if discipline is not None:
@@ -227,7 +232,8 @@ async def get_stats(
     tenant_id = require_tenant_id()
     base_filter = Resource.tenant_id == tenant_id
     if not (viewer and viewer.is_admin):
-        base_filter = base_filter & (Resource.publication_status == "published")
+        for condition in public_conditions():
+            base_filter = base_filter & condition
     total = (await db.execute(select(func.count(Resource.id)).where(base_filter))).scalar_one()
     by_type_rows = await db.execute(
         select(Resource.type, func.count(Resource.id)).where(base_filter).group_by(Resource.type)
@@ -272,11 +278,9 @@ async def get_facets(
     is_admin = bool(viewer and viewer.is_admin)
     stmt = select(Resource).where(Resource.tenant_id == tenant_id)
     if not is_admin:
-        stmt = stmt.where(Resource.publication_status == "published")
-    if not is_admin:
-        # Public surface: only published records exist as far as anonymous
-        # and non-admin callers are concerned.
-        stmt = stmt.where(Resource.publication_status == "published")
+        # 公开面：已刊出 + 已到发布时刻（见 catalog/visibility.py）
+        for condition in public_conditions():
+            stmt = stmt.where(condition)
     if type is not None:
         stmt = stmt.where(Resource.type == type)
     if discipline is not None:
@@ -296,7 +300,8 @@ async def get_facets(
     # 全表 tags 物化的 O(N×M) 开销。若未来 data > 10k 需引入 SQL 端 JSON 展开。
     stmt_tags = select(Resource.tags).where(Resource.tenant_id == tenant_id)
     if not is_admin:
-        stmt_tags = stmt_tags.where(Resource.publication_status == "published")
+        for condition in public_conditions():
+            stmt_tags = stmt_tags.where(condition)
     if type is not None:
         stmt_tags = stmt_tags.where(Resource.type == type)
     if discipline is not None:
@@ -358,6 +363,156 @@ async def _with_engagement(db: AsyncSession, rows: Any) -> list[ResourceResponse
     return responses
 
 
+class IssuePlanEntry(BaseModel):
+    """One issue in the publication calendar."""
+
+    volume: str
+    issue: str
+    label: str
+    publish_at: datetime | None
+    total: int
+    published: int
+    scheduled: int
+    state: str  # live | scheduled | empty
+
+
+class IssuePlanResponse(BaseModel):
+    volume: str
+    now: datetime
+    entries: list[IssuePlanEntry]
+
+
+@router.get("/issue-plan", response_model=IssuePlanResponse)
+async def get_issue_plan(db: AsyncSession = Depends(get_db)) -> IssuePlanResponse:
+    """Publication calendar: what is live now and what is queued.
+
+    Public on purpose — the archive page shows upcoming issues with their
+    release dates, so a reader can see the journal is monthly rather than
+    wondering why only one issue exists. Counts only; no drafts leak.
+    """
+    tenant_id = require_tenant_id()
+    now = utcnow()
+    rows = (
+        await db.execute(
+            select(
+                Resource.volume,
+                Resource.issue,
+                Resource.publish_at,
+                Resource.publication_status,
+                func.count(Resource.id),
+            )
+            .where(Resource.tenant_id == tenant_id, Resource.volume.is_not(None))
+            .group_by(
+                Resource.volume,
+                Resource.issue,
+                Resource.publish_at,
+                Resource.publication_status,
+            )
+            .order_by(Resource.volume.asc(), Resource.issue.asc())
+        )
+    ).all()
+
+    totals: dict[tuple[str, str], int] = {}
+    live: dict[tuple[str, str], int] = {}
+    queued: dict[tuple[str, str], int] = {}
+    first_release: dict[tuple[str, str], datetime] = {}
+    for volume, issue, publish_at, pub_status, count in rows:
+        key = (volume or "", issue or "")
+        totals[key] = totals.get(key, 0) + int(count)
+        if pub_status != "published":
+            continue
+        release = as_aware(publish_at)
+        if release is None or release <= now:
+            live[key] = live.get(key, 0) + int(count)
+        else:
+            queued[key] = queued.get(key, 0) + int(count)
+            current = first_release.get(key)
+            if current is None or release < current:
+                first_release[key] = release
+
+    entries: list[IssuePlanEntry] = []
+    for volume, issue in sorted(totals):
+        published_count = live.get((volume, issue), 0)
+        scheduled_count = queued.get((volume, issue), 0)
+        state = "live" if published_count else ("scheduled" if scheduled_count else "empty")
+        entries.append(
+            IssuePlanEntry(
+                volume=volume,
+                issue=issue,
+                label=(
+                    f"第 {volume} 卷 第 {int(issue)} 期"
+                    if issue.isdigit()
+                    else f"{volume} 卷 {issue} 期"
+                ),
+                publish_at=first_release.get((volume, issue)),
+                total=totals[(volume, issue)],
+                published=published_count,
+                scheduled=scheduled_count,
+                state=state,
+            )
+        )
+    return IssuePlanResponse(volume="1", now=now, entries=entries)
+
+
+class IssueScheduleRequest(BaseModel):
+    publish_at: datetime | None = None
+
+
+@router.post("/issues/{volume}/{issue}/publish", response_model=IssuePlanEntry)
+async def publish_issue(
+    volume: str,
+    issue: str,
+    payload: IssueScheduleRequest,
+    current_admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> IssuePlanEntry:
+    """L9: release an issue now (``publish_at=null``) or reschedule it.
+
+    Publisher convenience for the monthly cadence: one call moves a whole
+    issue instead of PATCHing 27 records. Writes one audit row.
+    """
+    tenant_id = require_tenant_id()
+    target = payload.publish_at
+    result = await db.execute(
+        update(Resource)
+        .where(
+            Resource.tenant_id == tenant_id,
+            Resource.volume == volume,
+            Resource.issue == issue,
+        )
+        .values(publish_at=target, publication_status="published")
+    )
+    rows_changed = int(getattr(result, "rowcount", 0) or 0)
+    if rows_changed == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
+    db.add(
+        AuditLog(
+            tenant_id=tenant_id,
+            actor_user_id=current_admin.id,
+            action="catalog.issue_schedule",
+            target_type="issue",
+            target_id=f"{volume}/{issue}",
+            payload={"publish_at": target.isoformat() if target else None, "rows": rows_changed},
+        )
+    )
+    await db.commit()
+    now = utcnow()
+    count = rows_changed
+    live = target is None or target <= now
+    return IssuePlanEntry(
+        volume=volume,
+        issue=issue,
+        label=f"第 {volume} 卷 第 {int(issue)} 期"
+        if issue.isdigit()
+        else f"{volume} 卷 {issue} 期",
+        publish_at=target,
+        total=count,
+        published=count if live else 0,
+        scheduled=0 if live else count,
+        state="live" if live else "scheduled",
+    )
+
+
 @router.get("/journal-metrics", response_model=JournalMetrics)
 async def get_journal_metrics(db: AsyncSession = Depends(get_db)) -> JournalMetrics:
     """Public, self-computed journal metrics (see /journal-metrics page).
@@ -405,7 +560,7 @@ async def download_resource_file(
     # 与关联投稿的作者本人（刊前预览），无权限者（含匿名）404，不确认
     # 未刊条目存在。编辑在 "接受" 决定里可把投稿对接到任一带 resource_id
     # 的现有条目（submission/routes.py accept 分支），此时预览走同一端点。
-    is_published = resource is not None and resource.publication_status == "published"
+    is_published = is_public(resource)
     if resource is None or (
         not is_published and not await _can_preview_unpublished(db, viewer, resource_id, tenant_id)
     ):
@@ -525,7 +680,7 @@ async def get_resource_manuscript(
         )
     )
     resource = result.scalar_one_or_none()
-    is_published = resource is not None and resource.publication_status == "published"
+    is_published = is_public(resource)
     if resource is None or (
         not is_published and not await _can_preview_unpublished(db, viewer, resource_id, tenant_id)
     ):
@@ -582,7 +737,8 @@ async def get_resource(
         # confirm its existence to the public. Editors and the linked
         # submission's author may preview drafts (刊前预览).
         if not await _can_preview_unpublished(db, viewer, resource_id, tenant_id):
-            stmt = stmt.where(Resource.publication_status == "published")
+            for condition in public_conditions():
+                stmt = stmt.where(condition)
     result = await db.execute(stmt)
     resource = result.scalar_one_or_none()
     if resource is None:
@@ -698,6 +854,7 @@ async def create_resource(
         keywords=payload.keywords,
         language=payload.language,
         publication_status=payload.publication_status,
+        publish_at=payload.publish_at,
         authors_meta=(
             [m.model_dump() for m in payload.authors_meta]
             if payload.authors_meta is not None

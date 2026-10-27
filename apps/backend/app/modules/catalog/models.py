@@ -92,6 +92,11 @@ class Resource(Base, TenantScopedMixin):
     # 因为 submission 模型没有 language 列（物化时沿用这里的中文默认值）。
     language: Mapped[str] = mapped_column(String(10), nullable=False, default="zh")
     publication_status: Mapped[str] = mapped_column(String(20), nullable=False, default="published")
+    # 定时发布：published 但 publish_at 在未来 = 已排期、尚未对公众可见。
+    # 编辑部把整期排在月初，到点自动上线（判定见 catalog/visibility.py）。
+    publish_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
     # 下载计数：公开 /api/catalog/{id}/file 每次命中 +1，用于 R 指数
     # （见 app/modules/catalog/engagement.py）。只做原子自增，不做行锁。
     download_count: Mapped[int] = mapped_column(
@@ -143,6 +148,7 @@ class Resource(Base, TenantScopedMixin):
         ),
         # GIN trigram（pg_trgm）索引：PG 专属，SQLite 下 create_all 忽略
         # using/ops 参数，仅退化为普通索引（无害）。
+        Index("ix_resources_tenant_publish_at", "tenant_id", "publish_at"),
         Index(
             "ix_resources_title_trgm",
             "title",

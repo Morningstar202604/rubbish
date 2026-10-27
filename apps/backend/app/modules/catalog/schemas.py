@@ -125,6 +125,8 @@ class ResourceBase(BaseModel):
     # 封面：主题图相对路径（/assets/covers/xxx.jpg）；为空时前端用生成式封面。
     cover_image: str | None = Field(default=None, max_length=500)
     cover_theme: str | None = Field(default=None, max_length=50)
+    # 定时发布：published + 未来时间 = 已排期未上线（公开面不可见）。
+    publish_at: datetime | None = None
 
     @model_validator(mode="after")
     def _fill_preview_from_abstract(self) -> ResourceBase:
@@ -179,6 +181,7 @@ class ResourceUpdate(BaseModel):
     quality_breakdown: dict[str, Any] | None = None
     cover_image: str | None = Field(default=None, max_length=500)
     cover_theme: str | None = Field(default=None, max_length=50)
+    publish_at: datetime | None = None
 
 
 class ResourceResponse(ResourceBase):

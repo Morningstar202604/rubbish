@@ -27,6 +27,7 @@ from app.api.deps import require_tenant_id
 from app.core.config import settings
 from app.core.db import get_db
 from app.modules.catalog import models as catalog_models
+from app.modules.catalog.visibility import public_conditions
 
 router = APIRouter(prefix="/oai", tags=["oai-pmh"])
 
@@ -171,7 +172,7 @@ async def oai_endpoint(
                 select(catalog_models.Resource).where(
                     catalog_models.Resource.id == int(rid),
                     catalog_models.Resource.tenant_id == tenant_id,
-                    catalog_models.Resource.publication_status == "published",
+                    *public_conditions(),
                 )
             )
         ).scalar_one_or_none()
@@ -204,7 +205,7 @@ async def oai_endpoint(
         select(catalog_models.Resource)
         .where(
             catalog_models.Resource.tenant_id == tenant_id,
-            catalog_models.Resource.publication_status == "published",
+            *public_conditions(),
         )
         .order_by(catalog_models.Resource.id.asc())
     )

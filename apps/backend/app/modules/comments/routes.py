@@ -18,6 +18,7 @@ from app.api.deps import get_current_user, require_tenant_id
 from app.api.levels import require_level
 from app.core.db import get_db, paginate
 from app.models import AuditLog, User
+from app.modules.catalog.visibility import is_public
 from app.modules.comments.models import Comment
 from app.modules.comments.schemas import CommentCreate, CommentListResponse, CommentResponse
 
@@ -55,13 +56,14 @@ async def _require_published_resource(db: AsyncSession, resource_id: int, tenant
     from app.modules.catalog.models import Resource
 
     result = await db.execute(
-        select(Resource.id, Resource.publication_status).where(
+        select(Resource).where(
             Resource.id == resource_id,
             Resource.tenant_id == tenant_id,
         )
     )
-    row = result.first()
-    if row is None or row.publication_status != "published":
+    resource = result.scalar_one_or_none()
+    # 排期中的期号同样不可评论：公开面判定统一走 is_public。
+    if not is_public(resource):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
 
 
