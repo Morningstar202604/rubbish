@@ -9,6 +9,65 @@
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-10-27
+
+正式创刊版：账号体系重建、等级阶梯上线、创刊号 267 篇分期发布。
+
+### Added
+
+- **等级体系（L1–L9，`/levels` 公开 + `/profile` 个人中心）**：积分轨
+  L1 小白读者 → L2 注册读者 → L3 作者 → L4 常驻作者，职责轨 L5 审稿人 →
+  L6 资深审稿人 → L7 栏目编辑 → L8 执行编辑 → L9 主编。双轨取最高值，
+  积分不能购买审稿与编辑权限。门禁落地为 `require_level`：评论/阅读列表
+  =L2，投稿=L3（且必须确认当前版本投稿规范）。
+- **成就系统**：31 枚徽章（铜/银/金/特别，覆盖阅读、讨论、收藏、投稿、
+  审稿、编辑、习惯、探索八类）；个人中心渐进展示（已解锁 + 最近三个待解锁），
+  L9 可看全部与隐藏项。
+- **积分台账**：`user_xp_events` 追加式记录，注册/阅读/评论/收藏/投稿/
+  审稿/裁决七类行为幂等计分；`users.xp` 作为热路径快照。
+- **首访公告**：`announcements` 表 + `/api/announcements/active`，首页公告卡
+  用 localStorage 记住已阅（30 天）；上线条目说明旧站归档、创刊号与等级体系。
+- **RQS v1.0 质量评分**：七维加权（结构 20 / 篇幅 12 / 引用 22 / 图表 15 /
+  摘要 11 / 排版 10 / 语言 10），四类稿件画像（研究论文/综述/随笔/简报）
+  各自一套权重；等级 A+/A/B/C/D，纯度系数 = RQS/50。口径冻结在代码里
+  （`/api/quality/rubric` 公开），条目详情页展示七维明细。
+- **卷期归档**：`/archive` 按月十期；目录接口新增 `volume` / `issue` 过滤与
+  `sort=issue`（卷→期→期内序号，`resources.pages` 存三位序号）。
+- **主题封面**：30 张 1600×900 本地化封面（Unsplash），按学科映射到
+  `resources.cover_image` / `cover_theme`；卡片 16:9 预留高度，无 CLS。
+- **创刊号数据**：267 篇稿件入库，逐篇做 PDF 结构解析（标题/作者/摘要/
+  关键词/参考文献/图表/章节），Crossref 解析全部 DOI，按质量分排序后
+  均分到 2026 年 1–10 月十期。
+- **账号重置**：除 `bigbad`（L9 主编）外的全部历史账号物理删除，用户需重新
+  注册；`bigbad` 补齐 editor / reviewer / section_editor 角色，服务端
+  `RUBBISH_ADMIN_USERNAME` 改为 bigbad，避免重启时再创建 admin。
+
+### Changed
+
+- **《编辑规范》v1.1**：新增四类稿件画像、RQS 评分口径、等级与投稿门禁；
+  模板副本同步。规范版本号同时写入 `users.rules_ack_version`。
+- **移动端横向溢出与抖动**：`html/body` 使用 `overflow-x: clip`（不用
+  `hidden`，避免破坏 iOS 吸顶与地址栏行为），`scrollbar-gutter: stable`，
+  长词/长 URL `overflow-wrap: anywhere`，媒体元素 `max-width:100%`；首页
+  打字机固定两行高度，逐字打字不再整页跳动。
+- **首页与导航**：新增「卷期归档」「等级与规范」「个人中心」入口；用户菜单
+  加个人中心；R 指数仅在样本（阅读+下载+收藏）≥3 时展示，避免 1 次下载
+  算出 30.0 的假指标。
+
+### Fixed
+
+- **评分档位分数落空**：`grade_for` 原用 `low <= score <= high` 整数闭区间，
+  79.5 这类带小数的分数会直接掉进 D。改为按下限降序比较，79.5 正确落在 B。
+- **结构化错误提示**：等级门禁返回 `detail` 为对象（code/required_level/
+  message），前端 `extractError` 原只处理字符串，现优先取 message。
+
+### 运维
+
+- 迁移 `010` 新增三张表（含 RLS）与两表增列；部署前已做 `pg_dump` 全库备份。
+- 五仓同步：gitcode / gitee / badhope / Morningstar202604 / X33834（GitHub
+  三仓树一致 `133a6a5a6b`）。GitHub 直连与 HTTPS 推送被本机代理阻断，
+  badhope 走 SSH + 保护快照/恢复，m/x 走 API 提交。
+
 ## [0.9.2] — 2026-10-26
 
 ### Added

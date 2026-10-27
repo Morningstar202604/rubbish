@@ -6,7 +6,7 @@
 
 **收录全球学术垃圾的开放获取期刊 — Submit · Review · Publish · Read，一个代码库跑完整个出版闭环**
 
-> 11 个后端模块 · 683 单元测试（84% 覆盖率）· 68 条 E2E 用例 · 全链路严格类型
+> 15 个后端模块 · 870 单元测试 · 68 条 E2E 用例 · 全链路严格类型
 
 **🌐 [English](README.md) · [简体中文](README.zh-CN.md)**
 
@@ -17,8 +17,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6.svg?logo=typescript&logoColor=white&style=flat-square)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1.svg?logo=postgresql&logoColor=white&style=flat-square)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker_Compose-2496ED.svg?logo=docker&logoColor=white&style=flat-square)](https://docs.docker.com/compose/)
-[![Unit tests](https://img.shields.io/badge/unit_tests-683-10B981?style=flat-square&logo=pytest&logoColor=white)](#测试)
-[![Coverage](https://img.shields.io/badge/coverage-84%25-2C5AA0?style=flat-square)](#测试)
+[![Unit tests](https://img.shields.io/badge/unit_tests-870-10B981?style=flat-square&logo=pytest&logoColor=white)](#测试)
 [![E2E](https://img.shields.io/badge/E2E_specs-68-22C55E?style=flat-square&logo=playwright&logoColor=white)](#测试)
 
 **镜像仓库**：[GitHub](https://github.com/x33834/rubbish) · [GitHub](https://github.com/Morningstar202604/rubbish) · [GitCode](https://gitcode.com/badhope/rubbish) · [Gitee](https://gitee.com/badhope/rubbish)
@@ -101,7 +100,7 @@ uv run python deploy_server.py
 | 前端 | React 19 · TypeScript 5.9 · TanStack Router/Query · Tailwind CSS v4 · pdf.js |
 | 后端 | FastAPI · SQLAlchemy 2 (async) · Alembic · PostgreSQL 17 / SQLite |
 | 安全 | WebAuthn · TOTP · JWT denylist · bcrypt · CSP 安全头 |
-| 质量 | pytest (683) · Playwright E2E (68) · ruff · mypy strict · npm audit |
+| 质量 | pytest (870) · Playwright E2E (68) · ruff · mypy strict · npm audit |
 
 ## 测试
 

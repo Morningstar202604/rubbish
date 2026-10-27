@@ -24,6 +24,8 @@ Rubbish 是一个**模块化、多租户的学术期刊发表平台**:核心只�
 │  │ catalog  │ submission │ review  │ reader   │ export    │ │
 │  ├──────────┼────────────┼─────────┼──────────┼───────────┤ │
 │  │ follows  │ library    │ ingest  │recomm.   │notif.     │ │
+│  ├──────────┼────────────┼─────────┼──────────┼───────────┤ │
+│  │gamificat.│announcem.  │ quality │          │           │ │
 │  └──────────┴────────────┴─────────┴──────────┴───────────┘ │
 └──────────────────────────┬──────────────────────────────────┘
                            │
@@ -46,6 +48,24 @@ Rubbish 是一个**模块化、多租户的学术期刊发表平台**:核心只�
 4. **admin shell** — `app.api.admin` 提供按租户隔离的 admin REST API:用户列表 + 启用/停用、审计日志。React SPA 在 `/admin` 下展示。角色/权限编辑、模块启停尚未实现。
 
 5. **部署** — Docker Compose(dev + prod)、Caddy TLS、Alembic 迁移在容器启动时执行、structlog JSON 日志、health 端点上报模块加载状态。详见 [docs/integrations.md](integrations.md) 的 SMTP + OIDC + Crossref/arXiv 接入。
+
+
+## 1.0.0 新增模块（等级 / 公告 / 评分）
+
+- **gamification** — 九级双轨阶梯（`ladder.py`，代码即口径）、XP 台账
+  （`user_xp_events`，唯一约束保证幂等）、成就定义（`badges.py`，31 枚）与
+  渐进展示。级别门禁通过 `app/api/levels.py` 的 `require_level(n)` 注入到
+  评论（L2）、阅读列表（L2）、投稿（L3）三条写路径；`require_rules_ack`
+  与 `users.rules_ack_version` 绑定，规范改版后旧确认自动失效。
+- **announcements** — 单表 + 发布窗口；公开只读 `/api/announcements/active`，
+  管理员 CRUD 带审计。首访卡由前端 localStorage 记忆，不落用户维度状态。
+- **quality** — RQS v1.0 评分口径（`rubric.py`）：四类稿件画像各自一套维度
+  权重（合计 100），等级带 A+/A/B/C/D，纯度系数 = RQS/50。评分由离线流水线
+  写入 `resources.quality_*`，运行时只读；口径公开在 `/api/quality/rubric`，
+  改口径必须升 `RUBRIC_VERSION` 并整库重评。
+
+这三者都遵循同一约束：**口径进代码、结果进数据**。数据库只存分数与明细，
+不存可编辑的权重表，避免两篇不同月份入库的文章不可比较。
 
 ## 模块长什么样
 
