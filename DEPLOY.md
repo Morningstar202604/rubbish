@@ -190,3 +190,20 @@ Render free 实例**不支持** preDeployCommand 与 persistent disk
 - [ ] 首次登录后立即改 admin 密码 + 开启 TOTP（`/api/auth/2fa`）
 - [ ] 健康检查：`GET /api/health` → `{"status":"ok"}`
 - [ ] 文件存储用 R2/S3（容器本地盘会随重启丢文件）
+
+## 期次与定时发布（1.0.1 起）
+
+期刊按「期」发布，不靠人工删改可见性：
+
+- 每条 `resources` 有 `publish_at`。`publication_status='published'` 且
+  `publish_at <= now()` 才算公开发布；`publish_at` 在未来 = 已排期、对公众不可见
+  （判定集中在 `app/modules/catalog/visibility.py`，目录/详情/文件/Markdown/
+  统计/分面/评论/搜索/导出/SEO/OAI 全部同一口径，管理员不受限）。
+- 公开日历 `GET /api/catalog/issue-plan`；L9 可用
+  `POST /api/catalog/issues/{volume}/{issue}/publish` 一键发整期或改期（写审计）。
+- 后台 `/archive` 的「发刊计划」表提供行内「立即发布」。
+- 创刊排期：第 1 期 2026-10-01，其后每月 1 日一期至 2027-07-01。
+
+导入/重导流水线（含备份、manifest、Markdown 重建、排期脚本）见
+`_deploy/journal_import/README.md`。
+
