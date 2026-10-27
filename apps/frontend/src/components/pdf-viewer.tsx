@@ -28,8 +28,6 @@ interface PdfViewerProps {
    * 会被固定操作栏盖住，用户点了没反应。
    */
   showPager?: boolean
-  /** 额外的底部留白（移动端用来避开固定操作栏） */
-  bottomInsetClass?: string
 }
 
 export default function PdfViewer({
@@ -38,7 +36,6 @@ export default function PdfViewer({
   onPageChange,
   onLoaded,
   showPager = true,
-  bottomInsetClass = '',
 }: PdfViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // docRef 持有加载好的文档对象，卸载时销毁释放内存
@@ -141,7 +138,7 @@ export default function PdfViewer({
   }
 
   return (
-    <div className={cn('flex h-full flex-col', bottomInsetClass)}>
+    <div className="flex h-full flex-col">
       <div className="relative flex min-h-[40vh] flex-1 items-start justify-center overflow-auto rounded-md border bg-muted/30 p-2">
         {/* canvas 常驻挂载：loading/error 只是覆盖层，保证 renderPage 拿得到元素 */}
         <canvas

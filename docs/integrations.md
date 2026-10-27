@@ -22,6 +22,34 @@ The email backend is selected by `RUBBISH_EMAIL_BACKEND`. Two options:
 - `smtp` — opens an SMTP connection per message. Works with any provider
   that exposes an SMTP relay (which is all of them).
 
+### Multiple sender identities (recommended for free mailboxes)
+
+Free providers (QQ / 126 / 163) throttle per mailbox and occasionally reject
+connections outright. Give the app several identities and it will rotate
+between them, so one bad mailbox cannot stop verification / reset mail:
+
+```bash
+RUBBISH_EMAIL_BACKEND=smtp
+RUBBISH_EMAIL_SMTP_ACCOUNTS=[{"host":"smtp.126.com","port":465,"username":"a@126.com","password":"<auth-code>","from_address":"a@126.com","from_name":"Rubbish","use_tls":true,"starttls":false},{"host":"smtp.qq.com","port":465,"username":"b@foxmail.com","password":"<auth-code>","from_address":"b@foxmail.com","from_name":"Rubbish","use_tls":true,"starttls":false}]
+```
+
+Behaviour: each send advances a cursor (roughly 50/50), and an identity that
+fails `RUBBISH_EMAIL_SMTP_BREAKER_THRESHOLD` times in a row (default 2) is
+parked for `RUBBISH_EMAIL_SMTP_BREAKER_COOLDOWN` seconds (default 180) while
+the others take over. `RUBBISH_EMAIL_SMTP_ACCOUNTS` takes precedence over the
+single `RUBBISH_EMAIL_SMTP_*` fields; leave it empty to keep the single-account
+path. `GET /api/admin/maintenance/email-status` probes every identity and
+reports address + host only (never the password).
+
+### Recipient throttling
+
+`app/core/mail_guard.py` limits user-triggerable mail per recipient: one send
+per `RUBBISH_EMAIL_PER_ADDRESS_COOLDOWN` seconds (default 45) and at most
+`RUBBISH_EMAIL_PER_ADDRESS_LIMIT` (default 6) per
+`RUBBISH_EMAIL_PER_ADDRESS_WINDOW_MINUTES` (default 30). Over-limit requests
+still return 200 (so account existence never leaks) but send nothing. Review
+invitations and decision notices are system-triggered and bypass the guard.
+
 ### Generic SMTP
 
 ```bash

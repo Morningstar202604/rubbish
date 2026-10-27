@@ -50,7 +50,7 @@ function splitManuscript(md: string): { main: string; refs: string } {
 const ABSTRACT_MARK = "> **摘　要**"
 
 /** 阅读页底部操作栏「目录」按钮 → 本组件打开目录抽屉的事件名。 */
-export const TOC_OPEN_EVENT = 'rubbish:open-toc' 
+export const TOC_OPEN_EVENT = 'rubbish:open-toc'
 
 /**
  * 把正文拆成「题录块」与「正文块」。
