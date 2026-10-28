@@ -58,7 +58,8 @@ def test_drops_running_heads_everywhere() -> None:
 
 def test_normalises_keyword_label() -> None:
     out = clean(SAMPLE)
-    assert "关键词：" in out
+    # 唯一保留的粗体：关键词标签（阅读器里作为字段名，视觉上需要区分）
+    assert "**关键词**：" in out
     assert "**:**" not in out
 
 

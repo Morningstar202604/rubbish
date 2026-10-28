@@ -7,7 +7,9 @@
 - 转换是**尽力而为**：任何失败返回 None（保留 PDF 即可），绝不让上传
   失败。日志记录原因，不向作者报错。
 - PDF 用 pymupdf4llm（版面感知的文本流 + 图片抽取，图片以 data URI
-  内嵌，Markdown 自包含）；docx 用 mammoth（语义 HTML）+ markdownify。
+  内嵌，Markdown 自包含）再经 ``markdown_clean`` 做结构清洗（双栏拼接
+  产生的「标题+正文同行」、字体切换伪粗体、刊头与重跑页眉都在这一步处理）；
+  docx 用 mammoth（语义 HTML）+ markdownify。
   老式 .doc / PS / ZIP 不转换（None），阅读器回退 PDF。
 - 转换结果纯 Markdown 文本，不含原始 HTML —— 前端 react-markdown
   默认转义 HTML，XSS 面为零。

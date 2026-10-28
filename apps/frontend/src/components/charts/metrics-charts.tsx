@@ -78,7 +78,18 @@ export function EngagementRadar({ data }: { data: JournalMetrics }) {
 }
 
 export function AbsurdityDonut({ median }: { median: number | null }) {
-  if (median == null) return null
+  // 未评定：给一张有说明的空态卡，而不是 return null（那会在三栏网格里
+  // 留一个比邻卡矮一半的空白卡片，读者会以为是加载失败）。
+  if (median == null) {
+    return (
+      <div className="flex h-[180px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-center">
+        <span className="text-2xl font-semibold text-muted-foreground">—</span>
+        <p className="max-w-[16rem] text-xs leading-relaxed text-muted-foreground">
+          已刊论文尚未做荒诞指数评定。编辑部完成评定后，这里会显示全刊中位数与分布。
+        </p>
+      </div>
+    )
+  }
   const share = Math.max(0, Math.min(100, (median / 10) * 100))
   return (
     <EChart
