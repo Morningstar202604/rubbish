@@ -18,18 +18,7 @@ export const Route = createFileRoute('/archive')({
 
 // 卷期归档 = 公开的出版日历：已发期次可点开读全文，排期中的期次只显示
 // 上线日期与篇数（服务端 publish_at 未到点前，这些记录对公众不存在）。
-const ISSUE_TITLES: Record<string, string> = {
-  '01': '创刊号 · 荒诞的正当性',
-  '02': '方法之争',
-  '03': '实验室里的人类',
-  '04': '语言与人格',
-  '05': '游戏即田野',
-  '06': '亲密关系研究',
-  '07': '系统与故障',
-  '08': '阅读与媒介',
-  '09': '身体与日常',
-  '10': '一年之后',
-}
+import { issueTitle } from '@/lib/issue-meta'
 
 function fmtDate(iso: string | null): string {
   if (!iso) return '已上线'
@@ -129,7 +118,7 @@ function ArchivePage() {
                 </span>
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {ISSUE_TITLES[activeEntry.issue] ?? '本期目录'}
+                {issueTitle(activeEntry.issue)}
               </p>
             </div>
             <Badge variant="outline" className="tabular-nums">
@@ -272,7 +261,7 @@ function IssueRow({
     <tr className="border-t">
       <td className="px-4 py-2.5 font-medium tabular-nums">第 {entry.issue} 期</td>
       <td className="px-4 py-2.5 text-muted-foreground">
-        {ISSUE_TITLES[entry.issue] ?? '—'}
+        {issueTitle(entry.issue)}
       </td>
       <td className="px-4 py-2.5 tabular-nums text-muted-foreground">
         {fmtDate(entry.publish_at)}

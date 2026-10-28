@@ -1,54 +1,59 @@
-import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { AnimatePresence, motion, MotionConfig, type Variants } from 'motion/react'
 import { useInViewReveal } from '@/hooks/use-in-view-reveal'
 import {
-  Archive,
   ArrowRight,
   ArrowUp,
-  BookOpen,
+  CalendarDays,
   CheckCircle2,
   FileText,
   Globe2,
+  Archive,
   LogIn,
   Mail,
   PenLine,
   Search,
   ShieldCheck,
-  Users,
 } from 'lucide-react'
 import '@fontsource-variable/playfair-display'
 import { useAuth } from '@/hooks/use-auth'
 import {
   useCatalogStats,
+  useIssuePlan,
   useJournalMetrics,
   useResources,
 } from '@/hooks/api/use-modules'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { EmptyState, ErrorState } from '@/components/common/state'
-import { WelcomeNotice } from '@/components/common/welcome-notice'
+import {
+  AnnouncementChip,
+  AnnouncementDialog,
+  useAnnouncementPortal,
+} from '@/components/common/announcement-dialog'
 import { ArticleCover } from '@/components/common/article-cover'
 import { qualityGrade } from '@/lib/resource-labels'
+import { issueTitle } from '@/lib/issue-meta'
 import { Skeleton } from '@/components/ui/skeleton'
 import { absurdityLevel, typeLabel } from '@/lib/resource-labels'
-// 图表库（ECharts）约 190 KB gzip：只在真的滚动到指标区时才加载，
-// 不拖慢首页首屏。
-const DisciplineBar = lazy(() =>
-  import('@/components/charts/metrics-charts').then((m) => ({ default: m.DisciplineBar })),
-)
 
 export const Route = createFileRoute('/')({
   component: HomePage,
 })
 
-// 期刊门面首页（对访客的"官网"）：报头 + 打字机口号 + 数据卡 + 最新发表卡片 +
-// 投稿流程步进卡 + 征稿范围 + 开放获取 + 指标 + 作者指南 + FAQ + 关于。
-// 设计基准：Nature/Science 式国际期刊门面 —— 展示级衬线大字、留白代替分隔线、
-// 卡片化组件、滚动渐入与数字滚动动效。MotionConfig reducedMotion="user" +
-// 打字机/CountUp 内部尊重 prefers-reduced-motion。
+// 期刊门面首页（对访客的"官网"）：报头 + 打字机口号 + 数据卡 + 当期条 +
+// 最新发表卡片 + 「了解本刊」标签页（投稿指南 / 征稿范围 / 开放获取 / 关于与社区）
+// + FAQ + 页脚。
+// 信息架构基准：Nature/Science 式期刊首页是"枢纽"而非"文档" —— 次级内容
+// 收进标签页与专页链接，首屏只保留身份、数据与最新发表；完整细则在
+// /authors、/journal-metrics、/about 等专页，不与首页重复铺陈。
+// 设计基准：展示级衬线大字、留白代替分隔线、卡片化组件、滚动渐入与数字滚动
+// 动效。MotionConfig reducedMotion="user" + 打字机/CountUp 内部尊重
+// prefers-reduced-motion。
 
 const DISPLAY_FONT =
   "'Playfair Display Variable', Georgia, 'Times New Roman', 'Noto Serif SC Variable', 'Noto Serif SC', serif"
@@ -239,6 +244,326 @@ function SectionHeading({
   )
 }
 
+/** 当期条：一行看懂"最新一期是什么、去哪读"。Nature 式首页的当期入口。 */
+function CurrentIssueBar() {
+  const plan = useIssuePlan()
+  const live = (plan.data?.entries ?? []).filter((e) => e.state === 'live')
+  const current = live[live.length - 1]
+  if (!current) return null
+
+  return (
+    <div className="border-y bg-card/50">
+      <motion.div
+        variants={rise}
+        custom={5}
+        className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-6"
+      >
+        <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+          <CalendarDays aria-hidden className="h-4 w-4 shrink-0 text-primary" />
+          <span className="font-medium">第 1 卷 第 {Number(current.issue)} 期</span>
+          <span className="truncate text-muted-foreground">《{issueTitle(current.issue)}》</span>
+          <Badge variant="outline" className="tabular-nums">
+            {current.published} 篇已上线
+          </Badge>
+        </p>
+        <Link
+          to="/archive"
+          className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary transition-colors hover:underline"
+        >
+          本期目录 <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </motion.div>
+    </div>
+  )
+}
+
+/**
+ * 「了解本刊」标签页：投稿指南 / 征稿范围 / 开放获取 / 关于与社区。
+ * 次级内容按需展开 —— 用户想看哪个栏目就看哪个，完整细则
+ * 通过「查看完整…」链到对应专页，首页不再整页铺陈。
+ */
+function DiscoverTabs({
+  isAuthenticated,
+  revealed,
+}: {
+  isAuthenticated: boolean
+  revealed: boolean
+}) {
+  const submitCta = isAuthenticated ? '/submissions' : '/register'
+  return (
+    <Tabs defaultValue="guide" className="gap-8">
+      <TabsList className="h-auto w-full flex-wrap justify-start gap-1 rounded-lg bg-muted/60 p-1">
+        <TabsTrigger value="guide" className="px-4 py-2 text-sm">
+          投稿指南
+        </TabsTrigger>
+        <TabsTrigger value="scope" className="px-4 py-2 text-sm">
+          征稿范围
+        </TabsTrigger>
+        <TabsTrigger value="access" className="px-4 py-2 text-sm">
+          开放获取
+        </TabsTrigger>
+        <TabsTrigger value="about" className="px-4 py-2 text-sm">
+          关于与社区
+        </TabsTrigger>
+      </TabsList>
+
+      {/* ── 投稿指南：五步流程 + 完整规范入口 ── */}
+      <TabsContent value="guide" className="mt-8">
+        <motion.div
+          variants={cardsWrap}
+          initial="hidden"
+          animate={revealed ? 'show' : 'hidden'}
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"
+        >
+          {REVIEW_STEPS.map((step, i) => (
+            <motion.div
+              key={step.title}
+              variants={card}
+              whileHover={{ y: -4 }}
+              className="relative rounded-lg border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"
+            >
+              <span
+                aria-hidden
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm text-primary-foreground"
+                style={{ fontFamily: DISPLAY_FONT, fontWeight: 600 }}
+              >
+                {i + 1}
+              </span>
+              <h3 className="mt-4 text-base" style={{ fontFamily: DISPLAY_FONT }}>
+                {step.title}
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{step.detail}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
+          <p className="flex items-start gap-2 text-xs text-muted-foreground">
+            <ShieldCheck aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+            审稿人身份与稿件内容按角色隔离；每次裁决与版本变更都写入审计日志。
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button asChild>
+              <Link to={submitCta}>
+                <PenLine className="h-4 w-4" />
+                {isAuthenticated ? '进入我的投稿' : '免费注册投稿'}
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/authors">
+                完整投稿规范 <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </TabsContent>
+
+      {/* ── 征稿范围：宗旨 + 收录类型 + 学科方向 ── */}
+      <TabsContent value="scope" className="mt-8">
+        <div className="grid gap-10 lg:grid-cols-[1fr_360px]">
+          <div>
+            <p className="text-xl leading-relaxed sm:text-2xl" style={{ fontFamily: DISPLAY_FONT }}>
+              关注学术出版与知识基础设施的工程实践与实证研究——从写作、评审、发布到长期保存。
+            </p>
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground sm:text-base">
+              既欢迎严格的方法学研究，也欢迎可复现的工具、数据集与案例报告。投稿须为未公开发表的原创工作，引用与数据来源需完整标注；涉及人类受试者的研究须提供伦理审查说明。
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2.5">
+              {[
+                '原创研究论文',
+                '方法综述',
+                '可复现工具与系统',
+                '数据集',
+                '开放科学研究',
+                '教学案例与教程',
+              ].map((item) => (
+                <span
+                  key={item}
+                  className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-xs transition-colors hover:border-primary/40"
+                >
+                  <CheckCircle2 aria-hidden className="h-3.5 w-3.5 text-primary" />
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-3 self-start sm:grid-cols-2 lg:grid-cols-1">
+            {DEPARTMENTS.map((d) => (
+              <div
+                key={d.name}
+                className="group relative overflow-hidden rounded-lg border bg-card p-4 shadow-sm transition-colors hover:border-primary/40"
+              >
+                <span
+                  aria-hidden
+                  className="absolute inset-y-0 left-0 w-0.5 bg-primary/70 transition-colors group-hover:bg-primary"
+                />
+                <p className="text-sm font-medium">{d.name}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{d.note}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </TabsContent>
+
+      {/* ── 开放获取：三张承诺卡 + 机读接口 ── */}
+      <TabsContent value="access" className="mt-8">
+        <div className="grid gap-5 md:grid-cols-3">
+          {[
+            {
+              icon: Globe2,
+              title: '全文免费',
+              copy: '所有已发表文章免费阅读与下载，没有订阅墙，也不需要机构账号。读者可以直接在浏览器内阅读全文。',
+            },
+            {
+              icon: Archive,
+              title: '版本留痕',
+              copy: '每次投稿修订都保存版本快照，录用与裁决记录可追溯，方便引用与学术史核查。',
+            },
+            {
+              icon: FileText,
+              title: '可被索引',
+              copy: '提供 OAI-PMH 2.0 元数据接口与站点地图，图书馆、DOAJ 等索引系统可直接收割题录与全文链接。',
+            },
+          ].map((f) => (
+            <div
+              key={f.title}
+              className="rounded-lg border bg-card p-6 shadow-sm transition-colors hover:border-primary/40"
+            >
+              <span
+                aria-hidden
+                className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary"
+              >
+                <f.icon className="h-5 w-5" />
+              </span>
+              <h3 className="mt-4 text-lg" style={{ fontFamily: DISPLAY_FONT }}>
+                {f.title}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.copy}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-6 text-xs text-muted-foreground">
+          接口：
+          <code className="mx-1 rounded bg-muted px-1.5 py-0.5 font-mono">/oai?verb=Identify</code>
+          站点地图：
+          <a className="mx-1 text-primary hover:underline" href="/sitemap.xml">
+            /sitemap.xml
+          </a>
+        </p>
+      </TabsContent>
+
+      {/* ── 关于与社区：编辑部引言 + 参与方式 + 联系方式 ── */}
+      <TabsContent value="about" className="mt-8">
+        <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+          <div>
+            <blockquote className="relative rounded-lg border bg-card p-6 shadow-sm">
+              <span
+                aria-hidden
+                className="absolute left-5 top-3 text-6xl leading-none text-primary/25"
+                style={{ fontFamily: DISPLAY_FONT }}
+              >
+                “
+              </span>
+              <p className="relative pl-8 text-lg leading-relaxed" style={{ fontFamily: DISPLAY_FONT }}>
+                可信的知识不应该有围墙。每一篇经过严格评审的研究，都值得被世界看见。
+              </p>
+              <footer className="mt-3 pl-8 text-xs text-muted-foreground">—— Rubbish 编辑部</footer>
+            </blockquote>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              {[
+                {
+                  title: '评论互动',
+                  body: '对每篇论文公开发表质疑、补充与吐槽——像审稿人一样较真。',
+                },
+                {
+                  title: '进度跨设备同步',
+                  body: '阅读进度、收藏与关注随账号走：换设备接着读，书架不会丢。',
+                },
+                {
+                  title: '投稿开放',
+                  body: '注册即可投稿，正经与荒诞两个赛道，无需申请、无需介绍信。',
+                },
+                {
+                  title: '读者活动',
+                  body: '年度 Rubbish Prize 读者票选、评论区精选、新刊试读。',
+                },
+              ].map((f) => (
+                <div key={f.title} className="rounded-lg border bg-card p-4 shadow-sm">
+                  <h3 className="text-sm font-medium">{f.title}</h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{f.body}</p>
+                </div>
+              ))}
+            </div>
+            {!isAuthenticated && (
+              <div className="mt-6">
+                <Button asChild size="lg">
+                  <Link to="/register">免费注册，参与社区</Link>
+                </Button>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  已有账号？
+                  <Link to="/login" className="text-primary hover:underline">
+                    直接登录
+                  </Link>
+                  ·注册不需要邮箱验证
+                </p>
+              </div>
+            )}
+          </div>
+          <div className="relative h-fit overflow-hidden rounded-lg border bg-card p-6 shadow-sm">
+            <span
+              aria-hidden
+              className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-primary/60 to-transparent"
+            />
+            <h3 className="text-lg" style={{ fontFamily: DISPLAY_FONT }}>
+              联系编辑部
+            </h3>
+            <p className="mt-3 flex items-center gap-2 text-sm">
+              <Mail aria-hidden className="h-4 w-4 text-muted-foreground" />
+              <a href="mailto:admin@argjiemi.cn" className="text-primary hover:underline">
+                admin@argjiemi.cn
+              </a>
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              投稿、审稿、账号与数据相关事宜均可来信；请在邮件中注明稿件编号或注册邮箱。
+            </p>
+            <ul className="mt-4 space-y-1.5 text-xs text-muted-foreground">
+              <li>
+                <Link to="/authors" className="hover:text-foreground hover:underline">
+                  作者指南与收录标准
+                </Link>
+              </li>
+              <li>
+                <Link to="/policies" className="hover:text-foreground hover:underline">
+                  期刊政策与社区规范
+                </Link>
+              </li>
+              <li>
+                <Link to="/about" className="hover:text-foreground hover:underline">
+                  关于本刊与编委会
+                </Link>
+              </li>
+              <li>
+                <Link to="/journal-metrics" className="hover:text-foreground hover:underline">
+                  期刊指标与 R 因子
+                </Link>
+              </li>
+              <li>
+                <a href="/help.html" className="hover:text-foreground hover:underline">
+                  使用帮助
+                </a>
+              </li>
+              <li>
+                <a href="/privacy" className="hover:text-foreground hover:underline">
+                  隐私政策
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </TabsContent>
+    </Tabs>
+  )
+}
+
 function HomePage() {
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
@@ -253,6 +578,9 @@ function HomePage() {
   const { data: stats } = useCatalogStats()
   const { data: metrics } = useJournalMetrics()
 
+  // 公告：自动弹出 + 顶栏重开入口共用一份状态
+  const notice = useAnnouncementPortal()
+
   const resources = data?.data ?? []
   const total = stats?.total ?? 0
   const disciplines = stats ? Object.keys(stats.by_discipline).length : 0
@@ -262,14 +590,8 @@ function HomePage() {
   // 改由原生 IntersectionObserver 驱动 animate；容器保留原本的 stagger variants。
   const [statsRevealRef, statsReveal] = useInViewReveal()
   const [revealLatestRef, revealLatest] = useInViewReveal()
-  const [revealProcessRef, revealProcess] = useInViewReveal()
-  const [revealScopeRef, revealScope] = useInViewReveal()
-  const [revealPolicyRef, revealPolicy] = useInViewReveal()
-  const [revealCommunityRef, revealCommunity] = useInViewReveal()
-  const [revealMetricsRef, revealMetrics] = useInViewReveal()
-  const [revealAuthorsRef, revealAuthors] = useInViewReveal()
+  const [revealDiscoverRef, revealDiscover] = useInViewReveal()
   const [revealFaqRef, revealFaq] = useInViewReveal()
-  const [revealAboutRef, revealAbout] = useInViewReveal()
 
   // 返回顶部按钮：滚过首屏后出现
   const [showTop, setShowTop] = useState(false)
@@ -289,11 +611,25 @@ function HomePage() {
   return (
     <MotionConfig reducedMotion="user">
       <div className="min-h-screen bg-background text-foreground">
-        {/* ── 顶部细条：身份 + 账号入口（<header> 即 banner 地标） ── */}
+        {/* ── 公告弹窗：未读自动弹出，顶栏按钮随时重开 ── */}
+        {notice.announcement && (
+          <AnnouncementDialog
+            announcement={notice.announcement}
+            open={notice.open}
+            onOpenChange={notice.onOpenChange}
+          />
+        )}
+
+        {/* ── 顶部细条：身份 + 公告 + 账号入口（<header> 即 banner 地标） ── */}
         <header className="bg-muted/40">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5 text-xs text-muted-foreground sm:px-6">
             <span className="tracking-wide">An Open Access Journal · 开放获取期刊</span>
             <div className="flex items-center gap-3">
+              <AnnouncementChip
+                announcement={notice.announcement}
+                seen={notice.seen}
+                onOpen={() => notice.setOpen(true)}
+              />
               {isAuthenticated ? (
                 <Link
                   to="/dashboard"
@@ -318,11 +654,6 @@ function HomePage() {
             </div>
           </div>
         </header>
-
-        {/* ── 首访公告：迁移与创刊说明（localStorage 记住已阅） ── */}
-        <div className="mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6">
-          <WelcomeNotice />
-        </div>
 
         {/* ── 刊头 Hero：展示级衬线大字 + 打字机口号 + 数据卡 ── */}
         <motion.section
@@ -445,6 +776,8 @@ function HomePage() {
           </div>
         </motion.section>
 
+        <CurrentIssueBar />
+
         {/* ── 吸顶导航 + 检索：单根发丝线，无双线 ── */}
         <div className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-2.5 sm:px-6">
@@ -458,18 +791,6 @@ function HomePage() {
               >
                 资源目录
               </Link>
-              <a
-                href="#scope"
-                className="text-muted-foreground transition-colors hover:text-foreground"
-              >
-                征稿范围
-              </a>
-              <a
-                href="#process"
-                className="text-muted-foreground transition-colors hover:text-foreground"
-              >
-                投稿流程
-              </a>
               <Link
                 to="/archive"
                 className="link-underline text-muted-foreground transition-colors hover:text-foreground"
@@ -500,12 +821,12 @@ function HomePage() {
               >
                 常见问题
               </a>
-              <a
-                href="#about"
-                className="text-muted-foreground transition-colors hover:text-foreground"
+              <Link
+                to="/about"
+                className="link-underline text-muted-foreground transition-colors hover:text-foreground"
               >
                 关于本刊
-              </a>
+              </Link>
             </nav>
             <form onSubmit={onSearch} className="flex w-full max-w-xs items-center sm:w-64">
               <div className="relative w-full">
@@ -665,489 +986,23 @@ function HomePage() {
           )}
         </motion.section>
 
-        {/* ── 投稿流程：步进卡片 ── */}
+        {/* ── 了解本刊：四个栏目按需展开 ── */}
         <motion.section
-          ref={revealProcessRef}
+          ref={revealDiscoverRef}
           initial="hidden"
-          animate={revealProcess ? 'show' : 'hidden'}
-          id="process"
-          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.09 } } }}
-          className="scroll-mt-16 bg-muted/40 py-16"
+          animate={revealDiscover ? 'show' : 'hidden'}
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
+          className="bg-muted/40 py-16"
         >
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <SectionHeading title="投稿流程" label="Editorial Process" />
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              {REVIEW_STEPS.map((step, i) => (
-                <motion.div
-                  key={step.title}
-                  variants={card}
-                  animate={revealProcess ? 'show' : 'hidden'}
-                  whileHover={{ y: -4 }}
-                  className="relative rounded-lg border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"
-                >
-                  <span
-                    aria-hidden
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm text-primary-foreground"
-                    style={{ fontFamily: DISPLAY_FONT, fontWeight: 600 }}
-                  >
-                    {i + 1}
-                  </span>
-                  <h3 className="mt-4 text-base" style={{ fontFamily: DISPLAY_FONT }}>
-                    {step.title}
-                  </h3>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                    {step.detail}
-                  </p>
-                  {i < REVIEW_STEPS.length - 1 && (
-                    <ArrowRight
-                      aria-hidden
-                      className="absolute -right-3 top-1/2 hidden h-4 w-4 -translate-y-1/2 text-primary/50 lg:block"
-                    />
-                  )}
-                </motion.div>
-              ))}
-            </div>
-            <p className="mt-8 flex items-start gap-2 text-xs text-muted-foreground">
-              <ShieldCheck aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-              审稿人身份与稿件内容按角色隔离；每次裁决与版本变更都写入审计日志，作者可随时查看稿件状态。
-            </p>
-          </div>
-        </motion.section>
-
-        {/* ── 征稿范围 ── */}
-        <motion.section
-          ref={revealScopeRef}
-          initial="hidden"
-          animate={revealScope ? 'show' : 'hidden'}
-          id="scope"
-          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
-          className="scroll-mt-16 py-16"
-        >
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <SectionHeading title="征稿范围" label="Aims & Scope" />
-            <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
-              <div>
-                <p
-                  className="text-xl leading-relaxed sm:text-2xl"
-                  style={{ fontFamily: DISPLAY_FONT }}
-                >
-                  关注学术出版与知识基础设施的工程实践与实证研究——从写作、评审、发布到长期保存。
-                </p>
-                <p className="mt-4 text-sm leading-relaxed text-muted-foreground sm:text-base">
-                  既欢迎严格的方法学研究，也欢迎可复现的工具、数据集与案例报告。投稿须为未公开发表的原创工作，引用与数据来源需完整标注；涉及人类受试者的研究须提供伦理审查说明。
-                </p>
-                <div className="mt-6 flex flex-wrap gap-2.5">
-                  {[
-                    '原创研究论文',
-                    '方法综述',
-                    '可复现工具与系统',
-                    '数据集',
-                    '开放科学研究',
-                    '教学案例与教程',
-                  ].map((item) => (
-                    <span
-                      key={item}
-                      className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-xs transition-colors hover:border-primary/40"
-                    >
-                      <CheckCircle2 aria-hidden className="h-3.5 w-3.5 text-primary" />
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="grid gap-3 self-start sm:grid-cols-2 lg:grid-cols-1">
-                {DEPARTMENTS.map((d) => (
-                  <motion.div
-                    key={d.name}
-                    variants={card}
-                    animate={revealScope ? 'show' : 'hidden'}
-                    whileHover={{ y: -3 }}
-                    className="group relative overflow-hidden rounded-lg border bg-card p-4 shadow-sm transition-colors hover:border-primary/40"
-                  >
-                    <span
-                      aria-hidden
-                      className="absolute inset-y-0 left-0 w-0.5 bg-primary/70 transition-colors group-hover:bg-primary"
-                    />
-                    <p className="text-sm font-medium">{d.name}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{d.note}</p>
-                  </motion.div>
-                ))}
-                <Button asChild className="mt-1" variant="outline">
-                  <Link to={isAuthenticated ? '/submissions' : '/register'}>
-                    {isAuthenticated ? '进入我的投稿' : '注册并投稿'}
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </motion.section>
-
-        {/* ── 开放获取与长期保存 ── */}
-        <motion.section
-          ref={revealPolicyRef}
-          initial="hidden"
-          animate={revealPolicy ? 'show' : 'hidden'}
-          id="policy"
-          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.09 } } }}
-          className="scroll-mt-16 bg-muted/40 py-16"
-        >
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <SectionHeading title="开放获取与长期保存" label="Open Access" />
-            <div className="grid gap-5 md:grid-cols-3">
-              {[
-                {
-                  icon: Globe2,
-                  title: '全文免费',
-                  copy: '所有已发表文章免费阅读与下载，没有订阅墙，也不需要机构账号。读者可以直接在浏览器内阅读 PDF。',
-                },
-                {
-                  icon: Archive,
-                  title: '版本留痕',
-                  copy: '每次投稿修订都保存版本快照，录用与裁决记录可追溯，方便引用与学术史核查。',
-                },
-                {
-                  icon: FileText,
-                  title: '可被索引',
-                  copy: '提供 OAI-PMH 2.0 元数据接口与站点地图，图书馆、DOAJ 等索引系统可直接收割题录与全文链接。',
-                },
-              ].map((f) => (
-                <motion.div
-                  key={f.title}
-                  variants={card}
-                  animate={revealPolicy ? 'show' : 'hidden'}
-                  whileHover={{ y: -4 }}
-                  className="rounded-lg border bg-card p-6 shadow-sm transition-colors hover:border-primary/40"
-                >
-                  <span
-                    aria-hidden
-                    className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary"
-                  >
-                    <f.icon className="h-5 w-5" />
-                  </span>
-                  <h3 className="mt-4 text-lg" style={{ fontFamily: DISPLAY_FONT }}>
-                    {f.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.copy}</p>
-                </motion.div>
-              ))}
-            </div>
-            <p className="mt-6 text-xs text-muted-foreground">
-              接口：
-              <code className="mx-1 rounded bg-muted px-1.5 py-0.5 font-mono">/oai?verb=Identify</code>
-              站点地图：
-              <a className="mx-1 text-primary hover:underline" href="/sitemap.xml">
-                /sitemap.xml
-              </a>
-            </p>
-          </div>
-        </motion.section>
-
-        {/* ── 参与社区 ── */}
-        <motion.section
-          ref={revealCommunityRef}
-          initial="hidden"
-          animate={revealCommunity ? 'show' : 'hidden'}
-          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
-          className="scroll-mt-16 bg-muted/40 py-16"
-        >
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <SectionHeading title="参与社区" label="Join the Community" />
-            <p className="mx-auto max-w-2xl text-center text-sm leading-relaxed text-muted-foreground">
-              游客可以读一切公开内容，阅读进度保存在本设备。登录之后，你就不只是读者了。
-            </p>
-            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                {
-                  title: '评论互动',
-                  body: '对每篇论文公开发表质疑、补充与吐槽——像审稿人一样较真，像读者一样自由。',
-                },
-                {
-                  title: '进度跨设备同步',
-                  body: '阅读进度、收藏与关注随账号走：换设备接着读，书架不会丢。',
-                },
-                {
-                  title: '投稿开放',
-                  body: '注册即可投稿，无需申请、无需介绍信。正经与荒诞两个赛道，编辑部分不清谁高谁低。',
-                },
-                {
-                  title: '读者活动',
-                  body: '年度 Rubbish Prize 读者票选、评论区精选、新刊试读——参与就有份。',
-                },
-              ].map((f) => (
-                <motion.div
-                  key={f.title}
-                  variants={card}
-                  animate={revealCommunity ? 'show' : 'hidden'}
-                  whileHover={{ y: -4 }}
-                  className="rounded-lg border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"
-                >
-                  <h3 className="text-base" style={{ fontFamily: DISPLAY_FONT }}>
-                    {f.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.body}</p>
-                </motion.div>
-              ))}
-            </div>
-            {!isAuthenticated && (
-              <div className="mt-8 flex flex-col items-center gap-3">
-                <Button asChild size="lg">
-                  <Link to="/register">免费注册，参与社区</Link>
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  已有账号？<Link to="/login" className="text-primary hover:underline">直接登录</Link>
-                  ·注册不需要邮箱验证
-                </p>
-              </div>
-            )}
-          </div>
-        </motion.section>
-
-        {/* ── 期刊指标 ── */}
-        <motion.section
-          ref={revealMetricsRef}
-          initial="hidden"
-          animate={revealMetrics ? 'show' : 'hidden'}
-          id="metrics"
-          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}
-          className="scroll-mt-16 py-16"
-        >
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <SectionHeading
-              title="期刊指标"
-              label="Journal Metrics"
-              action={
-                <Link
-                  to="/journal-metrics"
-                  className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  指标说明 <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              }
-            />
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                {
-                  label: '收录文章',
-                  value: metrics?.published_total ?? '—',
-                  note: '已发表并公开的记录',
-                },
-                {
-                  label: '开放获取率',
-                  value: metrics?.open_access_rate == null ? '—' : '100%',
-                  note: '全部全文免费，无订阅墙',
-                },
-                {
-                  label: '初审周期',
-                  value:
-                    metrics?.median_review_days == null
-                      ? '样本不足'
-                      : `${metrics.median_review_days} 天`,
-                  note: '投稿到编辑裁决的中位数',
-                },
-                {
-                  label: '录用率',
-                  value:
-                    metrics?.acceptance_rate == null
-                      ? '样本不足'
-                      : `${metrics.acceptance_rate}%`,
-                  note: `基于 ${metrics?.decided_submissions ?? 0} 篇已裁决稿件`,
-                },
-              ].map((item) => (
-                <motion.div
-                  key={item.label}
-                  variants={card}
-                  animate={revealMetrics ? 'show' : 'hidden'}
-                  whileHover={{ y: -4 }}
-                  className="rounded-lg border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"
-                >
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                    {item.label}
-                  </p>
-                  <p
-                    className="mt-2 text-3xl text-primary"
-                    style={{ fontFamily: DISPLAY_FONT, fontWeight: 600 }}
-                  >
-                    {item.value}
-                  </p>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.note}</p>
-                </motion.div>
-              ))}
-            </div>
-
-            <div className="mt-12 grid gap-8 lg:grid-cols-2">
-              <div className="rounded-lg border bg-card p-6 shadow-sm">
-                <h3 className="text-lg" style={{ fontFamily: DISPLAY_FONT }}>
-                  R 因子：本刊自设计的旗舰指标
-                </h3>
-                <div className="mt-4 flex items-baseline gap-3">
-                  <span
-                    className="text-5xl tabular-nums text-primary"
-                    style={{ fontFamily: DISPLAY_FONT, fontWeight: 600 }}
-                  >
-                    {metrics?.r_factor != null ? metrics.r_factor.toFixed(2) : '—'}
-                  </span>
-                  <span className="text-sm text-muted-foreground">R 因子 · {new Date().getFullYear()}</span>
-                </div>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                  综合全刊内容的读者注意力与编辑质量评定。口径与权重属编辑部内部标准，
-                  不公开、不接受复算——数字本身说话。
-                </p>
-                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                  本刊未接入任何引用数据库，不发布、也不冒充 JCR 影响因子；自引率诚实保留为{' '}
-                  {metrics?.self_citation_rate != null ? `${metrics.self_citation_rate.toFixed(1)}%` : '0.0%'}。
-                  分区（R1–R4）仅在学科样本 ≥4 篇时给出，样本不足时显示「样本不足」。
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-lg border bg-card p-5 shadow-sm sm:col-span-2">
-                  <h4 className="text-sm font-medium">学科构成</h4>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    同一学科满 4 篇才生成分区；颜色不影响排名，只为分辨。
-                  </p>
-                  {metrics && Object.keys(metrics.by_discipline).length > 0 ? (
-                    <Suspense
-                      fallback={<div className="mt-3 h-[180px] animate-pulse rounded-md bg-muted/50" />}
-                    >
-                      <DisciplineBar data={metrics.by_discipline} />
-                    </Suspense>
-                  ) : (
-                    <p className="mt-3 text-sm text-muted-foreground">暂无已发表文章</p>
-                  )}
-                </div>
-                <div className="rounded-lg border bg-card p-5 shadow-sm">
-                  <h4 className="text-sm font-medium">学科分区（按 R 指数）</h4>
-                  <ul className="mt-3 space-y-2.5 text-sm">
-                    {metrics && Object.keys(metrics.by_discipline).length > 0 ? (
-                      Object.entries(metrics.by_discipline).map(([discipline, count]) => (
-                        <li key={discipline} className="flex items-center justify-between gap-2">
-                          <span className="truncate">{discipline}</span>
-                          <span className="shrink-0 text-xs text-muted-foreground">
-                            {count} 篇 · {count >= 4 ? 'R1–R4' : '样本不足'}
-                          </span>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="text-muted-foreground">暂无已发表文章</li>
-                    )}
-                  </ul>
-                </div>
-                <div className="rounded-lg border bg-card p-5 shadow-sm">
-                  <h4 className="text-sm font-medium">收录类型</h4>
-                  <ul className="mt-3 space-y-2.5 text-sm">
-                    {metrics && Object.keys(metrics.by_type).length > 0 ? (
-                      Object.entries(metrics.by_type).map(([type, count]) => (
-                        <li key={type} className="flex items-center justify-between gap-2">
-                          <span>{typeLabel(type)}</span>
-                          <span className="text-xs text-muted-foreground">{count} 篇</span>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="text-muted-foreground">暂无已发表文章</li>
-                    )}
-                  </ul>
-                </div>
-                <dl className="col-span-full grid grid-cols-3 gap-4">
-                  {[
-                    ['总阅读', metrics?.reads_total ?? 0],
-                    ['总下载', metrics?.downloads_total ?? 0],
-                    ['总收藏', metrics?.saves_total ?? 0],
-                  ].map(([label, value]) => (
-                    <div key={String(label)} className="rounded-lg border bg-card p-4 text-center shadow-sm">
-                      <dt className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                        {label}
-                      </dt>
-                      <dd
-                        className="mt-1 text-2xl text-primary"
-                        style={{ fontFamily: DISPLAY_FONT, fontWeight: 600 }}
-                      >
-                        {value}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-            </div>
-          </div>
-        </motion.section>
-
-        {/* ── 作者指南 ── */}
-        <motion.section
-          ref={revealAuthorsRef}
-          initial="hidden"
-          animate={revealAuthors ? 'show' : 'hidden'}
-          id="authors"
-          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
-          className="scroll-mt-16 bg-muted/40 py-16"
-        >
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <SectionHeading title="作者指南" label="For Authors" />
-            <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-              <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
-                <table className="w-full text-sm">
-                  <tbody className="[&_td]:border-b [&_td]:px-5 [&_td]:py-4 [&_td]:align-top [&_th]:border-b [&_th]:px-5 [&_th]:py-4 [&_th]:text-left [&_th]:font-medium [&_th]:text-muted-foreground">
-                    <tr>
-                      <th className="w-32">稿件格式</th>
-                      <td>PDF 全文；正文中英文均可；建议宋体 / Times New Roman，字号不小于 10pt。</td>
-                    </tr>
-                    <tr>
-                      <th>必需信息</th>
-                      <td>标题、作者、年份、学科、摘要；DOI 与基金信息如有请一并填写。</td>
-                    </tr>
-                    <tr>
-                      <th>评审方式</th>
-                      <td>单盲或双盲，由编辑选择；作者可在投稿详情查看当前阶段。</td>
-                    </tr>
-                    <tr>
-                      <th>修订与撤稿</th>
-                      <td>收到修改意见后可上传新版本；如需撤稿，请在投稿详情提交申请并说明理由。</td>
-                    </tr>
-                    <tr>
-                      <th>版权与许可</th>
-                      <td>作者保留著作权；文章以开放获取方式发布，具体许可信息以文章页面标注为准。</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <motion.div
-                variants={card}
-                animate={revealAuthors ? 'show' : 'hidden'}
-                className="relative overflow-hidden rounded-lg border bg-card p-6 shadow-sm"
-              >
-                <span
-                  aria-hidden
-                  className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-primary/60 to-transparent"
-                />
-                <h3 className="text-lg" style={{ fontFamily: DISPLAY_FONT }}>
-                  投稿三步
-                </h3>
-                <ol className="mt-4 space-y-3 text-sm">
-                  {['注册并完善账号', '新建投稿并上传 PDF', '跟踪评审、按意见修订'].map((s, i) => (
-                    <li key={s} className="flex gap-3">
-                      <span
-                        aria-hidden
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs text-primary"
-                        style={{ fontFamily: DISPLAY_FONT, fontWeight: 600 }}
-                      >
-                        {i + 1}
-                      </span>
-                      <span className="pt-0.5">{s}</span>
-                    </li>
-                  ))}
-                </ol>
-                <Button asChild className="mt-5 w-full">
-                  <Link to={isAuthenticated ? '/submissions' : '/register'}>
-                    <PenLine className="h-4 w-4" />
-                    {isAuthenticated ? '进入我的投稿' : '免费注册投稿'}
-                  </Link>
-                </Button>
-                <Link
-                  to="/authors"
-                  className="mt-3 inline-flex w-full items-center justify-center gap-1 text-sm text-primary hover:underline"
-                >
-                  查看完整投稿规范与收录标准 <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </motion.div>
-            </div>
+            <SectionHeading title="了解本刊" label="Explore the Journal" />
+            <motion.div
+              variants={card}
+              animate={revealDiscover ? 'show' : 'hidden'}
+              className="rounded-xl border bg-card p-4 shadow-sm sm:p-6"
+            >
+              <DiscoverTabs isAuthenticated={isAuthenticated} revealed={revealDiscover} />
+            </motion.div>
           </div>
         </motion.section>
 
@@ -1182,107 +1037,6 @@ function HomePage() {
                   <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{item.a}</p>
                 </motion.details>
               ))}
-            </div>
-          </div>
-        </motion.section>
-
-        {/* ── 关于本刊 ── */}
-        <motion.section
-          ref={revealAboutRef}
-          initial="hidden"
-          animate={revealAbout ? 'show' : 'hidden'}
-          id="about"
-          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
-          className="scroll-mt-16 bg-muted/40 py-16"
-        >
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <SectionHeading title="关于本刊" label="About" />
-            <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-              <motion.blockquote
-                variants={card}
-                animate={revealAbout ? 'show' : 'hidden'}
-                className="relative rounded-lg border bg-card p-7 shadow-sm"
-              >
-                <span
-                  aria-hidden
-                  className="absolute left-6 top-4 text-6xl leading-none text-primary/25"
-                  style={{ fontFamily: DISPLAY_FONT }}
-                >
-                  “
-                </span>
-                <p
-                  className="relative pl-8 text-lg leading-relaxed sm:text-xl"
-                  style={{ fontFamily: DISPLAY_FONT }}
-                >
-                  可信的知识不应该有围墙。每一篇经过严格评审的研究，都值得被世界看见。
-                </p>
-                <footer className="mt-4 pl-8 text-xs text-muted-foreground">
-                  —— Rubbish 编辑部
-                </footer>
-                <div className="mt-6 flex flex-wrap gap-x-8 gap-y-3 border-t pt-5 text-sm">
-                  <span className="inline-flex items-center gap-2">
-                    <Users aria-hidden className="h-4 w-4 text-primary" /> 读者 / 作者 / 审稿人 /
-                    编辑
-                  </span>
-                  <span className="inline-flex items-center gap-2">
-                    <BookOpen aria-hidden className="h-4 w-4 text-primary" /> 第 1 卷 · 第 1 期
-                  </span>
-                </div>
-              </motion.blockquote>
-              <motion.div
-                variants={card}
-                animate={revealAbout ? 'show' : 'hidden'}
-                className="relative overflow-hidden rounded-lg border bg-card p-6 shadow-sm"
-              >
-                <span
-                  aria-hidden
-                  className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-primary/60 to-transparent"
-                />
-                <h3 className="text-lg" style={{ fontFamily: DISPLAY_FONT }}>
-                  联系编辑部
-                </h3>
-                <p className="mt-3 flex items-center gap-2 text-sm">
-                  <Mail aria-hidden className="h-4 w-4 text-muted-foreground" />
-                  <a href="mailto:admin@argjiemi.cn" className="text-primary hover:underline">
-                    admin@argjiemi.cn
-                  </a>
-                </p>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  投稿、审稿、账号与数据相关事宜均可来信；请在邮件中注明稿件编号或注册邮箱。
-                </p>
-                <ul className="mt-4 space-y-1.5 text-xs text-muted-foreground">
-                  <li>
-                    <Link to="/authors" className="hover:text-foreground hover:underline">
-                      作者指南与收录标准
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/policies" className="hover:text-foreground hover:underline">
-                      期刊政策与社区规范
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/about" className="hover:text-foreground hover:underline">
-                      关于本刊与编委会
-                    </Link>
-                  </li>
-                  <li>
-                    <a href="/help.html" className="hover:text-foreground hover:underline">
-                      使用帮助
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/privacy" className="hover:text-foreground hover:underline">
-                      隐私政策
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/oai?verb=Identify" className="hover:text-foreground hover:underline">
-                      OAI-PMH 接口
-                    </a>
-                  </li>
-                </ul>
-              </motion.div>
             </div>
           </div>
         </motion.section>
@@ -1328,6 +1082,14 @@ function HomePage() {
                     className="text-primary-foreground/75 transition-colors hover:text-primary-foreground"
                   >
                     资源目录
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/archive"
+                    className="text-primary-foreground/75 transition-colors hover:text-primary-foreground"
+                  >
+                    卷期归档
                   </Link>
                 </li>
                 <li>

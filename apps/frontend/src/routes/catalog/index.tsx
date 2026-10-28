@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createFileRoute, Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { Download, FileDown, Plus, SlidersHorizontal } from 'lucide-react'
+import { ChevronDown, Download, FileDown, Plus, SlidersHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/use-auth'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { exportResources, useCatalogStats, useResources } from '@/hooks/api/use-modules'
 import type { ResourceType } from '@/lib/types'
-import { extractError, formatAuthors } from '@/lib/utils'
+import { extractError, formatAuthors, cn } from '@/lib/utils'
 import { absurdityLevel, qualityGrade, typeLabel } from '@/lib/resource-labels'
 import { PageHeader } from '@/components/common/page-header'
 import { EmptyState, ErrorState } from '@/components/common/state'
@@ -135,6 +135,11 @@ function CatalogListPage() {
           ) : null
         }
       />
+
+      {/* 栏目（学科）快捷筛选：点击即切换，免去展开下拉的两步操作 */}
+      {!isMobile && (
+        <DisciplineChips search={search} updateSearch={updateSearch} />
+      )}
 
       {/* 桌面端：筛选常驻卡片（md 及以上） */}
       {!isMobile && (
@@ -451,12 +456,96 @@ function MobileFilters({
 
       {open && (
         <div className="mt-3 rounded-lg border bg-muted/30 p-3">
+          <DisciplineChips search={search} updateSearch={updateSearch} />
           <CatalogFilterFields
             search={search}
             updateSearch={updateSearch}
-            className="space-y-3"
+            className="mt-3 space-y-3"
           />
         </div>
+      )}
+    </div>
+  )
+}
+
+// 栏目（学科）快捷筛选：期刊网站的 browse-by-subject 惯例，
+// 带篇数计数，点击即筛。超过 8 个时默认收起一排展开按钮 ——
+// 已选中的栏目即使排在收起区也会补显出来，不让筛选条件"隐身"。
+const CHIP_COLLAPSE_AT = 8
+
+function DisciplineChips({
+  search,
+  updateSearch,
+}: {
+  search: CatalogSearch
+  updateSearch: (patch: Partial<CatalogSearch>) => void
+}) {
+  const { data: stats } = useCatalogStats()
+  const [expanded, setExpanded] = useState(false)
+  const disciplines = useMemo(
+    () => Object.entries(stats?.by_discipline ?? {}).sort((a, b) => b[1] - a[1]),
+    [stats],
+  )
+  if (disciplines.length === 0) return null
+
+  const collapsed = !expanded && disciplines.length > CHIP_COLLAPSE_AT
+  const visible = collapsed ? disciplines.slice(0, CHIP_COLLAPSE_AT) : [...disciplines]
+  if (collapsed && search.discipline) {
+    const idx = disciplines.findIndex(([name]) => name === search.discipline)
+    if (idx >= CHIP_COLLAPSE_AT) visible.push(disciplines[idx])
+  }
+  const hiddenCount = Math.max(0, disciplines.length - visible.length)
+
+  const chipCls = (active: boolean) =>
+    cn(
+      'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors',
+      active
+        ? 'border-primary bg-primary text-primary-foreground'
+        : 'bg-card text-foreground/80 hover:border-primary/40 hover:text-foreground',
+    )
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-1.5" role="group" aria-label="按学科（栏目）快速筛选">
+      <button
+        type="button"
+        className={chipCls(!search.discipline)}
+        onClick={() => updateSearch({ discipline: undefined, page: 1 })}
+      >
+        全部
+        <span className="tabular-nums opacity-60">{stats?.total ?? ''}</span>
+      </button>
+      {visible.map(([name, count]) => (
+        <button
+          key={name}
+          type="button"
+          className={chipCls(search.discipline === name)}
+          onClick={() => updateSearch({ discipline: name, page: 1 })}
+        >
+          {name}
+          <span className="tabular-nums opacity-60">{count}</span>
+        </button>
+      ))}
+      {collapsed && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="inline-flex items-center gap-1 rounded-full border border-dashed px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+          aria-expanded={false}
+        >
+          更多 {hiddenCount} 个学科
+          <ChevronDown className="h-3 w-3" />
+        </button>
+      )}
+      {expanded && disciplines.length > CHIP_COLLAPSE_AT && (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="inline-flex items-center gap-1 rounded-full border border-dashed px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+          aria-expanded
+        >
+          收起
+          <ChevronDown className="h-3 w-3 rotate-180" />
+        </button>
       )}
     </div>
   )
