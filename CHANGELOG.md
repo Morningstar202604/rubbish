@@ -9,6 +9,21 @@
 
 ## [Unreleased]
 
+## [1.0.3] — 2026-10-28
+
+### Fixed
+
+- **阅读历史与阅读列表也拒绝排期稿**：`POST /api/reader/history/{id}` 与
+  `POST /api/reading-lists/{id}/items` 原先只校验租户与存在性，201 与 404 的
+  差异足以让调用方判断「这篇排期稿存在」。两处补 `public_conditions()`，与目录/
+  详情/文件/导出/搜索同口径；新增 2 个测试。
+
+### Changed
+
+- `resources.publish_at` 去掉冗余单列索引（复合索引已覆盖），消除 `alembic check`
+  的 metadata 漂移。
+- 徽章口径纠正为 27 枚 / 九类（文档三处 + `/levels` 文案）。
+
 ## [1.0.2] — 2026-10-28
 
 ### Fixed
