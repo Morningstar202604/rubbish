@@ -39,6 +39,15 @@ function JournalMetricsPage() {
         <ErrorState message="加载指标失败" onRetry={() => refetch()} />
       ) : (
         <div className="space-y-8">
+          {data.published_total > 0 && data.r_factor == null ? (
+            <Card className="border-dashed">
+              <CardContent className="py-6 text-sm text-muted-foreground">
+                R 因子需要足够的站内互动样本（阅读 + 下载 + 收藏）。
+                当前样本量不足，暂不出数 —— 少于这个量算出来的均值会被单次点击放大
+                （例如一篇被下载一次就顶到学科满分）。样本够了这里会自动出现。
+              </CardContent>
+            </Card>
+          ) : null}
           {data.published_total > 0 && data.r_factor != null ? (
             <RevealSection>
               <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 via-transparent to-accent/10">

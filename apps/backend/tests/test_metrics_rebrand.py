@@ -40,8 +40,10 @@ async def test_journal_metrics_hides_formula_and_reports_new_fields(
     assert "r_index_formula" not in body
     assert body["self_citation_rate"] == 0.0
     assert body["absurdity_index_median"] is None
-    # 全刊只有一篇且无互动：R 因子应为 0 而不是 None（有样本才有值）。
-    assert body["r_factor"] == 0.0
+    # 全刊只有一篇且无互动：事件总量低于 MIN_R_FACTOR_SAMPLE，R 因子不出数。
+    # （此前这里断言 0.0 —— 但 0.0 本身就是「无样本」时的假读数；见
+    # engagement.MIN_R_FACTOR_SAMPLE 的注释。）
+    assert body["r_factor"] is None
 
 
 async def test_journal_metrics_r_factor_and_absurdity_median(
@@ -69,7 +71,8 @@ async def test_journal_metrics_r_factor_and_absurdity_median(
 
     body = (await client.get("/api/catalog/journal-metrics")).json()
     assert body["absurdity_index_median"] == 5.1
-    assert 0.0 <= body["r_factor"] <= 100.0
+    # 两篇零互动：事件总量不足，R 因子为 None（页面显示「样本不足」）。
+    assert body["r_factor"] is None
 
 
 # ---------------------------------------------------------------------------

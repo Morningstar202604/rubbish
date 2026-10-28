@@ -42,6 +42,10 @@ from app.modules.catalog.visibility import public_conditions
 # one-way.
 
 MIN_QUARTILE_SAMPLE = 4
+# R 因子最小样本：全刊阅读+下载+收藏事件总数低于此值时不出数。
+# 理由：R 指数按同学科最大值归一，样本极小时单次下载就把该篇顶到满分，
+# 全刊均值会给出 13.15 这种一看就假的数字。宁可不显示。
+MIN_R_FACTOR_SAMPLE = 30
 
 READ_WEIGHT = 0.5
 DOWNLOAD_WEIGHT = 0.3
@@ -287,12 +291,14 @@ async def journal_metrics(db: AsyncSession, tenant_id: Any) -> dict[str, Any]:
     )
     if published_rows:
         raw = await load_raw_engagement(db, [r.id for r in published_rows], tenant_id)
-        maxima = _discipline_maxima(published_rows, raw)
-        scores = [
-            _score(*raw.get(r.id, (0, 0, 0)), maxima.get(r.discipline, (0, 0, 0)))
-            for r in published_rows
-        ]
-        r_factor = round(sum(scores) / len(scores), 2)
+        total_events = sum(sum(raw.get(r.id, (0, 0, 0))) for r in published_rows)
+        if total_events >= MIN_R_FACTOR_SAMPLE:
+            maxima = _discipline_maxima(published_rows, raw)
+            scores = [
+                _score(*raw.get(r.id, (0, 0, 0)), maxima.get(r.discipline, (0, 0, 0)))
+                for r in published_rows
+            ]
+            r_factor = round(sum(scores) / len(scores), 2)
 
     absurdity_rows = (
         await db.execute(
@@ -326,6 +332,7 @@ async def journal_metrics(db: AsyncSession, tenant_id: Any) -> dict[str, Any]:
 
 __all__ = [
     "MIN_QUARTILE_SAMPLE",
+    "MIN_R_FACTOR_SAMPLE",
     "Engagement",
     "compute_engagement",
     "journal_metrics",
