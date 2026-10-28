@@ -32,6 +32,7 @@ from app.core.db import get_db, paginate
 from app.core.time import utcnow
 from app.models import AuditLog, User
 from app.modules.catalog.models import Resource
+from app.modules.catalog.visibility import public_conditions
 from app.modules.reader.models import FileAsset, ReadingHistory
 from app.modules.reader.schemas import (
     FileAssetCreate,
@@ -127,6 +128,8 @@ async def record_view(
             select(Resource.id).where(
                 Resource.id == resource_id,
                 Resource.tenant_id == tenant_id,
+                # 排期中的期号对读者不存在：否则 201/404 的差异会泄露存在性。
+                *public_conditions(),
             )
         )
     ).scalar_one_or_none()

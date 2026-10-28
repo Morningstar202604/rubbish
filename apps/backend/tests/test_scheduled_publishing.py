@@ -182,3 +182,30 @@ async def test_export_excludes_scheduled(client: AsyncClient, admin_user: dict) 
     queued = await _create(client, admin_user, title="Queued Export", publish_at=future)
     resp = await client.get("/api/export", params={"ids": [queued["id"]], "format": "json"})
     assert resp.status_code == 404
+
+
+async def test_reader_history_rejects_scheduled(
+    client: AsyncClient, admin_user: dict, test_user: dict
+) -> None:
+    """阅读历史不能指向排期稿：否则 201/404 差异会泄露它存在。"""
+    future = (utcnow() + timedelta(days=20)).isoformat()
+    queued = await _create(client, admin_user, title="Queued History", publish_at=future)
+    r = await client.post(f"/api/reader/history/{queued['id']}", headers=auth_headers(test_user))
+    assert r.status_code == 404
+
+
+async def test_reading_list_rejects_scheduled(
+    client: AsyncClient, admin_user: dict, test_user: dict
+) -> None:
+    future = (utcnow() + timedelta(days=20)).isoformat()
+    queued = await _create(client, admin_user, title="Queued List Item", publish_at=future)
+    created = await client.post(
+        "/api/reading-lists", json={"name": "Scheduled Guard"}, headers=auth_headers(test_user)
+    )
+    assert created.status_code == 201
+    r = await client.post(
+        f"/api/reading-lists/{created.json()['id']}/items",
+        json={"resource_id": queued["id"]},
+        headers=auth_headers(test_user),
+    )
+    assert r.status_code == 404

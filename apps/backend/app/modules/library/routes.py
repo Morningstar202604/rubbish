@@ -30,6 +30,7 @@ from app.api.levels import require_level
 from app.core.db import get_db, paginate
 from app.models import User
 from app.modules.catalog.models import Resource
+from app.modules.catalog.visibility import public_conditions
 from app.modules.library.models import ReadingList, ReadingListItem
 from app.modules.library.schemas import (
     MessageResponse,
@@ -219,6 +220,9 @@ async def add_item(
             select(Resource.id).where(
                 Resource.id == payload.resource_id,
                 Resource.tenant_id == current_user.tenant_id,
+                # 与公开面同口径：排期中的期号不能被加入阅读列表
+                # （否则 201/404 的差异会泄露它存在）。
+                *public_conditions(),
             )
         )
     ).scalar_one_or_none()
