@@ -173,9 +173,12 @@ def demote_bad_headings(md: str) -> str:
         sentence = bool(SENTENCE_END.search(body))
         caption = re.match(r"^(表|图|Table|Figure|Fig\.?)\s*\d", body)
         sectionish = bool(SECTION_WORDS.match(body))
+        numbered = bool(re.match(r"^\d+(?:\.\d+)*[.、]?\s+", body))
         if caption:
             out.append(f"**{body}**")
-        elif too_long or sentence or (not sectionish and len(body) > 24):
+        # 小节名很短（"声明""致谢"）且命中词表；带编号的才算结构化标题。
+        # 其余短句（"也侵蚀着医患之间的信任基础，成为影响医疗"）是正文续行。
+        elif too_long or sentence or (not sectionish and not numbered and len(body) > 14):
             # 标题吞了正文：能拆就拆出前导的小节名，其余还原成段落。
             head, rest = _split_label(body)
             if head:
@@ -185,10 +188,49 @@ def demote_bad_headings(md: str) -> str:
             else:
                 out.append(body)
         else:
-            out.append(f"{hashes} {body}")
+            head_text, extras = split_heading_tail(body)
+            out.append(f"{hashes} {head_text}")
+            for extra in extras:
+                if extra:
+                    out.append(extra)
         for img in images:
             out.append(img)
     return "\n".join(out)
+
+
+EMBEDDED_HEADING = re.compile(r"^(?P<head>.{2,40}?)\s+(?P<next>\d+(?:\.\d+)+[.、]?\s+\S.{4,})$")
+MID_SENTENCE = re.compile(r"^(?P<head>[^。！？]{2,45})[。！？]\s*(?P<tail>.+)$", re.S)
+
+
+def split_heading_tail(text: str) -> tuple[str, list[str]]:
+    """Split a heading that swallowed the next heading or the body.
+
+    Real cases from the submitted PDFs (article 44):
+
+    - ``3.1 动物实验 3.1.1 便秘模型建立与分组情况`` — two headings merged;
+    - ``4.4 临床意义：从 "一肚子火" 到 "通便防冲突" 临床部分的结果为…`` —
+      heading + paragraph on one line.
+    """
+    extras: list[str] = []
+    m = EMBEDDED_HEADING.match(text)
+    if m:
+        extras.append(m.group("next").strip())
+        text = m.group("head").strip()
+    m2 = MID_SENTENCE.match(text)
+    if m2 and not SECTION_WORDS.match(text[m2.end("head") :].strip()):
+        extras.insert(0, m2.group("tail").strip())
+        text = m2.group("head").strip()
+    # 无句末标点的长标题（PDF 断行导致正文被截在标题行里）：
+    # 在最后一个右引号/冒号后切开，超长时按 34 字截断。
+    if len(text) > 34 and re.match(r"^\d+(?:\.\d+)*[.、]?\s+", text):
+        cut = max(text.rfind("”"), text.rfind("："), text.rfind(":"))
+        if cut > 6 and cut < len(text) - 6:
+            extras.insert(0, text[cut + 1 :].strip())
+            text = text[: cut + 1].strip()
+        else:
+            extras.insert(0, text[34:].strip())
+            text = text[:34].strip()
+    return text, extras
 
 
 def _split_label(text: str) -> tuple[str, str]:
@@ -256,6 +298,57 @@ def strip_bold_noise(md: str) -> str:
     return "\n".join(out)
 
 
+KEYWORD_INLINE = re.compile(r"(?<=[。；;）)])\s*(关键词|关键字|Keywords?)\s*[:：]", re.I)
+
+
+def split_keywords_paragraph(md: str) -> str:
+    """关键词常与摘要粘成一个段落（PDF 里没有空行）。
+
+    摘要是长块、关键词是字段行，挤在一起会让读者以为关键词属于摘要正文。
+    """
+    out = []
+    for line in md.split("\n"):
+        if line.lstrip().startswith(("#", "!", "|")):
+            out.append(line)
+            continue
+        pieces = KEYWORD_INLINE.split(line)
+        if len(pieces) >= 3:
+            first = pieces[0].rstrip()
+            if first:
+                out.append(first)
+                # 关键词是独立字段行：必须与摘要段落隔一个空行，
+                # 否则 CommonMark 会把两行并成同一段（读者看到「…。关键词：…」）。
+                out.append("")
+            for i in range(1, len(pieces), 2):
+                label = pieces[i]
+                body = pieces[i + 1] if i + 1 < len(pieces) else ""
+                out.append(f"**{label}**：{body.strip()}")
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
+KEYWORD_LINE = re.compile(r"^\*\*(关键词|关键字|Keywords?)\*\*\s*[:：]", re.I)
+
+
+def ensure_block_spacing(md: str) -> str:
+    """关键词行、图注行与标题之间必须空一行，否则 CommonMark 会并段。"""
+    out: list[str] = []
+    for line in md.splitlines():
+        is_block = bool(
+            KEYWORD_LINE.match(line)
+            or line.startswith("#")
+            or line.startswith("![](")
+            or line.startswith("**图")
+            or line.startswith("**表")
+            or line.startswith("|")
+        )
+        if is_block and out and out[-1].strip() and not out[-1].startswith(("#", "!", "|")):
+            out.append("")
+        out.append(line)
+    return chr(10).join(out)
+
+
 def tidy_inline(md: str) -> str:
     # 关键词 **:** x → 关键词：x
     md = re.sub(
@@ -310,7 +403,11 @@ def clean(md: str) -> str:
     md = strip_bold_noise(md)
     md = demote_bad_headings(md)
     md = demote_long_headings(md)
+    md = split_keywords_paragraph(md)
     md = tidy_inline(md)
+    # 块级元素（关键词/图注/标题/表格）之间补空行：CommonMark 会把相邻
+    # 两行并成同一段，读者会看到「…。关键词：…」连在一起。
+    md = ensure_block_spacing(md)
     md = re.sub(r"\n{3,}", "\n\n", md).strip()
     return md
 
