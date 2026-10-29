@@ -149,7 +149,9 @@ export function MobileAppShell() {
     return (
       <div className="min-h-screen bg-background">
         <ModuleErrorBoundary name="页面" resetKeys={[location.pathname]}>
-          <Outlet />
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
         </ModuleErrorBoundary>
         <CookieBanner />
       </div>

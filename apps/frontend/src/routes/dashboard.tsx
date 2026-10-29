@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import {
   BookOpen,
@@ -67,6 +68,8 @@ function CheckinBanner() {
   const status = useCheckinStatus()
   const checkin = useDailyCheckin()
   const st = status.data
+  // 签到成功的一瞬间给按钮一个"弹一下+金圈"反馈，替代廉价的整页动画
+  const [pulse, setPulse] = useState(false)
 
   const onCheckin = async () => {
     try {
@@ -77,6 +80,10 @@ function CheckinBanner() {
         toast.success(`签到成功，+${r.daily_xp} XP`)
       } else {
         toast.info('今天已经签到过了')
+      }
+      if (r.awarded) {
+        setPulse(true)
+        window.setTimeout(() => setPulse(false), 1600)
       }
     } catch {
       toast.error('签到失败，请稍后再试')
@@ -120,6 +127,11 @@ function CheckinBanner() {
         disabled={st?.checked_in_today || checkin.isPending}
         onClick={() => void onCheckin()}
         data-testid="checkin-button"
+        className={
+          pulse
+            ? 'animate-in zoom-in-95 duration-500 ring-2 ring-amber-400 ring-offset-2 ring-offset-background'
+            : undefined
+        }
       >
         {st?.checked_in_today ? '已签到' : checkin.isPending ? '签到中…' : '签到'}
       </Button>

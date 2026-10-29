@@ -7,6 +7,7 @@ import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useAuthStore, type AuthUser } from '@/lib/auth'
 import { api } from '@/lib/api'
 import { Toaster } from '@/components/ui/sonner'
+import { NotFoundPage } from '@/components/common/not-found-page'
 import type { UserResponse } from '@/lib/types'
 
 interface RouterContext {
@@ -43,6 +44,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     }
   },
   component: RootLayout,
+  notFoundComponent: NotFoundPage,
 })
 
 function RootLayout() {
