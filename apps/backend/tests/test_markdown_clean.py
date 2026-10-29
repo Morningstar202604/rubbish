@@ -100,3 +100,49 @@ def test_drops_footer_merged_into_paragraph() -> None:
 def test_drops_english_tagline() -> None:
     md = "**Where the absurd dwells, fellow wayfarers meet.**"
     assert clean(md) == ""
+
+
+# --- 1.6.0 段落重组（reflow_paragraphs） -------------------------------
+
+from app.modules.submission.markdown_clean import reflow_paragraphs as _reflow
+
+
+def test_reflow_joins_cjk_lines_without_space() -> None:
+    """中文段落续行拼接不插空格：修复「数字工 具」式断词。"""
+    md = "近年来人工智能尤其是大模型技术快速进入知识生\n产与科学发现等领域。"
+    assert _reflow(md) == "近年来人工智能尤其是大模型技术快速进入知识生产与科学发现等领域。"
+
+
+def test_reflow_joins_latin_lines_with_space() -> None:
+    md = "the quick brown fox\njumps over the lazy dog"
+    assert _reflow(md) == "the quick brown fox jumps over the lazy dog"
+
+
+def test_reflow_keeps_headings_and_lists_separate() -> None:
+    md = "### 1 引言\n近年来 AI 发展迅速。\n- 第一项\n- 第二项\n正文继续。"
+    out = _reflow(md)
+    lines = out.split("\n")
+    assert "### 1 引言" in lines
+    assert "- 第一项" in lines
+    assert "- 第二项" in lines
+    assert "正文继续。" in lines
+
+
+def test_reflow_preserves_code_fence() -> None:
+    md = "```\ndef f():\n    return 1\n```\n后文。"
+    assert "def f():" in _reflow(md)
+    assert "    return 1" in _reflow(md)
+
+
+def test_reflow_collapses_blank_runs_and_adds_spacing() -> None:
+    md = "段落一结束。\n\n\n\n### 标题\n紧跟标题的正文。"
+    out = _reflow(md)
+    assert "\n\n\n" not in out
+    assert "### 标题\n紧跟标题的正文。" in out
+
+
+def test_reflow_table_lines_untouched() -> None:
+    md = "| a | b |\n|---|---|\n| 1 | 2 |"
+    out = _reflow(md)
+    # 表格三行各自独立成行（不并入段落）
+    assert out.split("\n") == ["| a | b |", "|---|---|", "| 1 | 2 |"]

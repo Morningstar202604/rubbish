@@ -197,6 +197,10 @@ h4 {
 .markdown-body h3 { font-size: 1.15rem; }
 .markdown-body h4 { font-size: 1rem; }
 .markdown-body p { margin: 0.85em 0; text-align: justify; }
+/* 论文阅读习惯（1.6.0）：正文段首行缩进两字。纯图片段落与图注除外。 */
+.markdown-body p { text-indent: 2em; }
+.markdown-body p:has(> img:only-child) { text-indent: 0; }
+.markdown-body img + em { text-indent: 0; }
 .markdown-body strong { font-weight: 600; }
 .markdown-body a { color: var(--color-primary); text-underline-offset: 3px; }
 .markdown-body a:hover { text-decoration: underline; }

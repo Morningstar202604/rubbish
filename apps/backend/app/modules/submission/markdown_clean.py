@@ -408,8 +408,86 @@ def clean(md: str) -> str:
     # 块级元素（关键词/图注/标题/表格）之间补空行：CommonMark 会把相邻
     # 两行并成同一段，读者会看到「…。关键词：…」连在一起。
     md = ensure_block_spacing(md)
+    # 段落重组（1.6.0）：把被 PDF 视觉行切碎的段落拼回流式段落——
+    # 中文行间不加空格（修复「数字工 具」这类断词），并保证块间空行。
+    md = reflow_paragraphs(md)
     md = re.sub(r"\n{3,}", "\n\n", md).strip()
     return md
 
 
-__all__ = ["clean"]
+# ---------------------------------------------------------------------------
+# 段落重组（1.6.0）——论文阅读习惯的核心
+#
+# PDF/DOCX 提取的 Markdown 把每个视觉行存成一行：段落被切碎、CommonMark
+# 渲染时还会在中文断行处插空格（「数字工 具」）。这里做块级感知的重组：
+# - 连续的普通文本行合并为一个流式段落；
+# - 拼接时若任一侧是 CJK 则不加空格，两侧均为拉丁/数字才补一个空格；
+# - 标题/列表/引用/表格/代码块/图片行保持原样，绝不并入段落；
+# - 块与块之间保证恰好一个空行。
+# ---------------------------------------------------------------------------
+
+_CJK = re.compile(r"[\u4e00-\u9fff\u3400-\u4dbf\u3000-\u303f\uff00-\uffef]")
+# 代码围栏 / 标题 / 引用 / 无序与有序列表 / 表格行 / 独立图片 / HTML 块
+_BLOCK_MARK = re.compile(
+    r"^(?:\s{0,3}(?:```|~~~|#{1,6}\s|>|[-*+]\s|\d{1,3}[.)]\s|\|)"
+    r"|\s{0,3}!\[[^\]]*\]\([^)]*\)\s*$"
+    r"|\s{0,3}<(?:p|div|table|figure|br)[\s>/])",
+    re.I,
+)
+
+
+def _join_lines(a: str, b: str) -> str:
+    """拼接两行为一个流式段落：CJK 相邻不加空格，否则补一个空格。"""
+    if not a:
+        return b
+    if not b:
+        return a
+    if _CJK.match(a[-1:]) or _CJK.match(b[:1]):
+        return a + b
+    return a + " " + b
+
+
+def reflow_paragraphs(md: str) -> str:
+    out: list[str] = []
+    buf: list[str] = []
+    in_fence = False
+
+    def flush() -> None:
+        if buf:
+            joined = buf[0]
+            for nxt in buf[1:]:
+                joined = _join_lines(joined, nxt)
+            out.append(joined)
+            buf.clear()
+
+    for line in md.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith(("```", "~~~")):
+            flush()
+            in_fence = not in_fence
+            out.append(line)
+            continue
+        if in_fence:
+            out.append(line)
+            continue
+        if not stripped:
+            flush()
+            out.append("")
+            continue
+        if _BLOCK_MARK.match(line):
+            flush()
+            out.append(stripped)
+            continue
+        # 普通文本行：去掉 PDF 提取残留的前导空格后并入当前段落
+        buf.append(stripped)
+    flush()
+    # 块间空行归一：连续空行压成一个；块标记后紧跟文本行的补一个空行
+    collapsed: list[str] = []
+    for line in out:
+        if line == "" and (not collapsed or collapsed[-1] == ""):
+            continue
+        collapsed.append(line)
+    return "\n".join(collapsed)
+
+
+__all__ = ["clean", "reflow_paragraphs"]

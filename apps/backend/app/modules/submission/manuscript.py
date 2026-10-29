@@ -51,7 +51,10 @@ def _pdf_to_markdown(contents: bytes) -> str | None:
                 image_path=tmp,
                 image_format="png",
                 image_size_limit=0.0,
-                dpi=110,
+                # 1.6.0：110 → 220。110dpi 下论文插图（截图/曲线图）明显
+                # 模糊；220 使像素量翻两番且仍显著小于原始内嵌位图，
+                # 代价是 data URI 体积变大（可接受：阅读器按需加载）。
+                dpi=220,
             )
             # pymupdf4llm 产出对临时目录图片的文件引用：逐个内嵌为 data URI，
             # 让 Markdown 自包含（阅读器无需额外的图片端点）。
@@ -73,14 +76,17 @@ def _pdf_to_markdown(contents: bytes) -> str | None:
 
 
 def _docx_to_markdown(contents: bytes) -> str | None:
-    """docx → Markdown（mammoth 语义 HTML + markdownify）。"""
+    """docx → Markdown（mammoth 语义 HTML + markdownify + 段落重组）。"""
     import mammoth
     from markdownify import markdownify
+
+    from app.modules.submission.markdown_clean import reflow_paragraphs
 
     result = mammoth.convert_to_html(BytesIO(contents))
     html = result.value
     md = markdownify(html, heading_style="ATX").strip()
-    return md or None
+    # docx 的段落通常带空行，但混排文档仍会产生碎行——统一重组一次。
+    return reflow_paragraphs(md) or None
 
 
 def convert_to_markdown(contents: bytes, filename: str) -> str | None:
@@ -98,7 +104,13 @@ def convert_to_markdown(contents: bytes, filename: str) -> str | None:
             return _docx_to_markdown(contents)
         if ext in (".txt", ".md", ".markdown"):
             text = contents.decode("utf-8", errors="replace").strip()
-            return text or None
+            if not text:
+                return None
+            # 1.6.0：TXT 直通时 Markdown 会把单换行当空格——整篇粘成一段。
+            # 按论文阅读习惯重组：空行分段、段内续行、行尾空格清理。
+            from app.modules.submission.markdown_clean import reflow_paragraphs
+
+            return reflow_paragraphs(text) or None
         # .doc / .ps / .zip：不转换（阅读器回退 PDF 视图）。
         logger.info("manuscript_convert_skipped reason=unsupported ext=%s", ext)
         return None
