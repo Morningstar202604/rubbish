@@ -42,10 +42,16 @@ function VerifyEmailPage() {
       setPhase('success')
       toast.success('邮箱验证成功，请登录')
     } catch (err) {
-      const msg =
+      const raw =
         err instanceof AxiosError
           ? (err.response?.data as { detail?: string })?.detail ?? '验证失败'
           : '验证失败'
+      // 后端 detail 是英文：把常见原因映射为中文，其余原样透出
+      const msg = /invalid or expired/i.test(raw)
+        ? '链接已过期或无效'
+        : /already verified/i.test(raw)
+          ? '该邮箱此前已完成验证，直接登录即可'
+          : raw
       setFailReason(msg)
       setPhase('error')
     }
