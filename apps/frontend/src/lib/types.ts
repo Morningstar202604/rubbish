@@ -739,6 +739,7 @@ export interface BadgeItem {
 export interface GamificationProfile {
   user_id: number
   username: string
+  xp: number
   level: LevelSnapshot
   ladder: LevelCapability[]
   badges: BadgeItem[]

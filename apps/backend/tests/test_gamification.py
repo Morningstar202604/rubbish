@@ -231,3 +231,38 @@ async def test_quality_rubric_is_public_and_frozen(client: AsyncClient) -> None:
         assert sum(profile["weights"].values()) == 100
     assert [g["code"] for g in body["grades"]] == ["A+", "A", "B", "C", "D"]
     assert body["min_references"]["research"] == 8
+
+
+async def test_daily_checkin_idempotent_and_streak(client: AsyncClient, test_user: dict) -> None:
+    """每日签到：首次 +2 XP，重复签到幂等，状态口径一致。"""
+    headers = auth_headers(test_user)
+    before = (await client.get("/api/gamification/checkin", headers=headers)).json()
+    assert before["checked_in_today"] is False
+    assert before["streak"] == 0
+
+    first = await client.post("/api/gamification/checkin", headers=headers)
+    assert first.status_code == 200
+    body = first.json()
+    assert body["awarded"] is True
+    assert body["checked_in_today"] is True
+    assert body["streak"] == 1
+    assert body["total"] == 1
+
+    # 重复签到：幂等，不重复加分
+    me1 = (await client.get("/api/gamification/me", headers=headers)).json()
+    again = await client.post("/api/gamification/checkin", headers=headers)
+    assert again.status_code == 200
+    assert again.json()["awarded"] is False
+    me2 = (await client.get("/api/gamification/me", headers=headers)).json()
+    assert me2["xp"] == me1["xp"]
+
+    # 状态端点与签到端点口径一致
+    status = (await client.get("/api/gamification/checkin", headers=headers)).json()
+    assert status["checked_in_today"] is True
+    assert status["streak"] == 1
+    assert status["total"] == 1
+
+
+async def test_checkin_requires_auth(client: AsyncClient) -> None:
+    r = await client.post("/api/gamification/checkin")
+    assert r.status_code in (401, 403)

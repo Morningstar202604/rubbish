@@ -1,20 +1,29 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import {
   BookOpen,
+  CalendarCheck,
+  ClipboardList,
+  Flame,
   Lightbulb,
   Bell,
   Library,
   ScrollText,
   type LucideIcon,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { getAuthState } from '@/lib/auth'
 import { recommendationReason } from '@/lib/resource-labels'
 import { useIsMobile } from '@/hooks/use-is-mobile'
+import { useAuth } from '@/hooks/use-auth'
 import {
   useCatalogStats,
+  useCheckinStatus,
+  useDailyCheckin,
+  useGamificationProfile,
   useMyRecommendations,
   useMySubmissions,
   useNotifications,
+  usePendingSubmissions,
   useReadingLists,
   useUnreadCount,
 } from '@/hooks/api/use-modules'
@@ -42,62 +51,144 @@ interface StatCard {
   icon: LucideIcon
 }
 
+function greeting(): string {
+  const h = new Date().getHours()
+  if (h < 6) return '夜深了'
+  if (h < 12) return '早上好'
+  if (h < 18) return '下午好'
+  return '晚上好'
+}
+
+/** 每日签到横幅：一行收拢——按钮、连续天数、本周进度，不占第二屏。 */
+function CheckinBanner() {
+  const status = useCheckinStatus()
+  const checkin = useDailyCheckin()
+  const st = status.data
+
+  const onCheckin = async () => {
+    try {
+      const r = await checkin.mutateAsync()
+      if (r.bonus_awarded) {
+        toast.success(`连续签到 ${r.streak} 天，额外 +${r.weekly_bonus_xp} XP！`)
+      } else if (r.awarded) {
+        toast.success(`签到成功，+${r.daily_xp} XP`)
+      } else {
+        toast.info('今天已经签到过了')
+      }
+    } catch {
+      toast.error('签到失败，请稍后再试')
+    }
+  }
+
+  if (status.isLoading) return <Skeleton className="h-16 w-full rounded-lg" />
+
+  const weekProgress = st ? st.streak % 7 : 0
+  return (
+    <div
+      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3"
+      data-testid="checkin-banner"
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+          <CalendarCheck className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-sm font-medium">
+            每日签到
+            {st && st.streak > 0 && (
+              <span className="ml-2 inline-flex items-center gap-0.5 text-xs text-amber-600 dark:text-amber-400">
+                <Flame className="h-3.5 w-3.5" />
+                连续 {st.streak} 天
+              </span>
+            )}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {st
+              ? st.checked_in_today
+                ? `今日已签到 · 本周进度 ${weekProgress}/7 · 累计 ${st.total} 天`
+                : `签到 +${st.daily_xp} XP · 连续每满 7 天 +${st.weekly_bonus_xp} XP`
+              : '加载中…'}
+          </p>
+        </div>
+      </div>
+      <Button
+        size="sm"
+        variant={st?.checked_in_today ? 'outline' : 'default'}
+        disabled={st?.checked_in_today || checkin.isPending}
+        onClick={() => void onCheckin()}
+        data-testid="checkin-button"
+      >
+        {st?.checked_in_today ? '已签到' : checkin.isPending ? '签到中…' : '签到'}
+      </Button>
+    </div>
+  )
+}
+
 function DashboardPage() {
+  const { user, isAdmin } = useAuth()
+  const roles = user?.roles ?? []
+  const isEditorial = isAdmin || roles.includes('editor') || roles.includes('section_editor')
+
+  const profile = useGamificationProfile()
   const stats = useCatalogStats()
   const recs = useMyRecommendations(5)
   // 未读数走 /notifications/unread-count：列表接口的 meta.total 是
   // 「通知总数」，跟「未读」根本不是一回事。
   const notifs = useNotifications(1, 5)
   const unread = useUnreadCount({ enabled: true })
-  const lists = useReadingLists(1, 5)
   // 这里要的是「我自己的投稿数」。以前调 /submissions/pending，那是编辑的
   // 待审队列（require_editor），普通用户只会拿到 403 而永远显示 "—"。
   const mine = useMySubmissions(undefined, 1, 1)
+  // 编辑部成员才查待审队列，普通读者不触发 403 请求。
+  const pending = usePendingSubmissions(1, 1)
+  const lists = useReadingLists(1, 5)
   const isMobile = useIsMobile()
 
+  // 角色感知统计：所有人看得到的通知/目录 + 按身份就近放最常用的两块。
+  // 一次最多 4 张，避免信息过载（渐进披露：完整列表点卡片进入对应页）。
   const cards: StatCard[] = [
-    {
-      label: '资源总数',
-      value: stats.data?.total ?? '—',
-      to: '/catalog',
-      icon: BookOpen,
-    },
-    {
-      label: '我的推荐',
-      value: recs.data?.meta.total ?? '—',
-      to: '/recommendations',
-      icon: Lightbulb,
-    },
-    {
-      label: '未读通知',
-      value: unread.data?.unread ?? '—',
-      to: '/notifications',
-      icon: Bell,
-    },
-    {
-      label: '阅读列表',
-      value: lists.data?.meta.total ?? '—',
-      to: '/library',
-      icon: Library,
-    },
-    {
-      label: '我的投稿',
-      value: mine.data?.meta.total ?? '—',
-      to: '/submissions',
-      icon: ScrollText,
-    },
+    { label: '资源总数', value: stats.data?.total ?? '—', to: '/catalog', icon: BookOpen },
+    { label: '未读通知', value: unread.data?.unread ?? '—', to: '/notifications', icon: Bell },
   ]
+  if (isEditorial) {
+    cards.push({
+      label: '待审稿件',
+      value: pending.data?.meta.total ?? '—',
+      to: '/submissions/pending',
+      icon: ClipboardList,
+    })
+  } else if (roles.includes('author') || (profile.data?.level.level ?? 0) >= 3) {
+    cards.push({ label: '我的投稿', value: mine.data?.meta.total ?? '—', to: '/submissions', icon: ScrollText })
+  }
+  if (cards.length < 4) {
+    cards.push({ label: '阅读列表', value: lists.data?.meta.total ?? '—', to: '/library', icon: Library })
+  }
+  if (cards.length < 4) {
+    cards.push({ label: '我的推荐', value: recs.data?.meta.total ?? '—', to: '/recommendations', icon: Lightbulb })
+  }
+
+  const level = profile.data?.level
 
   return (
     <div>
       <PageHeader
         title="概览"
-        description="你的 Rubbish 工作台一览。"
+        description={`${greeting()}，${user?.username ?? '读者'}。你的 Rubbish 工作台一览。`}
+        actions={
+          level ? (
+            <Badge variant="secondary" className="text-xs">
+              {level.name} · {profile.data?.xp ?? 0} XP
+            </Badge>
+          ) : undefined
+        }
       />
-      {/* 移动端：2 列大数据块 + 快捷操作；桌面端：5 列小卡 */}
+
+      <CheckinBanner />
+
+      {/* 移动端：2 列大数据块 + 快捷操作；桌面端：4 列小卡 */}
       {isMobile ? (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="mt-4 grid grid-cols-2 gap-3">
             {cards.map((c) => (
               <StatTile
                 key={c.to}
@@ -136,7 +227,7 @@ function DashboardPage() {
           </div>
         </>
       ) : (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+        <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
           {cards.map((c) => {
             const Icon = c.icon
             return (
@@ -170,8 +261,11 @@ function DashboardPage() {
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">为你推荐</CardTitle>
+            <Link to="/recommendations" className="text-xs text-primary hover:underline">
+              查看全部
+            </Link>
           </CardHeader>
           <CardContent>
             {recs.isLoading ? (

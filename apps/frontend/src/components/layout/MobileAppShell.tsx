@@ -14,7 +14,13 @@ import { ModuleErrorBoundary } from '@/components/common/error-boundary'
 import { PageTransition } from '@/components/common/page-transition'
 import { CookieBanner } from '@/components/common/cookie-banner'
 import { filterNav } from '@/lib/nav'
-import { MOBILE_TABS, MOBILE_MORE, MOBILE_FAB_TO, type MobileTab } from './mobile-nav'
+import {
+  MOBILE_TABS,
+  MOBILE_MORE,
+  MOBILE_MORE_GROUP_ORDER,
+  MOBILE_FAB_TO,
+  type MobileTab,
+} from './mobile-nav'
 
 // 底部抽屉：自带遮罩、ESC 关闭、打开时锁 body 滚动。移动原生交互，不依赖居中 Dialog。
 function BottomSheet({
@@ -244,24 +250,35 @@ export function MobileAppShell() {
               </button>
             </div>
             <div className="flex flex-col">
-              {moreItems.map((item) => {
-                const Icon = item.icon
+              {MOBILE_MORE_GROUP_ORDER.map((group) => {
+                const items = moreItems.filter((i) => i.group === group)
+                if (items.length === 0) return null
                 return (
-                  <button
-                    key={item.to}
-                    type="button"
-                    onClick={() => go(item.to)}
-                    className="flex min-h-[48px] items-center gap-3 rounded-md px-2 text-left text-sm hover:bg-accent"
-                  >
-                    <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
-                    <span>{item.label}</span>
-                  </button>
+                  <div key={group} className="mt-2 first:mt-0">
+                    <p className="px-2 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground">
+                      {group}
+                    </p>
+                    {items.map((item) => {
+                      const Icon = item.icon
+                      return (
+                        <button
+                          key={item.to}
+                          type="button"
+                          onClick={() => go(item.to)}
+                          className="flex min-h-[44px] w-full items-center gap-3 rounded-md px-2 text-left text-sm hover:bg-accent"
+                        >
+                          <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
+                          <span>{item.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 )
               })}
               <button
                 type="button"
                 onClick={onLogout}
-                className="mt-1 flex min-h-[48px] items-center gap-3 rounded-md px-2 text-left text-sm text-destructive hover:bg-destructive/10"
+                className="mt-2 flex min-h-[48px] w-full items-center gap-3 rounded-md border-t px-2 pt-3 text-left text-sm text-destructive hover:bg-destructive/10"
               >
                 <LogOut className="h-5 w-5 shrink-0" />
                 <span>退出登录</span>

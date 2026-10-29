@@ -299,7 +299,7 @@ export function AppShell() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/account/security">
+                    <Link to="/settings">
                       <ShieldCheck className="h-4 w-4" />
                       账号安全
                     </Link>

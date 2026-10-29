@@ -143,15 +143,7 @@ function CatalogListPage() {
 
       {/* 桌面端：筛选常驻卡片（md 及以上） */}
       {!isMobile && (
-        <Card className="mb-4">
-          <CardContent className="pt-0">
-            <CatalogFilterFields
-              search={search}
-              updateSearch={updateSearch}
-              className="grid grid-cols-1 gap-3 md:grid-cols-4"
-            />
-          </CardContent>
-        </Card>
+        <DesktopFilters search={search} updateSearch={updateSearch} />
       )}
 
       {/* 移动端：筛选收进可折叠面板，默认收起，避免挤占浏览空间 */}
@@ -461,6 +453,62 @@ function MobileFilters({
             search={search}
             updateSearch={updateSearch}
             className="mt-3 space-y-3"
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// 桌面端筛选：与移动端同策略——默认收起为一行工具栏（带活跃计数），
+// 带着筛选条件进来时自动展开，避免"打开页面先看到一面筛选墙"。
+function DesktopFilters({
+  search,
+  updateSearch,
+}: {
+  search: CatalogSearch
+  updateSearch: (patch: Partial<CatalogSearch>) => void
+}) {
+  const activeCount = [
+    search.q,
+    search.type,
+    search.discipline,
+    search.year,
+  ].filter(Boolean).length
+  const [open, setOpen] = useState(() => activeCount > 0)
+
+  return (
+    <div className="mb-4">
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="justify-between"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+        >
+          <span className="flex items-center gap-2">
+            <SlidersHorizontal className="h-4 w-4" />
+            筛选
+            {activeCount > 0 && (
+              <span className="rounded-full bg-primary px-1.5 text-xs text-primary-foreground">
+                {activeCount}
+              </span>
+            )}
+          </span>
+        </Button>
+        {activeCount > 0 && !open && (
+          <span className="text-xs text-muted-foreground">正在按条件过滤，点击「筛选」可调整</span>
+        )}
+      </div>
+
+      {open && (
+        <div className="mt-3 rounded-lg border bg-muted/30 p-3">
+          <CatalogFilterFields
+            search={search}
+            updateSearch={updateSearch}
+            className="grid grid-cols-1 gap-3 md:grid-cols-4"
           />
         </div>
       )}

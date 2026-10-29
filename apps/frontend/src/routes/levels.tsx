@@ -1,6 +1,18 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { Award, BookOpen, Layers, Lock, ShieldCheck, Sparkles } from 'lucide-react'
-import { useLadder, useQualityRubric } from '@/hooks/api/use-modules'
+import {
+  Award,
+  BookOpen,
+  CalendarCheck,
+  Coins,
+  Flame,
+  Layers,
+  Lock,
+  ShieldCheck,
+  Sparkles,
+} from 'lucide-react'
+import { toast } from 'sonner'
+import { useCheckinStatus, useDailyCheckin, useLadder, useQualityRubric } from '@/hooks/api/use-modules'
+import { useAuth } from '@/hooks/use-auth'
 import { PageHeader } from '@/components/common/page-header'
 import { ErrorState, Loading } from '@/components/common/state'
 import { Badge } from '@/components/ui/badge'
@@ -20,9 +32,96 @@ const GRADE_STYLES: Record<string, string> = {
   D: 'bg-destructive/10 text-destructive',
 }
 
+/** 每日签到与积分来源说明：货币体系（XP）的入口页说明 + 一键签到。 */
+function CheckinSection({ authenticated }: { authenticated: boolean }) {
+  const status = useCheckinStatus({ enabled: authenticated })
+  const checkin = useDailyCheckin()
+  const st = status.data
+
+  const onCheckin = async () => {
+    try {
+      const r = await checkin.mutateAsync()
+      if (r.bonus_awarded) toast.success(`连续签到 ${r.streak} 天，额外 +${r.weekly_bonus_xp} XP！`)
+      else if (r.awarded) toast.success(`签到成功，+${r.daily_xp} XP`)
+      else toast.info('今天已经签到过了')
+    } catch {
+      toast.error('签到失败，请稍后再试')
+    }
+  }
+
+  const SOURCES: [string, string][] = [
+    ['每日签到', '每天 +2，连续每满 7 天再 +5'],
+    ['阅读资源', '读完一篇 +2，完整读毕 +3'],
+    ['参与讨论', '发表评论 +2（每日封顶 10）'],
+    ['收藏与关注', '创建阅读列表 +3，关注作者 +2'],
+    ['投稿与审稿', '投稿 +10，录用 +60，完成审稿 +25'],
+  ]
+
+  return (
+    <section>
+      <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+        <Coins className="h-4 w-4" /> 每日签到与积分获取
+      </h2>
+      <Card>
+        <CardContent className="space-y-4 py-5">
+          {authenticated ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                  <CalendarCheck className="h-5 w-5" />
+                </div>
+                <p className="text-sm">
+                  {st ? (
+                    st.checked_in_today ? (
+                      <>
+                        今日已签到
+                        {st.streak > 0 && (
+                          <span className="ml-2 inline-flex items-center gap-0.5 text-xs text-amber-600 dark:text-amber-400">
+                            <Flame className="h-3.5 w-3.5" />
+                            连续 {st.streak} 天 · 累计 {st.total} 天
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      `已连续签到 ${st.streak} 天，今天还没签`
+                    )
+                  ) : (
+                    '加载签到状态…'
+                  )}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant={st?.checked_in_today ? 'outline' : 'default'}
+                disabled={st?.checked_in_today || checkin.isPending}
+                onClick={() => void onCheckin()}
+              >
+                {st?.checked_in_today ? '已签到' : checkin.isPending ? '签到中…' : '立即签到'}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              登录后即可每日签到累积 XP：<Link to="/login" className="text-primary hover:underline">去登录</Link>
+            </p>
+          )}
+          <ul className="grid gap-x-6 gap-y-1.5 text-sm text-muted-foreground sm:grid-cols-2">
+            {SOURCES.map(([name, desc]) => (
+              <li key={name} className="flex justify-between gap-2 border-b border-dashed pb-1.5">
+                <span className="text-foreground">{name}</span>
+                <span className="tabular-nums text-xs">{desc}</span>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+    </section>
+  )
+}
+
 function LevelsPage() {
   const ladder = useLadder()
   const rubric = useQualityRubric()
+  const { isAuthenticated } = useAuth()
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-10 sm:px-6">
@@ -51,6 +150,9 @@ function LevelsPage() {
           </p>
         </CardContent>
       </Card>
+
+      {/* 每日签到与积分获取（登录用户可见签到条；游客看到玩法说明） */}
+      <CheckinSection authenticated={isAuthenticated} />
 
       {/* 九级阶梯 */}
       <section>

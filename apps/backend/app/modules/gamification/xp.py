@@ -20,6 +20,9 @@ XP_RULES: dict[str, int] = {
     # 阅读（每篇一次）
     "read.article": 2,
     "read.complete": 3,
+    # 每日签到：基础 2 XP，连续每满 7 天额外 5 XP（ref_id=UTC 日期，天然幂等）
+    "checkin.daily": 2,
+    "checkin.weekly_bonus": 5,
     # 讨论（每日上限由调用方控制）
     "comment.create": 2,
     "comment.received_like": 1,

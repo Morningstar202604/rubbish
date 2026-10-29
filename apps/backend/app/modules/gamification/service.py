@@ -375,6 +375,7 @@ async def profile(db: AsyncSession, user: User, *, include_secret: bool) -> dict
     return {
         "user_id": user.id,
         "username": user.username,
+        "xp": user.xp or 0,
         "level": level_snapshot(user, roles),
         "ladder": ladder_payload(),
         "badges": badges,
@@ -419,9 +420,96 @@ def window_start(days: int = 30) -> datetime:
     return utcnow() - timedelta(days=days)
 
 
+# ---------------------------------------------------------------------------
+# 每日签到（货币/激励体系的一部分）
+# 口径：每天一次 checkin.daily（ref_id=UTC 日期，台账唯一约束天然幂等）；
+# 连续天数按「今天或昨天收尾的连续日」计；每满 7 天额外发 checkin.weekly_bonus。
+# ---------------------------------------------------------------------------
+
+_CHECKIN_ACTION = "checkin.daily"
+_CHECKIN_BONUS_ACTION = "checkin.weekly_bonus"
+
+
+def _today_str(now: datetime | None = None) -> str:
+    return (now or utcnow()).date().isoformat()
+
+
+def _current_streak(dates: set[str], today: str) -> int:
+    """以 today（已签）或 today-1（未签）收尾的连续签到天数。"""
+    from datetime import date as _date
+
+    cur = _date.fromisoformat(today)
+    if today not in dates:
+        cur = cur - timedelta(days=1)
+        if cur.isoformat() not in dates:
+            return 0
+    streak = 0
+    while cur.isoformat() in dates:
+        streak += 1
+        cur -= timedelta(days=1)
+    return streak
+
+
+async def _checkin_dates(db: AsyncSession, user: User) -> set[str]:
+    rows = await db.execute(
+        select(UserXpEvent.ref_id).where(
+            UserXpEvent.tenant_id == user.tenant_id,
+            UserXpEvent.user_id == user.id,
+            UserXpEvent.action == _CHECKIN_ACTION,
+        )
+    )
+    return {r for r in rows.scalars() if r}
+
+
+async def checkin_status(db: AsyncSession, user: User) -> dict[str, object]:
+    """今日是否已签 + 连续天数 + 累计签到天数。"""
+    dates = await _checkin_dates(db, user)
+    today = _today_str()
+    return {
+        "checked_in_today": today in dates,
+        "streak": _current_streak(dates, today),
+        "total": len(dates),
+        "daily_xp": XP_RULES.get(_CHECKIN_ACTION, 0),
+        "weekly_bonus_xp": XP_RULES.get(_CHECKIN_BONUS_ACTION, 0),
+    }
+
+
+async def daily_checkin(db: AsyncSession, user: User) -> dict[str, object]:
+    """执行每日签到。重复签到不是错误：返回当前状态（awarded=False）。"""
+    today = _today_str()
+    awarded = await award(db, user, _CHECKIN_ACTION, ref_type="checkin", ref_id=today, commit=False)
+    bonus_awarded = False
+    if awarded:
+        dates = await _checkin_dates(db, user)
+        streak = _current_streak(dates, today)
+        if streak > 0 and streak % 7 == 0:
+            bonus_awarded = await award(
+                db,
+                user,
+                _CHECKIN_BONUS_ACTION,
+                ref_type="checkin",
+                ref_id=today,
+                commit=False,
+                note=f"连续签到 {streak} 天奖励",
+            )
+    await db.commit()
+    dates = await _checkin_dates(db, user)
+    return {
+        "awarded": awarded,
+        "bonus_awarded": bonus_awarded,
+        "checked_in_today": True,
+        "streak": _current_streak(dates, today),
+        "total": len(dates),
+        "daily_xp": XP_RULES.get(_CHECKIN_ACTION, 0),
+        "weekly_bonus_xp": XP_RULES.get(_CHECKIN_BONUS_ACTION, 0),
+    }
+
+
 __all__ = [
     "award",
+    "checkin_status",
     "collect_metrics",
+    "daily_checkin",
     "evaluate_badges",
     "grant_admin_xp",
     "level_snapshot",

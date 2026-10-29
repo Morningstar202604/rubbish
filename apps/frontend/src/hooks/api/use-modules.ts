@@ -122,6 +122,7 @@ export const keys = {
   gamification: {
     profile: () => ['gamification', 'profile'] as const,
     ladder: () => ['gamification', 'ladder'] as const,
+    checkin: () => ['gamification', 'checkin'] as const,
   },
   announcements: {
     active: () => ['announcements', 'active'] as const,
@@ -1047,6 +1048,39 @@ export function useGamificationProfile(options?: { enabled?: boolean }) {
     queryFn: async () => (await api.get<GamificationProfile>('/gamification/me')).data,
     enabled: options?.enabled ?? true,
     staleTime: 60_000,
+  })
+}
+
+export interface CheckinStatus {
+  checked_in_today: boolean
+  streak: number
+  total: number
+  daily_xp: number
+  weekly_bonus_xp: number
+}
+
+export interface CheckinResult extends CheckinStatus {
+  awarded: boolean
+  bonus_awarded: boolean
+}
+
+export function useCheckinStatus(options?: { enabled?: boolean }) {
+  return useQuery<CheckinStatus>({
+    queryKey: keys.gamification.checkin(),
+    queryFn: async () => (await api.get<CheckinStatus>('/gamification/checkin')).data,
+    enabled: options?.enabled ?? true,
+    staleTime: 30_000,
+  })
+}
+
+export function useDailyCheckin() {
+  const qc = useQueryClient()
+  return useMutation<CheckinResult, unknown, void>({
+    mutationFn: async () => (await api.post<CheckinResult>('/gamification/checkin')).data,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: keys.gamification.checkin() })
+      void qc.invalidateQueries({ queryKey: keys.gamification.profile() })
+    },
   })
 }
 
