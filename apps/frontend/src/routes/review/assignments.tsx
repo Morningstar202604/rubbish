@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { waitingChip } from '@/components/common/waiting-chip'
 
 export const Route = createFileRoute('/review/assignments')({
   beforeLoad: () => {
@@ -226,6 +227,11 @@ function ReviewWorkbenchPage() {
                   </h3>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     {statusBadge(a.status)}
+                    {(a.status === 'pending' || a.status === 'accepted') &&
+                      waitingChip(a.invited_at, {
+                        urgentAfterDays: 5,
+                        urgentSuffix: ' · 请尽快',
+                      })}
                     <span>邀请于 {new Date(a.invited_at).toLocaleString()}</span>
                     {a.due_date && (
                       <span>· 截止 {new Date(a.due_date).toLocaleString()}</span>

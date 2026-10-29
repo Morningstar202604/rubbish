@@ -10,6 +10,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { waitingChip } from '@/components/common/waiting-chip'
 import { getAuthState } from '@/lib/auth'
 import { useAuth } from '@/hooks/use-auth'
 import {
@@ -76,26 +77,6 @@ export const Route = createFileRoute('/submissions/pending')({
   },
   component: PendingSubmissionsPage,
 })
-
-// 等待时效徽章：编辑部 SLA 的可视化——pending/审稿中的稿件超过 3 天未动
-// 出琥珀牌，超过 7 天出红牌。挂在工作台状态徽章旁，让"该催哪篇"一眼可见。
-function waitingChip(submittedAt: string): React.ReactNode {
-  const days = Math.floor((Date.now() - new Date(submittedAt).getTime()) / 86_400_000)
-  if (days < 3) return null
-  const urgent = days >= 7
-  return (
-    <Badge
-      className={
-        urgent
-          ? 'bg-red-500/15 text-red-700'
-          : 'bg-amber-500/15 text-amber-700'
-      }
-      title={`提交于 ${new Date(submittedAt).toLocaleDateString()}`}
-    >
-      已等待 {days} 天{urgent ? ' · 优先处理' : ''}
-    </Badge>
-  )
-}
 
 const DECISION_OPTIONS: { value: EditorDecision; label: string; hint?: string }[] = [
   { value: 'accept', label: '接收（Accept）', hint: '自动入目录' },
@@ -336,7 +317,8 @@ function PendingSubmissionsPage() {
                   {s.authors.join(', ')}
                 </p>
                 <p className="line-clamp-2 text-sm">{s.abstract}</p>
-                <div className="flex flex-wrap items-center gap-2">
+                {/* 小屏双列网格：按钮不再挤成一行小字，触控目标 44px 级 */}
+                <div className="flex flex-wrap items-center gap-2 max-sm:grid max-sm:grid-cols-2 max-sm:[&>button]:min-h-10">
                   <Button variant="outline" size="sm" onClick={() => setDetail(s)}>
                     <Eye className="h-4 w-4" /> 详情
                   </Button>
