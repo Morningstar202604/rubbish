@@ -36,7 +36,15 @@ logger = get_logger("rubbish.admin")
 
 # Allowlist of assignable role names; mirrors Role.name values. Admin
 # privilege is governed by User.is_admin, not by role membership.
-ASSIGNABLE_ROLES = {"reviewer", "editor", "section_editor", "author", "reader"}
+# senior_reviewer（L6 资深审稿人）与 reviewer 共用评审端点，仅资格差异。
+ASSIGNABLE_ROLES = {
+    "reviewer",
+    "senior_reviewer",
+    "editor",
+    "section_editor",
+    "author",
+    "reader",
+}
 
 
 @router.get("/security/status")

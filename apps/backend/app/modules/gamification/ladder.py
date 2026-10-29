@@ -141,10 +141,10 @@ LEVELS: tuple[LevelSpec, ...] = (
         roles=("section_editor",),
         capabilities=(
             "L6 全部权限",
-            "负责单一学科栏目的初审与送审",
-            "推荐录用名单",
+            "初审与送审（分配/撤销审稿人）",
+            "推荐录用名单（无最终裁决权）",
         ),
-        description="按学科分工的栏目编辑，权限限定在本栏目。",
+        description="编辑部初审岗位：送审与推荐，录用/修回/拒稿由 L8 执行编辑裁决。",
     ),
     LevelSpec(
         level=8,

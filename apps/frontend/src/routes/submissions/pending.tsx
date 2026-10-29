@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getAuthState } from '@/lib/auth'
+import { useAuth } from '@/hooks/use-auth'
 import {
   downloadSubmissionFile,
   useAllSubmissions,
@@ -176,6 +177,11 @@ function PendingSubmissionsPage() {
   const page = search.page ?? 1
   // 'all' tab 不传 status，让后端返回全部状态
   const statusFilter = statusTab === 'all' ? undefined : statusTab
+  // 职权分离（与后端 require_chief_editor 同口径）：四元最终决定是
+  // L8 执行编辑 / L9 主编的职权；L7 栏目编辑只有初审、送审与推荐权。
+  const { isAdmin, user } = useAuth()
+  const isChief = isAdmin || (user?.roles ?? []).includes('editor')
+  const isSectionOnly = !isChief && (user?.roles ?? []).includes('section_editor')
 
   const { data, isLoading, isError, refetch } = useAllSubmissions(
     statusFilter,
@@ -242,6 +248,13 @@ function PendingSubmissionsPage() {
         description="分配审稿人、查看审稿报告、做最终决定。支持按状态筛选全部提交。"
       />
 
+      {isSectionOnly && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          你以栏目编辑（L7）身份查看工作台：可以初审、分配审稿人并给出推荐意见，
+          最终录用 / 修回 / 拒稿决定由执行编辑（L8）作出。
+        </div>
+      )}
+
       <Tabs
         value={statusTab}
         onValueChange={(v) =>
@@ -305,19 +318,20 @@ function PendingSubmissionsPage() {
                       <ClipboardList className="h-4 w-4" /> 查看分配
                     </Button>
                   )}
-                  {['pending', 'under_review', 'resubmitted'].includes(s.status) && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        setDecisionTarget(s)
-                        setDecisionForm(EMPTY_DECISION)
-                      }}
-                      disabled={decisionMut.isPending}
-                    >
-                      <Gavel className="h-4 w-4" /> 做决定
-                    </Button>
-                  )}
+                  {['pending', 'under_review', 'resubmitted'].includes(s.status) &&
+                    isChief && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setDecisionTarget(s)
+                          setDecisionForm(EMPTY_DECISION)
+                        }}
+                        disabled={decisionMut.isPending}
+                      >
+                        <Gavel className="h-4 w-4" /> 做决定
+                      </Button>
+                    )}
                   <Button
                     variant="ghost"
                     size="sm"

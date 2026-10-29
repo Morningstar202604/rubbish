@@ -74,3 +74,31 @@ async def test_section_editor_has_editor_access(
     for path in ("/api/submissions/pending", "/api/submissions/reviewer-candidates"):
         r = await client.get(path, headers={"Authorization": f"Bearer {token}"})
         assert r.status_code == 200, f"{path}: {r.text[:200]}"
+
+
+async def test_senior_reviewer_can_review_and_enter_pool(
+    client: AsyncClient, admin_user: dict, test_user: dict
+) -> None:
+    """L6 资深审稿人断链修复：角色可授予、能进候选池、能走评审端点。
+
+    此前 ASSIGNABLE_ROLES 不含 senior_reviewer、require_reviewer 不认它、
+    候选池只查 reviewer —— ladder 承诺的 L6 是个空头等级。
+    """
+    await _assign(client, admin_user, int(test_user["user_id"]), "senior_reviewer")
+    login = await client.post(
+        "/api/auth/login",
+        json={"username": "testuser", "password": "password123"},
+    )
+    assert login.status_code == 200
+    assert login.json()["roles"] == ["senior_reviewer"]
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 候选池应包含资深审稿人（与 reviewer 同池）
+    r = await client.get("/api/submissions/reviewer-candidates", headers=auth_headers(admin_user))
+    assert r.status_code == 200
+    assert "testuser" in [c["username"] for c in r.json()["data"]]
+
+    # 评审侧端点：/review/assignments/me 此前对 senior_reviewer 是 403
+    r = await client.get("/api/review/assignments/me", headers=headers)
+    assert r.status_code == 200, r.text[:200]

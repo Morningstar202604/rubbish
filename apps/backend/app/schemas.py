@@ -203,8 +203,8 @@ class UserResponse(BaseModel):
 class RoleAssign(BaseModel):
     """Body for POST /admin/users/{id}/roles — assign a role to a user."""
 
-    # 仅允许分配审稿相关角色；admin 角色由 is_admin 字段控制，不在此处
-    role: Literal["reviewer", "editor", "section_editor", "author", "reader"]
+    # 仅允许分配编辑部/社区角色；admin 角色由 is_admin 字段控制，不在此处
+    role: Literal["reviewer", "senior_reviewer", "editor", "section_editor", "author", "reader"]
 
 
 class ReviewModeUpdate(BaseModel):

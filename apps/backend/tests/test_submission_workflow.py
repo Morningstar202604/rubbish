@@ -310,6 +310,36 @@ async def test_editor_decision_requires_editor(client: AsyncClient, test_user: d
     assert response.status_code == 403
 
 
+async def test_section_editor_cannot_decide(
+    client: AsyncClient, test_user: dict, admin_user: dict
+) -> None:
+    """职权分离：L7 栏目编辑可送审（分配审稿人），但四元决定是 L8 职权。
+
+    此前 require_editor 让 section_editor 也能直接录用/拒稿，与 ladder
+    「推荐录用名单（无最终裁决权）」的分工承诺不符。
+    """
+    await _assign_role(client, admin_user, int(test_user["user_id"]), "section_editor")
+    sub = await _create_submission(client, test_user)
+
+    # 送审权在（分配审稿人先拿一个真审稿人占位不必——直接验证决定被拒）
+    response = await client.patch(
+        f"/api/submissions/{sub['id']}/decision",
+        json={"decision": "accept"},
+        headers=auth_headers(test_user),
+    )
+    assert response.status_code == 403
+    # 状态未被改动
+    body = await _get(client, sub["id"], test_user)
+    assert body["status"] == "pending"
+
+
+async def _assign_role(client: AsyncClient, admin: dict, user_id: int, role: str) -> None:
+    response = await client.post(
+        f"/api/admin/users/{user_id}/roles", json={"role": role}, headers=auth_headers(admin)
+    )
+    assert response.status_code == 201, response.text
+
+
 async def test_editor_decision_rejects_unknown_decision(
     client: AsyncClient, test_user: dict, admin_user: dict
 ) -> None:

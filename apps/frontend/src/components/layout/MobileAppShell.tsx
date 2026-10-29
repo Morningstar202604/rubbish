@@ -124,9 +124,15 @@ export function MobileAppShell() {
   // /account/security 的「当前密码」输入框中心点能命中 FAB。
   // 导入入口在「我的」抽屉里也有一份，收起 FAB 不会断掉任何路径。
   const FAB_ROUTES = ['/dashboard', '/catalog', '/library', '/follows', '/recommendations', '/notifications']
+  // 导入（元数据抓取）是作者/编辑部的投稿辅助工具；纯读者看不到入口，
+  // 避免点进去是一个与自身角色无关的表单。
+  const canIngest =
+    isAdmin ||
+    ['author', 'editor', 'section_editor'].some((r) => (user?.roles ?? []).includes(r))
   const showFab =
     showChrome &&
     isAuthenticated &&
+    canIngest &&
     !hasOwnBottomBar &&
     FAB_ROUTES.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))
 

@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
-import { getAuthState } from '@/lib/auth'
+import { requireAdminGuard } from '@/lib/route-guards'
 import { parseListField } from '@/lib/utils'
 import { useCreateResource } from '@/hooks/api/use-modules'
 import type { PublicationStatus, ResourceCreate, ResourceType } from '@/lib/types'
@@ -22,7 +22,7 @@ import {
 
 export const Route = createFileRoute('/catalog/new')({
   beforeLoad: () => {
-    if (!getAuthState().isAdmin) throw redirect({ to: '/login' })
+    requireAdminGuard()
   },
   component: NewResourcePage,
 })

@@ -15,8 +15,10 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import (
     ROLE_EDITOR,
     ROLE_REVIEWER,
+    ROLE_SENIOR_REVIEWER,
     get_current_user,
     require_admin,
+    require_chief_editor,
     require_editor,
     require_tenant_id,
     user_has_role,
@@ -84,11 +86,12 @@ async def list_reviewer_candidates(
     _: User = Depends(require_editor),
     db: AsyncSession = Depends(get_db),
 ) -> ReviewerCandidateListResponse:
-    """可被指派的审稿人（持 reviewer 角色且账号启用）。
+    """可被指派的审稿人（持 reviewer / senior_reviewer 角色且账号启用）。
 
     供编辑工作台的下拉使用：之前走 /admin/users，非 admin 的 editor
     会拿到 403，导致「没有可指派的审稿人」。此端点只暴露分配所需的最小
-    字段（id / username / email），且同样要求 editor 权限。
+    字段（id / username / email），且同样要求 editor 权限。L6 资深审稿人
+    与 L5 共用候选池（与 require_reviewer 同口径）。
     """
     tenant_id = require_tenant_id()
     rows = (
@@ -101,7 +104,7 @@ async def list_reviewer_candidates(
                 User.is_active.is_(True),
                 UserRole.tenant_id == tenant_id,
                 Role.tenant_id == tenant_id,
-                Role.name == ROLE_REVIEWER,
+                Role.name.in_([ROLE_REVIEWER, ROLE_SENIOR_REVIEWER]),
             )
             .order_by(User.username.asc())
             .limit(limit)
@@ -520,7 +523,7 @@ async def list_review_reports(
 async def editor_decision(
     submission_id: int,
     body: SubmissionDecision,
-    current_user: User = Depends(require_editor),
+    current_user: User = Depends(require_chief_editor),
     db: AsyncSession = Depends(get_db),
 ) -> SubmissionResponse:
     """编辑最终决定（4 元）。
@@ -533,6 +536,9 @@ async def editor_decision(
     reject: status = 'rejected'（终态）
 
     approved / rejected 是旧 review 端点的别名，等价于 accept / reject。
+
+    权限：仅 L8 执行编辑 / L9 主编（require_chief_editor）。L7 栏目编辑
+    按分工只有初审、送审与推荐权，无最终裁决权。
     """
     entry = await _get_or_404(db, submission_id)
     # 仅 pending / under_review / resubmitted 可决断

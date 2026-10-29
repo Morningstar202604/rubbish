@@ -1,6 +1,6 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { Info } from 'lucide-react'
-import { getAuthState } from '@/lib/auth'
+import { requireAdminGuard } from '@/lib/route-guards'
 import { useJournalSettings } from '@/hooks/api/use-modules'
 import { PageHeader } from '@/components/common/page-header'
 import { ErrorState, Loading } from '@/components/common/state'
@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label'
 
 export const Route = createFileRoute('/admin/journal')({
   beforeLoad: () => {
-    if (!getAuthState().isAdmin) throw redirect({ to: '/login' })
+    requireAdminGuard()
   },
   component: AdminJournalPage,
 })

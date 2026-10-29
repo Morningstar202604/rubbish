@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { ChevronRight, Search } from 'lucide-react'
-import { getAuthState } from '@/lib/auth'
+import { requireAdminGuard } from '@/lib/route-guards'
 import { CATALOG_PAGE_MAX, useVolumeList } from '@/hooks/api/use-modules'
 import { PageHeader } from '@/components/common/page-header'
 import { EmptyState, ErrorState, Loading } from '@/components/common/state'
@@ -18,7 +18,7 @@ import {
 
 export const Route = createFileRoute('/admin/volumes')({
   beforeLoad: () => {
-    if (!getAuthState().isAdmin) throw redirect({ to: '/login' })
+    requireAdminGuard()
   },
   component: AdminVolumesPage,
 })

@@ -50,6 +50,7 @@ export interface UserResponse {
 // 可分配的角色名（与 backend ASSIGNABLE_ROLES 一致；admin 不在此处，由 is_admin 控制）
 export type AssignableRole =
   | 'reviewer'
+  | 'senior_reviewer'
   | 'editor'
   | 'section_editor'
   | 'author'

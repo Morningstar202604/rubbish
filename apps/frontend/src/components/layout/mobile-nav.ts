@@ -67,7 +67,7 @@ export const MOBILE_MORE: MobileMoreItem[] = [
     icon: Gavel,
     roles: ['editor', 'section_editor'],
   },
-  { to: '/ingest', label: '导入', icon: Upload },
+  { to: '/ingest', label: '导入', icon: Upload, roles: ['author', 'editor', 'section_editor'] },
   { to: '/settings', label: '账号设置', icon: Settings },
   { to: '/account/security', label: '账号安全', icon: KeyRound },
   { to: '/admin/users', label: '用户管理', icon: Users, adminOnly: true },

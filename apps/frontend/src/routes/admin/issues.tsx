@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { ArrowLeft, Search } from 'lucide-react'
-import { getAuthState } from '@/lib/auth'
+import { requireAdminGuard } from '@/lib/route-guards'
 import { CATALOG_PAGE_MAX, useIssueList } from '@/hooks/api/use-modules'
 import { PageHeader } from '@/components/common/page-header'
 import { EmptyState, ErrorState, Loading } from '@/components/common/state'
@@ -23,7 +23,7 @@ interface IssuesSearch {
 
 export const Route = createFileRoute('/admin/issues')({
   beforeLoad: () => {
-    if (!getAuthState().isAdmin) throw redirect({ to: '/login' })
+    requireAdminGuard()
   },
   validateSearch: (search: Record<string, unknown>): IssuesSearch => ({
     volume: typeof search.volume === 'string' ? search.volume : undefined,

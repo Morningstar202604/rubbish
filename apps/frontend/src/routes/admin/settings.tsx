@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { AxiosError } from 'axios'
 import { Info } from 'lucide-react'
 import { toast } from 'sonner'
-import { getAuthState } from '@/lib/auth'
+import { requireAdminGuard } from '@/lib/route-guards'
 import { useReviewMode, useSetReviewMode } from '@/hooks/api/use-modules'
 import type { ReviewMode } from '@/lib/types'
 import { PageHeader } from '@/components/common/page-header'
@@ -20,7 +20,7 @@ import {
 
 export const Route = createFileRoute('/admin/settings')({
   beforeLoad: () => {
-    if (!getAuthState().isAdmin) throw redirect({ to: '/login' })
+    requireAdminGuard()
   },
   component: AdminSettingsPage,
 })

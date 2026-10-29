@@ -496,7 +496,8 @@ async def test_decision_requires_editor_role(client: AsyncClient, test_user: dic
         headers=auth_headers(test_user),
     )
     assert resp.status_code == 403
-    assert "Editor role required" in resp.json()["detail"]
+    # 四元决定是 L8 职权（require_chief_editor），普通作者/读者不可越权
+    assert "Chief editor role required" in resp.json()["detail"]
 
 
 async def test_resubmit_only_author(client: AsyncClient, admin_user: dict, test_user: dict) -> None:

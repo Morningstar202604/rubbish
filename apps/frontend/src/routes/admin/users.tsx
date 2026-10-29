@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { MoreHorizontal, Search } from 'lucide-react'
 import { toast } from 'sonner'
-import { getAuthState } from '@/lib/auth'
+import { requireAdminGuard } from '@/lib/route-guards'
 import { useAdminUsers, useAssignRole, useRevokeRole, useSetUserActive } from '@/hooks/api/use-modules'
 import { useAuth } from '@/hooks/use-auth'
 import type { AssignableRole, UserResponse } from '@/lib/types'
@@ -36,6 +36,7 @@ const PAGE_SIZE = 50
 // 与后端 ASSIGNABLE_ROLES 一致；admin 角色由 is_admin 控制，不在此处
 const ASSIGNABLE_ROLES: AssignableRole[] = [
   'reviewer',
+  'senior_reviewer',
   'editor',
   'section_editor',
   'author',
@@ -44,6 +45,7 @@ const ASSIGNABLE_ROLES: AssignableRole[] = [
 
 const ROLE_LABELS: Record<AssignableRole, string> = {
   reviewer: '审稿人',
+  senior_reviewer: '资深审稿人',
   editor: '编辑',
   section_editor: '栏目编辑',
   author: '作者',
@@ -52,7 +54,7 @@ const ROLE_LABELS: Record<AssignableRole, string> = {
 
 export const Route = createFileRoute('/admin/users')({
   beforeLoad: () => {
-    if (!getAuthState().isAdmin) throw redirect({ to: '/login' })
+    requireAdminGuard()
   },
   component: AdminUsersPage,
 })

@@ -171,6 +171,7 @@ async def get_current_user_optional(
 
 # 预定义角色名（与 Role 表保持一致；bootstrap 创建时用此 slug）
 ROLE_REVIEWER = "reviewer"
+ROLE_SENIOR_REVIEWER = "senior_reviewer"
 ROLE_EDITOR = "editor"
 ROLE_SECTION_EDITOR = "section_editor"
 
@@ -225,11 +226,15 @@ async def require_reviewer(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """要求当前用户拥有 reviewer 角色或 admin。
+    """要求当前用户拥有 reviewer / senior_reviewer 角色或 admin。
 
-    用于审稿人侧的 accept/decline/submit 端点。
+    L5 审稿人与 L6 资深审稿人共用同一套评审端点（接受/拒绝邀请、提交
+    意见）；资深审稿人只是资格等级与候选池排序的差异，不是独立权限域。
+    此前仅认 reviewer，导致 ladder 承诺的 L6 授予后处处 403。
     """
-    if await _user_has_role(db, current_user, ROLE_REVIEWER):
+    if await _user_has_role(db, current_user, ROLE_REVIEWER) or await _user_has_role(
+        db, current_user, ROLE_SENIOR_REVIEWER
+    ):
         return current_user
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -243,9 +248,9 @@ async def require_editor(
 ) -> User:
     """要求当前用户拥有 editor / section_editor 角色或 admin。
 
-    用于编辑分配审稿人 + 4 元决定端点。section_editor（栏目编辑）在
-    权限层面是 editor 的子集角色，此前可被分配但没有任何实际权限，
-    导致「编辑工作台」入口可见却处处 403。
+    用于编辑工作台的读端点与送审操作（分配/撤销审稿人、匿名稿）。
+    注意职权分离：**四元最终决定（录用/修回/拒稿）是 L8 执行编辑的
+    职权**，见 :func:`require_chief_editor`。
     """
     if await _user_has_role(db, current_user, ROLE_EDITOR) or await _user_has_role(
         db, current_user, ROLE_SECTION_EDITOR
@@ -254,4 +259,22 @@ async def require_editor(
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="Editor role required",
+    )
+
+
+async def require_chief_editor(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """要求当前用户拥有 editor 角色或 admin（L8 执行编辑 / L9 主编）。
+
+    用于稿件四元决定端点。section_editor（L7 栏目编辑）按 ladder 契约
+    只做初审、送审与**推荐**录用，没有最终裁决权；此前 require_editor
+    让 L7 也能直接作出录用/拒稿决定，与等级体系的分工承诺不符。
+    """
+    if await _user_has_role(db, current_user, ROLE_EDITOR):
+        return current_user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Chief editor role required",
     )
