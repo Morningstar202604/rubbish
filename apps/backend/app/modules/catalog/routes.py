@@ -8,12 +8,13 @@ on every query) AND by RLS in production.
 
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime
 from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import desc, func, select, update
@@ -673,6 +674,7 @@ async def download_resource_file(
 @router.get("/{resource_id}/manuscript")
 async def get_resource_manuscript(
     resource_id: int,
+    if_none_match: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
     viewer: User | None = Depends(get_current_user_optional),
 ) -> Response:
@@ -724,10 +726,19 @@ async def get_resource_manuscript(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Stored manuscript is missing"
         ) from exc
+    # 1.6.0：稿件含 220dpi 内嵌图（单篇可达 1-2MB），给协商缓存——
+    # 内容 sha256 作 ETag，重复阅读命中 304 不再重拉。
+    etag = f'W/"{hashlib.sha256(data).hexdigest()[:32]}"'
+    if if_none_match and etag in if_none_match:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag})
     return Response(
         content=data,
         media_type="text/markdown; charset=utf-8",
-        headers={"X-Content-Type-Options": "nosniff"},
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "ETag": etag,
+            "Cache-Control": "private, max-age=300",
+        },
     )
 
 
