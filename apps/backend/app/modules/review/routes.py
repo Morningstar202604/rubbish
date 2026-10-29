@@ -234,6 +234,16 @@ async def accept_assignment(
         )
     a.status = "accepted"
     a.responded_at = utcnow()
+    # 通知指派编辑：邀请被接受（否则编辑只能反复刷新工作台才知道有人应邀）
+    if a.assigned_by is not None and a.assigned_by != current_user.id:
+        await notifications.create(
+            db,
+            tenant_id=current_user.tenant_id,
+            user_id=a.assigned_by,
+            type_="review.accepted",
+            title=f"审稿邀请已被接受：{a.submission.title if a.submission else '稿件 #' + str(a.submission_id)}",
+            body=f"{current_user.username} 已接受《#{a.submission_id}》的审稿邀请。",
+        )
     try:
         await db.commit()
     except IntegrityError as exc:
@@ -264,6 +274,16 @@ async def decline_assignment(
         )
     a.status = "declined"
     a.responded_at = utcnow()
+    # 通知指派编辑：邀请被拒——编辑需要尽快改派他人，静默会让稿件干等
+    if a.assigned_by is not None and a.assigned_by != current_user.id:
+        await notifications.create(
+            db,
+            tenant_id=current_user.tenant_id,
+            user_id=a.assigned_by,
+            type_="review.declined",
+            title=f"审稿邀请被拒：{a.submission.title if a.submission else '稿件 #' + str(a.submission_id)}",
+            body=f"{current_user.username} 拒绝了《#{a.submission_id}》的审稿邀请，请考虑改派其他审稿人。",
+        )
     try:
         await db.commit()
     except IntegrityError as exc:

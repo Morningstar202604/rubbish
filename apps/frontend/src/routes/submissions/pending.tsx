@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute, redirect, useNavigate, useSearch } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect, useNavigate, useSearch } from '@tanstack/react-router'
 import {
   ClipboardList,
   Download,
@@ -286,6 +286,20 @@ function PendingSubmissionsPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-medium">{s.title}</h3>
                     {statusBadge(s.status)}
+                    {s.status === 'accepted' &&
+                      s.resource_publication_status === 'draft' &&
+                      (s.resource_id ? (
+                        <Link
+                          to="/catalog/$resourceId"
+                          params={{ resourceId: String(s.resource_id) }}
+                          className="inline-flex items-center"
+                          title="录用时选择了暂存：进入资源详情后可在「管理此条」里刊出"
+                        >
+                          <Badge className="bg-amber-500/15 text-amber-700">刊前整理 · 去刊出</Badge>
+                        </Link>
+                      ) : (
+                        <Badge className="bg-amber-500/15 text-amber-700">刊前整理</Badge>
+                      ))}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <Badge variant="outline">{typeLabel(s.type)}</Badge>

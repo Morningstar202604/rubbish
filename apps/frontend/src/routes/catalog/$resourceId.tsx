@@ -12,6 +12,7 @@ import {
   MoreVertical,
   Pencil,
   Quote,
+  Send,
   Share2,
   Trash2,
 } from 'lucide-react'
@@ -388,6 +389,25 @@ function CatalogDetailPage() {
                         <Pencil className="h-4 w-4" />
                         编辑题录
                       </DropdownMenuItem>
+                      {data.publication_status === 'draft' && (
+                        <DropdownMenuItem
+                          disabled={updateMut.isPending}
+                          onClick={() => {
+                            // 刊前整理完成 → 刊出（可逆：改回 draft 即可撤回）
+                            updateMut.mutate(
+                              { id, body: { publication_status: 'published' } },
+                              {
+                                onSuccess: () =>
+                                  toast.success('已刊出：该条目现已进入公开目录'),
+                                onError: () => toast.error('刊出失败，请稍后再试'),
+                              },
+                            )
+                          }}
+                        >
+                          <Send className="h-4 w-4" />
+                          刊出（进入公开目录）
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
                         onClick={() => setDeleteOpen(true)}

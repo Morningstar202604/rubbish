@@ -236,6 +236,22 @@ function statusBadge(status: SubmissionStatus) {
   }
 }
 
+// 状态语义提示：首次投稿的作者最焦虑的是"这个状态是什么意思、我该做什么"。
+// 一句话讲清现状与下一步，展示在详情面板状态徽章下方。
+const STATUS_HINTS: Record<string, string> = {
+  pending: '编辑部尚未处理。编辑会初审并决定是否送外审，通常 3–7 天内更新。',
+  under_review: '外审进行中：审稿人正在评审你的稿件，请耐心等待审稿意见。',
+  major_revision: '审稿人要求大修：请按修改意见修改稿件，然后使用「重投」提交新版本。',
+  minor_revision: '审稿人要求小修：小幅调整后即可「重投」，通常无需再次外审。',
+  resubmitted: '修改稿已提交，等待编辑部重新审理。',
+  accepted: '已录用！稿件已进入目录（或刊前整理阶段），感谢你的投稿。',
+  rejected: '本次未录用。欢迎根据审稿意见完善后另投。',
+}
+
+function statusHint(status: string): string {
+  return STATUS_HINTS[status] ?? ''
+}
+
 function SubmissionsPage() {
   const navigate = useNavigate()
   // 上传约束来自服务端（/capabilities），前端不再维护第二份规则。
@@ -518,6 +534,11 @@ function SubmissionsPage() {
                 <span className="text-muted-foreground">{detail.discipline}</span>
                 <span className="text-muted-foreground">{detail.year}</span>
               </div>
+              {statusHint(detail.status) && (
+                <p className="rounded-md bg-muted/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                  {statusHint(detail.status)}
+                </p>
+              )}
               <WorkflowTimeline
                 status={detail.status}
                 submittedAt={new Date(detail.submitted_at)}
