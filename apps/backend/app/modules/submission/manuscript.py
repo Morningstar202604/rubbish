@@ -105,6 +105,20 @@ def convert_to_markdown(contents: bytes, filename: str) -> str | None:
     """尽力把上传稿件转成 Markdown；不支持或失败一律返回 None。"""
     ext = os.path.splitext(filename or "")[1].lower()
     try:
+        result = _convert_to_markdown_inner(contents, ext)
+        if result is None:
+            return None
+        # PDF 内嵌的数学斜体等字符偶尔以孤立代理对形式出现（\ud835…），
+        # 存储层 UTF-8 编码会直接抛异常。这些残缺字形无法还原，直接剔除。
+        return re.sub(r"[\ud800-\udfff]", "", result)
+    except Exception:
+        # 转换是增值能力：损坏/加密/超纲的输入一律静默降级。
+        logger.warning("manuscript_convert_failed ext=%s", ext, exc_info=True)
+        return None
+
+
+def _convert_to_markdown_inner(contents: bytes, ext: str) -> str | None:
+    try:
         if ext == ".pdf":
             md = _pdf_to_markdown(contents)
             # 统一清洗：去 HTML 标签/刊头重跑行/页码，摘要升为 H2。
