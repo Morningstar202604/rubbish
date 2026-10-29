@@ -34,6 +34,7 @@ import type {
   ReadingListUpdate,
   ReadingProgressResponse,
   ReadingProgressUpdate,
+  ReadingHistoryListResponse,
   RecommendationListResponse,
   ResourceCreate,
   ResourceListParams,
