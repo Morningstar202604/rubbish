@@ -45,17 +45,28 @@ def _pdf_to_markdown(contents: bytes) -> str | None:
             logger.info("manuscript_convert_skipped reason=encrypted_pdf")
             return None
         with tempfile.TemporaryDirectory(prefix="rubbish-md-") as tmp:
-            md = pymupdf4llm.to_markdown(
-                doc,
-                write_images=True,
-                image_path=tmp,
-                image_format="png",
-                image_size_limit=0.0,
-                # 1.6.0：110 → 220。110dpi 下论文插图（截图/曲线图）明显
-                # 模糊；220 使像素量翻两番且仍显著小于原始内嵌位图，
-                # 代价是 data URI 体积变大（可接受：阅读器按需加载）。
-                dpi=220,
-            )
+            try:
+                # 1.6.0：dpi 110 → 220（像素量 4×，论文插图不再模糊）；
+                # 图片输出 PNG → JPEG（照片类体积砍 5-10×，q 默认值即可，
+                # 截图类线条在 220dpi 下依然锐利）。jpeg 不被接受时回退 png。
+                md = pymupdf4llm.to_markdown(
+                    doc,
+                    write_images=True,
+                    image_path=tmp,
+                    image_format="jpeg",
+                    image_size_limit=0.0,
+                    dpi=220,
+                )
+            except Exception:
+                logger.info("manuscript_jpeg_fallback_to_png")
+                md = pymupdf4llm.to_markdown(
+                    doc,
+                    write_images=True,
+                    image_path=tmp,
+                    image_format="png",
+                    image_size_limit=0.0,
+                    dpi=220,
+                )
             # pymupdf4llm 产出对临时目录图片的文件引用：逐个内嵌为 data URI，
             # 让 Markdown 自包含（阅读器无需额外的图片端点）。
             # 引用可能是裸文件名，也可能是带临时目录的绝对路径（Windows 上实测
@@ -65,8 +76,9 @@ def _pdf_to_markdown(contents: bytes) -> str | None:
                 path = Path(tmp, name)
                 if not path.is_file():
                     continue
+                mime = "image/jpeg" if name.lower().endswith((".jpg", ".jpeg")) else "image/png"
                 b64 = base64.b64encode(path.read_bytes()).decode("ascii")
-                data_uri = f"data:image/png;base64,{b64}"
+                data_uri = f"data:{mime};base64,{b64}"
                 pattern = r"!\[([^\]]*)\]\(([^)\n]*" + re.escape(name) + r")\)"
                 md = re.sub(pattern, f"![\\g<1>]({data_uri})", md)
         md = md.strip()
