@@ -77,6 +77,26 @@ export const Route = createFileRoute('/submissions/pending')({
   component: PendingSubmissionsPage,
 })
 
+// 等待时效徽章：编辑部 SLA 的可视化——pending/审稿中的稿件超过 3 天未动
+// 出琥珀牌，超过 7 天出红牌。挂在工作台状态徽章旁，让"该催哪篇"一眼可见。
+function waitingChip(submittedAt: string): React.ReactNode {
+  const days = Math.floor((Date.now() - new Date(submittedAt).getTime()) / 86_400_000)
+  if (days < 3) return null
+  const urgent = days >= 7
+  return (
+    <Badge
+      className={
+        urgent
+          ? 'bg-red-500/15 text-red-700'
+          : 'bg-amber-500/15 text-amber-700'
+      }
+      title={`提交于 ${new Date(submittedAt).toLocaleDateString()}`}
+    >
+      已等待 {days} 天{urgent ? ' · 优先处理' : ''}
+    </Badge>
+  )
+}
+
 const DECISION_OPTIONS: { value: EditorDecision; label: string; hint?: string }[] = [
   { value: 'accept', label: '接收（Accept）', hint: '自动入目录' },
   { value: 'minor_revision', label: '小修（Minor Revision）' },
@@ -286,6 +306,8 @@ function PendingSubmissionsPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-medium">{s.title}</h3>
                     {statusBadge(s.status)}
+                    {['pending', 'under_review', 'resubmitted'].includes(s.status) &&
+                      waitingChip(s.submitted_at)}
                     {s.status === 'accepted' &&
                       s.resource_publication_status === 'draft' &&
                       (s.resource_id ? (

@@ -7,7 +7,9 @@ import {
   Lightbulb,
   Bell,
   Library,
+  PlayCircle,
   ScrollText,
+  Trophy,
   type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -24,6 +26,7 @@ import {
   useMySubmissions,
   useNotifications,
   usePendingSubmissions,
+  useReadingHistory,
   useReadingLists,
   useUnreadCount,
 } from '@/hooks/api/use-modules'
@@ -124,6 +127,89 @@ function CheckinBanner() {
   )
 }
 
+/** 继续阅读卡：只在上次没读完时出现——把"上次读到哪"变成一键回来的入口。 */
+function ContinueReadingCard() {
+  const history = useReadingHistory(1, 5)
+  const items = (history.data?.data ?? [])
+    .filter((h) => !h.completed && (h.progress_percent ?? 0) > 1 && h.title)
+    .slice(0, 2)
+  if (history.isLoading || items.length === 0) return null
+  return (
+    <Card className="border-primary/25 bg-primary/[0.03]">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <PlayCircle className="h-4 w-4 text-primary" />
+          继续阅读
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {items.map((h) => (
+          <Link
+            key={h.resource_id}
+            to="/reader/$resourceId"
+            params={{ resourceId: String(h.resource_id) }}
+            className="block rounded-lg border bg-card px-3 py-2 transition-colors hover:border-primary/40"
+          >
+            <p className="line-clamp-1 text-sm font-medium">{h.title}</p>
+            <div className="mt-1.5 flex items-center gap-2">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary/70"
+                  style={{ width: `${Math.min(100, Math.round(h.progress_percent ?? 0))}%` }}
+                />
+              </div>
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {Math.round(h.progress_percent ?? 0)}%
+              </span>
+            </div>
+          </Link>
+        ))}
+      </CardContent>
+    </Card>
+  )
+}
+
+/** 成就进度条：展示离解锁最近的 2 枚成就——让"再读 3 篇就能解锁"可见。 */
+function BadgeProgressStrip() {
+  const profile = useGamificationProfile()
+  const badges = profile.data?.badges ?? []
+  const next = badges
+    .filter((b) => !b.unlocked && b.threshold > 0)
+    .sort((a, b) => b.current / b.threshold - a.current / a.threshold)
+    .slice(0, 2)
+  if (profile.isLoading || next.length === 0) return null
+  return (
+    <div
+      className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border bg-card px-4 py-3"
+      data-testid="badge-progress"
+    >
+      <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Trophy className="h-3.5 w-3.5 text-amber-500" />
+        即将解锁
+      </span>
+      {next.map((b) => {
+        const pct = Math.min(100, Math.round((b.current / b.threshold) * 100))
+        return (
+          <div key={b.key} className="min-w-40 flex-1">
+            <div className="flex items-baseline justify-between gap-2 text-xs">
+              <span className="font-medium">{b.name}</span>
+              <span className="tabular-nums text-muted-foreground">
+                {b.current}/{b.threshold}
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-amber-500/80" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        )
+      })}
+      <Link to="/profile" className="text-xs text-primary hover:underline">
+        成就墙
+      </Link>
+    </div>
+  )
+}
+
 function DashboardPage() {
   const { user, isAdmin } = useAuth()
   const roles = user?.roles ?? []
@@ -184,6 +270,13 @@ function DashboardPage() {
       />
 
       <CheckinBanner />
+
+      <div className="mt-3">
+        <BadgeProgressStrip />
+      </div>
+      <div className="mt-3">
+        <ContinueReadingCard />
+      </div>
 
       {/* 移动端：2 列大数据块 + 快捷操作；桌面端：4 列小卡 */}
       {isMobile ? (

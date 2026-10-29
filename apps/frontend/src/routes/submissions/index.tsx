@@ -8,6 +8,7 @@ import {
   useSearch,
 } from '@tanstack/react-router'
 import {
+  ChevronDown,
   Download,
   ExternalLink,
   FileText,
@@ -272,6 +273,9 @@ function SubmissionsPage() {
   const updateMut = useUpdateSubmission()
 
   const [createOpen, setCreateOpen] = useState(false)
+  // 投稿表单"更多信息（选填）"折叠区：新建默认收起（先填必填项），
+  // 编辑已有稿件时自动展开——否则用户会以为选填字段被清空了。
+  const [moreOpen, setMoreOpen] = useState(false)
   // null = 新建模式；数字 = 正在编辑该 submission（复用同一套表单）
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
@@ -318,6 +322,7 @@ function SubmissionsPage() {
     if (!detail) return
     setForm(submissionToForm(detail))
     setEditingId(detail.id)
+    setMoreOpen(true)
     setCreateOpen(true)
   }
 
@@ -413,6 +418,7 @@ function SubmissionsPage() {
           <Button
             onClick={() => {
               setForm(EMPTY_FORM)
+              setMoreOpen(false)
               setCreateOpen(true)
             }}
           >
@@ -968,6 +974,21 @@ function SubmissionsPage() {
                 onChange={(e) => set('preview', e.target.value)}
               />
             </div>
+            {/* 选填区折叠：投稿第一眼只看到必填项，长表单不再劝退 */}
+            <button
+              type="button"
+              className="flex w-full items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+              onClick={() => setMoreOpen((v) => !v)}
+              aria-expanded={moreOpen}
+              data-testid="toggle-more-fields"
+            >
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${moreOpen ? 'rotate-180' : ''}`}
+              />
+              更多信息（选填：标签 / DOI / 代码数据链接等，可提高曝光与评审质量）
+            </button>
+            {moreOpen && (
+              <>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="tags">标签（逗号分隔）</Label>
@@ -1056,6 +1077,8 @@ function SubmissionsPage() {
                 />
               </div>
             </div>
+              </>
+            )}
             <div className="flex justify-end gap-2 border-t pt-4">
               <Button
                 type="button"

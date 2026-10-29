@@ -90,7 +90,13 @@ class ReadingProgressResponse(BaseModel):
 
 
 class ReadingHistoryEntryResponse(BaseModel):
-    """One row in GET /reader/history — progress for a single resource."""
+    """One row in GET /reader/history — progress for a single resource.
+
+    ``title`` / ``authors`` / ``discipline`` / ``year`` / ``resource_type``
+    are joined from the catalog row so the frontend can render a
+    「继续阅读」卡片 without a second round-trip. They are ``None`` only in
+    the degenerate case where the joined row vanished mid-request.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -102,6 +108,12 @@ class ReadingHistoryEntryResponse(BaseModel):
     progress_percent: float | None = None
     duration_sec: int
     completed: bool
+    # JOIN 附加的资源元信息（继续阅读卡直接渲染用）
+    title: str | None = None
+    authors: list[str] = []
+    discipline: str | None = None
+    year: int | None = None
+    resource_type: str | None = None
 
 
 class ReadingHistoryListResponse(BaseModel):

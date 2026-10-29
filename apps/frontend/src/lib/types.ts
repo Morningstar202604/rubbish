@@ -536,6 +536,12 @@ export interface ReadingHistoryEntryResponse {
   progress_percent?: number | null
   duration_sec: number
   completed: boolean
+  // JOIN 附加的资源元信息（继续阅读卡直接渲染用）
+  title?: string | null
+  authors?: string[]
+  discipline?: string | null
+  year?: number | null
+  resource_type?: string | null
 }
 
 export interface ReadingHistoryListResponse {

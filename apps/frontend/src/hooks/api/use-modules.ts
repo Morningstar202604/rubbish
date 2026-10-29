@@ -67,6 +67,7 @@ export const keys = {
   },
   reader: {
     progress: (id: number) => ['reader', 'progress', id] as const,
+    history: (page = 1) => ['reader', 'history', page] as const,
   },
   submission: {
     // page 必须进 key：queryFn 用了它，key 里没有就会出现「翻页后 60 秒内
@@ -250,6 +251,18 @@ export function useRecordView() {
       // Without this, the reading-history list never sees the new entry.
       void qc.invalidateQueries({ queryKey: ['reader'] })
     },
+  })
+}
+
+// 阅读历史（继续阅读卡数据源）：带资源元信息，一次请求即可渲染。
+export function useReadingHistory(page = 1, pageSize = 5) {
+  return useQuery<ReadingHistoryListResponse>({
+    queryKey: keys.reader.history(page),
+    queryFn: async () =>
+      (await api.get<ReadingHistoryListResponse>('/reader/history', {
+        params: { page, page_size: pageSize },
+      })).data,
+    staleTime: 30_000,
   })
 }
 

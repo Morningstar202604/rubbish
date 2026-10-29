@@ -83,10 +83,24 @@ async def list_history(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ReadingHistoryListResponse:
-    """List the current user's reading history, newest view first."""
+    """List the current user's reading history, newest view first.
+
+    只返回当前公开可见的资源（public_conditions）：被撤回/转入排期的条目
+    不再出现在历史里，避免「历史里点进去 404」。资源元信息按 id 批量
+    二次查询，前端「继续阅读」卡片一次请求即可渲染。
+    """
+    visible_ids = (
+        select(Resource.id)
+        .where(
+            Resource.tenant_id == current_user.tenant_id,
+            *public_conditions(),
+        )
+        .scalar_subquery()
+    )
     base = select(ReadingHistory).where(
         ReadingHistory.user_id == current_user.id,
         ReadingHistory.tenant_id == current_user.tenant_id,
+        ReadingHistory.resource_id.in_(visible_ids),
     )
     rows, meta = await paginate(
         db,
@@ -95,10 +109,33 @@ async def list_history(
         page_size=page_size,
         order_by=(desc(ReadingHistory.viewed_at), ReadingHistory.id.asc()),
     )
-    return ReadingHistoryListResponse(
-        data=[ReadingHistoryEntryResponse.model_validate(r) for r in rows],
-        meta=meta,
-    )
+    # 批量取本页涉及的资源元信息（避免 N+1；条目数 ≤ page_size）
+    ids = [h.resource_id for h in rows]
+    resources: dict[int, Resource] = {}
+    if ids:
+        res_rows = await db.execute(select(Resource).where(Resource.id.in_(ids)))
+        resources = {r.id: r for r in res_rows.scalars().all()}
+    data = []
+    for h in rows:
+        r = resources.get(h.resource_id)
+        data.append(
+            ReadingHistoryEntryResponse(
+                resource_id=h.resource_id,
+                viewed_at=h.viewed_at,
+                last_read_at=h.last_read_at,
+                visit_count=h.visit_count,
+                page=h.page,
+                progress_percent=h.progress_percent,
+                duration_sec=h.duration_sec,
+                completed=h.completed,
+                title=r.title if r else None,
+                authors=list(r.authors or []) if r else [],
+                discipline=r.discipline if r else None,
+                year=r.year if r else None,
+                resource_type=str(r.type) if r else None,
+            )
+        )
+    return ReadingHistoryListResponse(data=data, meta=meta)
 
 
 @router.post(
