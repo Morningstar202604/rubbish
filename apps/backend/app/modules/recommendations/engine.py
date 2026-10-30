@@ -226,6 +226,9 @@ async def recommend(
             .where(
                 ~Resource.id.in_(read_ids),
                 Resource.tenant_id == tenant_id,
+                # 推荐是公开面：排期中的期号不得出现在推荐结果里
+                # （falls back to _fallback_latest which already filters）。
+                *public_conditions(),
             )
             .order_by(desc(Resource.created_at))
             .limit(_MAX_CANDIDATE_SCAN)

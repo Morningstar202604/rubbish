@@ -248,16 +248,26 @@ async def journal_metrics(db: AsyncSession, tenant_id: Any) -> dict[str, Any]:
             select(func.coalesce(func.sum(Resource.download_count), 0)).where(*published_filter)
         )
     ).scalar_one()
+    # reads / saves 只统计公开可见条目：排期稿在指标页同样要隐身，
+    # 否则「期刊指标」会替还没上线的期数预热阅读量。
     reads = (
         await db.execute(
             select(func.coalesce(func.sum(ReadingHistory.visit_count), 0)).where(
-                ReadingHistory.tenant_id == tenant_id
+                ReadingHistory.tenant_id == tenant_id,
+                ReadingHistory.resource_id.in_(
+                    select(Resource.id).where(Resource.tenant_id == tenant_id, *public_conditions())
+                ),
             )
         )
     ).scalar_one()
     saves = (
         await db.execute(
-            select(func.count(ReadingListItem.id)).where(ReadingListItem.tenant_id == tenant_id)
+            select(func.count(ReadingListItem.id)).where(
+                ReadingListItem.tenant_id == tenant_id,
+                ReadingListItem.resource_id.in_(
+                    select(Resource.id).where(Resource.tenant_id == tenant_id, *public_conditions())
+                ),
+            )
         )
     ).scalar_one()
 

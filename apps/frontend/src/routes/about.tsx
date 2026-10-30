@@ -172,6 +172,12 @@ function AboutPage() {
           <p className="mt-3 text-sm">
             编辑部邮箱：<span className="font-medium">editorial@argjiemi.cn</span>
           </p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            本刊无广告、无付费墙，运行成本靠读者自愿支持：
+            <Link to="/support" className="ml-1 text-primary hover:underline">
+              支持本刊
+            </Link>
+          </p>
         </motion.section>
       </div>
     </div>

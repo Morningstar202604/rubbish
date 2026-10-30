@@ -24,8 +24,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import __version__
 from app.core.db import get_db
+from app.core.logging import get_logger
 from app.core.rate_limit_store import get_rate_limiter_store
 from app.schemas import HealthReadyResponse, HealthResponse
+
+logger = get_logger("rubbish.health")
 
 router = APIRouter(tags=["health"])
 
@@ -47,14 +50,13 @@ async def readiness_root(
     """
     try:
         await db.execute(text("SELECT 1"))
-    except Exception as exc:  # pragma: no cover - exercised in prod only
+    except Exception:  # pragma: no cover - exercised in prod only
+        # 探针是公开端点：连接串/驱动报错里常带主机名、用户名、端口，
+        # 不能回给调用方。详细原因只进日志。
+        logger.warning("readiness_db_check_failed", exc_info=True)
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "status": "error",
-                "database": "unavailable",
-                "detail": str(exc) if __debug__ else "unavailable",
-            },
+            content={"status": "error", "database": "unavailable"},
         )
     return HealthReadyResponse(status="ok", database="connected")
 

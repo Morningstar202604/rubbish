@@ -250,9 +250,14 @@ async def assign_reviewer(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Reviewer not found or inactive",
         )
-    # 被指派者必须持有 reviewer 角色；否则该用户在所有 /review 端点都会
-    # 卡死（require_reviewer 直接 403），分配毫无意义。
-    if not await user_has_role(db, reviewer, ROLE_REVIEWER):
+    # 被指派者必须持有 reviewer / senior_reviewer 角色；否则该用户在所有
+    # /review 端点都会卡死（require_reviewer 直接 403），分配毫无意义。
+    # L6 资深审稿人与 L5 共用同一个评审端点与候选池，这里必须同口径，
+    # 否则候选下拉里能选到、点下去却 422。
+    if not (
+        await user_has_role(db, reviewer, ROLE_REVIEWER)
+        or await user_has_role(db, reviewer, ROLE_SENIOR_REVIEWER)
+    ):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Assigned user is not a reviewer",

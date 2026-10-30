@@ -22,6 +22,18 @@ class UserCreate(BaseModel):
     # captcha_required_for_registration=True; ignored otherwise.
     captcha_token: str | None = None
 
+    @field_validator("email")
+    @classmethod
+    def _normalise_email(cls, value: str) -> str:
+        """邮箱统一小写存储。
+
+        注册原样落库、登录忽略大小写、找回密码按原样等值匹配 —— 三者
+        口径不一致时，用 ``Foo@x.com`` 注册的人在找回密码时输入
+        ``foo@x.com`` 永远收不到信，而 ``Foo@x.com`` 与 ``foo@x.com``
+        又能被当成两个账号注册。入口归一化是唯一能同时修掉两者的位置。
+        """
+        return value.strip().lower()
+
 
 class UserLogin(BaseModel):
     username: str
@@ -139,9 +151,19 @@ class VerifyEmailRequest(BaseModel):
 class ResendVerificationRequest(BaseModel):
     email: EmailStr
 
+    @field_validator("email")
+    @classmethod
+    def _normalise_email(cls, value: str) -> str:
+        return value.strip().lower()
+
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def _normalise_email(cls, value: str) -> str:
+        return value.strip().lower()
 
 
 class ResetPasswordRequest(BaseModel):
@@ -225,6 +247,11 @@ class UserUpdate(BaseModel):
     # unchanged. We validate and canonicalise here so the DB layer
     # never sees a malformed value.
     orcid: str | None = None
+
+    @field_validator("email")
+    @classmethod
+    def _normalise_email(cls, value: str | None) -> str | None:
+        return value.strip().lower() if value is not None else None
 
     @field_validator("orcid")
     @classmethod

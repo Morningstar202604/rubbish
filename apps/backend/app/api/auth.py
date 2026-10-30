@@ -217,6 +217,13 @@ async def login(
     # 是注册邮箱；用户名精确匹配优先级不变，邮箱走 lower 等值比较。
     tenant_id = require_tenant_id()
     identifier = payload.username.strip()
+    # 账号级爆破节流：IP 限流可被换 IP 绕过，最后一道闸按账号计数
+    # （app/core/login_throttle.py）。冷却期内与密码错误同文案 401，
+    # 不向攻击者区分「密码错」与「已节流」。
+    from app.core.login_throttle import is_locked, record_failure, record_success
+
+    if is_locked(tenant_id, identifier):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     result = await db.execute(
         select(User).where(
             User.tenant_id == tenant_id,
@@ -226,7 +233,9 @@ async def login(
     user = result.scalar_one_or_none()
 
     if user is None or not verify_password(payload.password, user.hashed_password):
+        record_failure(tenant_id, identifier)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    record_success(tenant_id, identifier)
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="User account is disabled"
@@ -605,7 +614,8 @@ async def _notify_duplicate_registration(
         return
     result = await db.execute(
         select(User).where(
-            (User.email == attempted_email) | (User.username == attempted_username),
+            (func.lower(User.email) == attempted_email.strip().lower())
+            | (User.username == attempted_username),
             User.tenant_id == tenant_id,
         )
     )
@@ -686,7 +696,7 @@ async def resend_verification(
     """Re-send the verification email. Always returns 200 (don't leak
     whether an account exists for the address)."""
     tenant_id = get_current_tenant_id()
-    stmt = select(User).where(User.email == payload.email)
+    stmt = select(User).where(func.lower(User.email) == payload.email.strip().lower())
     if tenant_id is not None:
         stmt = stmt.where(User.tenant_id == tenant_id)
     result = await db.execute(stmt)
@@ -713,7 +723,7 @@ async def forgot_password(
     """Trigger a password-reset email. Always returns 200 (don't leak
     whether an account exists for the address)."""
     tenant_id = get_current_tenant_id()
-    stmt = select(User).where(User.email == payload.email)
+    stmt = select(User).where(func.lower(User.email) == payload.email.strip().lower())
     if tenant_id is not None:
         stmt = stmt.where(User.tenant_id == tenant_id)
     result = await db.execute(stmt)

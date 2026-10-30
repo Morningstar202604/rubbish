@@ -89,7 +89,10 @@ async def test_comment_on_unpublished_resource_404(
         headers=auth_headers(admin_user),
     )
     assert r.status_code == 404
-    assert (await client.get(f"/api/comments?resource_id={rid}")).json()["meta"]["total"] == 0
+    # 列表端点与创建端点同口径：草稿/排期稿的评论线程也 404，
+    # 不返回空线程（那等于换一种方式确认资源存在）。
+    listing = await client.get(f"/api/comments?resource_id={rid}")
+    assert listing.status_code == 404
 
 
 async def test_delete_own_comment(client: AsyncClient, admin_user: dict, test_user: dict) -> None:

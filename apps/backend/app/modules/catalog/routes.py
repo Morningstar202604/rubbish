@@ -212,8 +212,17 @@ async def list_resources(
         )
         return ResourceListResponse(data=await _with_engagement(db, rows), meta=meta)
     if q is not None:
+        # 与 Meilisearch 索引的 _SEARCHABLE 字段对齐：标题 / 摘要 / 作者 /
+        # 关键词 / 标签。此前 DB 路径只查前两项，同一个搜索词在「配了
+        # Meilisearch」和「没配」两种部署上给出不同结果，按作者名搜论文
+        # 在默认部署里直接搜不到。
         pattern = f"%{q}%"
-        stmt = stmt.where((Resource.title.ilike(pattern)) | (Resource.abstract.ilike(pattern)))
+        stmt = stmt.where(
+            (Resource.title.ilike(pattern))
+            | (Resource.abstract.ilike(pattern))
+            | (Resource.venue.ilike(pattern))
+            | (Resource.discipline.ilike(pattern))
+        )
 
     # Sort with deterministic tiebreaker — order_by is applied by paginate.
     sort_col = getattr(Resource, sort, Resource.created_at) if sort else Resource.created_at
@@ -413,7 +422,13 @@ async def get_issue_plan(db: AsyncSession = Depends(get_db)) -> IssuePlanRespons
                 Resource.publication_status,
                 func.count(Resource.id),
             )
-            .where(Resource.tenant_id == tenant_id, Resource.volume.is_not(None))
+            # 只统计「已刊出」的记录：草稿（刊前整理中）连篇数都不该露出，
+            # 否则公开日历的 total 就是一把数草稿的尺子。
+            .where(
+                Resource.tenant_id == tenant_id,
+                Resource.volume.is_not(None),
+                Resource.publication_status == "published",
+            )
             .group_by(
                 Resource.volume,
                 Resource.issue,
@@ -483,6 +498,10 @@ async def publish_issue(
 
     Publisher convenience for the monthly cadence: one call moves a whole
     issue instead of PATCHing 27 records. Writes one audit row.
+
+    只作用于**已刊出**的记录：期号里仍在刊前整理（draft）的稿件不随整期
+    发布一起上线——「一键发整期」不该顺带把未定稿的稿子推给公众，那是
+    编辑逐篇确认的环节。需要连草稿一起发时，先逐篇 PATCH 成 published。
     """
     tenant_id = require_tenant_id()
     target = payload.publish_at
@@ -492,8 +511,9 @@ async def publish_issue(
             Resource.tenant_id == tenant_id,
             Resource.volume == volume,
             Resource.issue == issue,
+            Resource.publication_status == "published",
         )
-        .values(publish_at=target, publication_status="published")
+        .values(publish_at=target)
     )
     rows_changed = int(getattr(result, "rowcount", 0) or 0)
     if rows_changed == 0:
@@ -886,6 +906,22 @@ async def create_resource(
     )
     db.add(resource)
     try:
+        # flush 触发唯一约束（slug/doi 撞车）：必须在 try 内，让 IntegrityError
+        # 转成 409 而不是 500；begin_nested 让 flush 失败后事务仍可回滚续用。
+        async with db.begin_nested():
+            await db.flush()
+        # Audit: log identifiers only — full payload is the Resource row itself.
+        # 与资源写入同一事务（S-3）：第二个 commit 挂掉不会留下「有变更无审计」。
+        db.add(
+            AuditLog(
+                tenant_id=current_admin.tenant_id,
+                actor_user_id=current_admin.id,
+                action="catalog.resource.create",
+                target_type="resource",
+                target_id=str(resource.id),
+                payload={"slug": resource.slug, "title": resource.title},
+            )
+        )
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
@@ -895,18 +931,6 @@ async def create_resource(
         ) from exc
     await db.refresh(resource)
     await fulltext.index_resource(resource)  # best-effort, never raises
-    # Audit: log identifiers only — full payload is the Resource row itself.
-    db.add(
-        AuditLog(
-            tenant_id=current_admin.tenant_id,
-            actor_user_id=current_admin.id,
-            action="catalog.resource.create",
-            target_type="resource",
-            target_id=str(resource.id),
-            payload={"slug": resource.slug, "title": resource.title},
-        )
-    )
-    await db.commit()
     return ResourceResponse.model_validate(resource)
 
 
@@ -978,18 +1002,9 @@ async def update_resource(
     for field, value in update_data.items():
         setattr(resource, field, value)
 
-    try:
-        await db.commit()
-    except IntegrityError as exc:
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=_conflict_detail(exc),
-        ) from exc
-    await db.refresh(resource)
-    await fulltext.index_resource(resource)  # best-effort, never raises
     # Audit: record which fields the admin touched (values may be large,
     # so we log field names only; the Resource row keeps the new state).
+    # 与业务变更同一事务：审计失败 = 变更失败，不留无审计的静默修改。
     db.add(
         AuditLog(
             tenant_id=current_admin.tenant_id,
@@ -1000,7 +1015,16 @@ async def update_resource(
             payload={"fields": list(update_data.keys())},
         )
     )
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=_conflict_detail(exc),
+        ) from exc
+    await db.refresh(resource)
+    await fulltext.index_resource(resource)  # best-effort, never raises
     return ResourceResponse.model_validate(resource)
 
 

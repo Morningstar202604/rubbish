@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from app.modules.submission.markdown_clean import clean
+from app.modules.submission.markdown_clean import reflow_paragraphs as _reflow
 
 SAMPLE = """Rubbish - 于荒诞处见同路人
 
@@ -103,8 +104,6 @@ def test_drops_english_tagline() -> None:
 
 
 # --- 1.6.0 段落重组（reflow_paragraphs） -------------------------------
-
-from app.modules.submission.markdown_clean import reflow_paragraphs as _reflow
 
 
 def test_reflow_joins_cjk_lines_without_space() -> None:

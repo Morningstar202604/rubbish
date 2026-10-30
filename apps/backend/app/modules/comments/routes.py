@@ -74,8 +74,14 @@ async def list_comments(
     page_size: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ) -> CommentListResponse:
-    """Public thread for a resource, newest first."""
+    """Public thread for a resource, newest first.
+
+    公开面口径与目录一致：资源被撤回或转入排期后，其评论线程同样不再
+    对匿名/普通用户可见（否则评论端点会变成「这篇排期稿存在」的探针，
+    且已撤回稿件的历史讨论继续外泄）。
+    """
     tenant_id = require_tenant_id()
+    await _require_published_resource(db, resource_id, tenant_id)
     stmt = select(Comment).where(
         Comment.tenant_id == tenant_id,
         Comment.resource_id == resource_id,

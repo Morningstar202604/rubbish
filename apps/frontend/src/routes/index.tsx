@@ -1101,6 +1101,14 @@ function HomePage() {
                   </Link>
                 </li>
                 <li>
+                  <Link
+                    to="/support"
+                    className="text-primary-foreground/60 transition-colors hover:text-primary-foreground"
+                  >
+                    支持本刊
+                  </Link>
+                </li>
+                <li>
                   <a
                     href="/feed.xml"
                     className="text-primary-foreground/75 transition-colors hover:text-primary-foreground"

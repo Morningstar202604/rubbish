@@ -73,10 +73,12 @@ def test_convert_pdf_extracts_text() -> None:
 
 def test_convert_pdf_images_are_inlined_as_data_uri() -> None:
     """回归：Windows 下 pymupdf4llm 产出 `![](C:/.../rubbish-md-xxx/-0001-00.png)`
-    绝对路径，旧实现按相对文件名匹配，图片全部落空（data URI 0 个、阅读器空图）。"""
+    绝对路径，旧实现按相对文件名匹配，图片全部落空（data URI 0 个、阅读器空图）。
+    1.6.0 起默认输出 JPEG，故只断言 data URI 而非具体格式。"""
     md = convert_to_markdown(_make_pdf_with_image(), "with-image.pdf")
     assert md is not None
-    assert "data:image/png;base64," in md
+    assert "data:image/" in md
+    assert ";base64," in md
     assert "rubbish-md-" not in md
     assert "C:/" not in md
 

@@ -319,11 +319,14 @@ async def update_progress(
     user_id = current_user.id
     tenant_id = current_user.tenant_id
     # 存在性校验：只投影 Resource.id，避免全行物料化（F5 列剪枝）。
+    # 与 record_view 同口径带上 public_conditions：进度写入同样不能给
+    # 排期稿开绿灯，否则 201/404 的差异又是一条存在性探针。
     resource_exists = (
         await db.execute(
             select(Resource.id).where(
                 Resource.id == resource_id,
                 Resource.tenant_id == tenant_id,
+                *public_conditions(),
             )
         )
     ).scalar_one_or_none()
