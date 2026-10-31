@@ -32,6 +32,7 @@ import { Route as AccountSecurityRouteImport } from './routes/account/security'
 import { Route as AdminAuditLogsRouteImport } from './routes/admin/audit-logs'
 import { Route as AdminIssuesRouteImport } from './routes/admin/issues'
 import { Route as AdminJournalRouteImport } from './routes/admin/journal'
+import { Route as AdminRoleApplicationsRouteImport } from './routes/admin/role-applications'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminVolumesRouteImport } from './routes/admin/volumes'
@@ -163,6 +164,11 @@ const AdminJournalRoute = AdminJournalRouteImport.update({
   path: '/admin/journal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoleApplicationsRoute = AdminRoleApplicationsRouteImport.update({
+  id: '/admin/role-applications',
+  path: '/admin/role-applications',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/admin/settings',
   path: '/admin/settings',
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/issues': typeof AdminIssuesRoute
   '/admin/journal': typeof AdminJournalRoute
+  '/admin/role-applications': typeof AdminRoleApplicationsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/volumes': typeof AdminVolumesRoute
@@ -303,6 +310,7 @@ export interface FileRoutesByTo {
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/issues': typeof AdminIssuesRoute
   '/admin/journal': typeof AdminJournalRoute
+  '/admin/role-applications': typeof AdminRoleApplicationsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/volumes': typeof AdminVolumesRoute
@@ -344,6 +352,7 @@ export interface FileRoutesById {
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/issues': typeof AdminIssuesRoute
   '/admin/journal': typeof AdminJournalRoute
+  '/admin/role-applications': typeof AdminRoleApplicationsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/volumes': typeof AdminVolumesRoute
@@ -386,6 +395,7 @@ export interface FileRouteTypes {
     | '/admin/audit-logs'
     | '/admin/issues'
     | '/admin/journal'
+    | '/admin/role-applications'
     | '/admin/settings'
     | '/admin/users'
     | '/admin/volumes'
@@ -426,6 +436,7 @@ export interface FileRouteTypes {
     | '/admin/audit-logs'
     | '/admin/issues'
     | '/admin/journal'
+    | '/admin/role-applications'
     | '/admin/settings'
     | '/admin/users'
     | '/admin/volumes'
@@ -466,6 +477,7 @@ export interface FileRouteTypes {
     | '/admin/audit-logs'
     | '/admin/issues'
     | '/admin/journal'
+    | '/admin/role-applications'
     | '/admin/settings'
     | '/admin/users'
     | '/admin/volumes'
@@ -507,6 +519,7 @@ export interface RootRouteChildren {
   AdminAuditLogsRoute: typeof AdminAuditLogsRoute
   AdminIssuesRoute: typeof AdminIssuesRoute
   AdminJournalRoute: typeof AdminJournalRoute
+  AdminRoleApplicationsRoute: typeof AdminRoleApplicationsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminVolumesRoute: typeof AdminVolumesRoute
@@ -687,6 +700,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminJournalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/role-applications': {
+      id: '/admin/role-applications'
+      path: '/admin/role-applications'
+      fullPath: '/admin/role-applications'
+      preLoaderRoute: typeof AdminRoleApplicationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/admin/settings'
@@ -819,6 +839,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminAuditLogsRoute: AdminAuditLogsRoute,
   AdminIssuesRoute: AdminIssuesRoute,
   AdminJournalRoute: AdminJournalRoute,
+  AdminRoleApplicationsRoute: AdminRoleApplicationsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminVolumesRoute: AdminVolumesRoute,

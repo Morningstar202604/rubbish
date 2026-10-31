@@ -9,6 +9,40 @@
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-10-30
+
+### Added
+
+- **职员角色申请通道（L5/L6）**：`role_applications` 表 + `/api/gamification/applications`
+  系列端点。L5 审稿人的门槛是「≥1 篇稿件被录用且最高 RQS ≥ 60」，L6 资深审稿人
+  是「已是 L5 且完成审稿 ≥ 5 份」；L7–L9 编辑职仍只由编辑部提拔。资格口径冻结在
+  `gamification/applications.py`，`/api/gamification/applications/me` 同时返回两个目标
+  的实时资格画像，前端据此展示「差多少」。
+- **管理员审批队列 `/admin/role-applications`**：待审 / 已通过 / 未通过筛选，
+  批准 = 授角色 + 站内通知 + 审计，同一事务；拒绝原因选填并随通知发给申请人。
+  申请提交与审批各写一条审计（`gamification.role_application.{create,decision}`）。
+- **个人一句话简介 `users.bio`**：账号设置 → 资料可编辑（≤200 字，空串即清除），
+  展示在个人中心等级卡；`GET/PATCH /api/users/me` 与所有 `UserResponse` 输出同步携带。
+- **/levels 页新增申请区块**：九级阶梯上方直接展示 L5/L6 两条通道的资格进度与
+  申请入口，申请记录（含编辑部备注）同页可查。
+- **帮助中心补「十、等级与升级」**：签到口径、九级阶梯怎么达到、L5/L6 申请制与
+  L7+ 提拔制的区别；登录一节同步「用户名或邮箱」与个人简介入口。
+
+### Fixed
+
+- **审计 payload 的申请单 id 恒为 None**：`RoleApplication` 先 `add` 后读 `row.id`
+  时尚未 flush，审计行里落的是 `null`；改为先 `flush` 再写审计。
+- **同一申请的并发双击**：提交侧加部分唯一索引 `uq_role_applications_pending`
+  （tenant + user + target_role，仅 `status='pending'` 时生效）并把唯一冲突转 409；
+  审批侧对申请行 `with_for_update()`，两位管理员同时点批准不会重复授角色/重复通知。
+- **L6 申请缺少 L5 前置校验**：此前只校验「审稿 ≥ 5 份」，没有 reviewer 角色也能提交，
+  会产生「资深审稿人但从未是审稿人」的断层；现在返回 422 `reviewer_role_required`。
+- **审批页状态显示原始英文**：改为待审 / 已通过 / 未通过，与站内其他状态文案一致；
+  拒绝原因改用 Dialog（原 `window.prompt` + `confirm` 在移动端被浏览器拦截且无上下文）。
+- **申请/审批列表排序不稳定**：全部补 `id` 决胜，同秒写入不再抖动。
+- **帮助中心编号错乱**：「十、等级与升级」插入后「常见问题」仍标「七」，且编辑规范
+  段落的 `<ol>` 与 `<h2>` 挤在同一行；L4 写的是 450 XP（ladder 实际是 400）。
+
 ## [1.6.1] — 2026-10-30
 
 ### Fixed

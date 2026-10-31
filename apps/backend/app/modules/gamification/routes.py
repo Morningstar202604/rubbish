@@ -1,19 +1,26 @@
-"""Gamification API — level ladder, onboarding, profile, badge wall, admin grants."""
+"""Gamification API — level ladder, onboarding, profile, badge wall, admin grants,
+role applications (L5/L6)."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_admin, require_tenant_id
 from app.api.levels import CURRENT_RULES_VERSION
-from app.core.db import get_db
+from app.core.db import get_db, paginate
+from app.core.schemas import PaginationMeta
 from app.core.time import utcnow
-from app.models import AuditLog, User
-from app.modules.gamification import service
+from app.models import AuditLog, User, UserRole
+from app.modules.gamification import applications, service
 from app.modules.gamification.ladder import ladder_payload, level_payload
+from app.modules.gamification.models import RoleApplication
 
 router = APIRouter(prefix="/gamification", tags=["gamification"])
 
@@ -25,6 +32,36 @@ class LevelGrantRequest(BaseModel):
 
 class AuthorOnboardingRequest(BaseModel):
     accept_rules: bool = Field(description="必须为 true：表示已读完并接受投稿规范")
+
+
+class RoleApplicationCreate(BaseModel):
+    target_role: Literal["reviewer", "senior_reviewer"]
+    statement: str = Field(min_length=20, max_length=2000)
+
+
+class RoleApplicationResponse(BaseModel):
+    id: int
+    user_id: int
+    username: str | None = None
+    target_role: str
+    status: str
+    statement: str
+    decision_note: str | None = None
+    decided_by: int | None = None
+    # 用 datetime 而非 object：object 会让 OpenAPI 生成字符串类型，
+    # 前端拿到的实际是 ISO 串但契约失真。
+    decided_at: datetime | None = None
+    created_at: datetime
+
+
+class RoleApplicationListResponse(BaseModel):
+    data: list[RoleApplicationResponse]
+    meta: PaginationMeta
+
+
+class RoleDecisionRequest(BaseModel):
+    decision: Literal["approve", "reject"]
+    note: str | None = Field(default=None, max_length=500)
 
 
 class PublicUserLevel(BaseModel):
@@ -208,3 +245,291 @@ async def get_level_detail(level: int) -> dict[str, object]:
     if level < 1 or level > 9:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown level")
     return level_payload(level)
+
+
+# ---------------------------------------------------------------------------
+# 职员角色申请（L5 审稿人 / L6 资深审稿人；L7+ 仅编辑部提拔）
+# ---------------------------------------------------------------------------
+
+_ROLE_LABELS = {"reviewer": "审稿人（L5）", "senior_reviewer": "资深审稿人（L6）"}
+
+
+def _application_response(row: RoleApplication, username: str | None) -> RoleApplicationResponse:
+    return RoleApplicationResponse(
+        id=row.id,
+        user_id=row.user_id,
+        username=username,
+        target_role=row.target_role,
+        status=row.status,
+        statement=row.statement,
+        decision_note=row.decision_note,
+        decided_by=row.decided_by,
+        decided_at=row.decided_at,
+        created_at=row.created_at,
+    )
+
+
+@router.get("/applications/me")
+async def my_applications(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    """我的申请历史 + 两个申请目标的资格画像（前端据此渲染可申请/差多少）。"""
+    tenant_id = require_tenant_id()
+    rows = (
+        (
+            await db.execute(
+                select(RoleApplication)
+                .where(
+                    RoleApplication.tenant_id == tenant_id,
+                    RoleApplication.user_id == current_user.id,
+                )
+                .order_by(RoleApplication.created_at.desc(), RoleApplication.id.desc())
+                .limit(20)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    reviewer = await applications.reviewer_profile(db, current_user)
+    senior = await applications.senior_reviewer_profile(db, current_user)
+    roles = await service._user_role_names(db, current_user)
+    already_reviewer = "reviewer" in roles
+    already_senior = "senior_reviewer" in roles
+    return {
+        "applications": [_application_response(r, current_user.username) for r in rows],
+        "eligibility": {
+            "reviewer": {
+                **reviewer,
+                "already_role": already_reviewer,
+                "eligible": already_reviewer or applications.reviewer_eligible(reviewer),
+                "thresholds": {
+                    "accepted_papers": 1,
+                    "best_rqs": applications.SENIOR_RQS_THRESHOLD,
+                },
+            },
+            "senior_reviewer": {
+                **senior,
+                "already_role": already_senior,
+                # L6 的前提是 L5：没有 reviewer 角色时即使审稿份数够也不可申请。
+                "has_reviewer_role": already_reviewer,
+                "eligible": already_senior
+                or (already_reviewer and applications.senior_reviewer_eligible(senior)),
+                "thresholds": {"reviews_completed": applications.SENIOR_REVIEW_COUNT},
+            },
+        },
+    }
+
+
+@router.post("/applications", status_code=status.HTTP_201_CREATED)
+async def create_application(
+    body: RoleApplicationCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> RoleApplicationResponse:
+    """提交申请（L5 / L6）。资格不达标 422；已有同角色待审申请 409。"""
+    tenant_id = require_tenant_id()
+    roles = await service._user_role_names(db, current_user)
+    if body.target_role == "reviewer":
+        profile = await applications.reviewer_profile(db, current_user)
+        already_role = "reviewer" in roles
+        eligible = applications.reviewer_eligible(profile)
+    else:
+        profile = await applications.senior_reviewer_profile(db, current_user)
+        already_role = "senior_reviewer" in roles
+        # L6 是 L5 之上的阶梯：口径要求「已是审稿人 + 完成审稿 ≥ 5 份」，
+        # 只满足份数不足以申请，否则会出现「资深审稿人但从未是审稿人」的断层。
+        if "reviewer" not in roles and not already_role:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail={
+                    "code": "reviewer_role_required",
+                    "target_role": body.target_role,
+                    "profile": profile,
+                    "message": "申请资深审稿人需先取得审稿人（L5）角色。",
+                },
+            )
+        eligible = applications.senior_reviewer_eligible(profile)
+    if already_role:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="已拥有该角色，无需申请")
+    if not eligible:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={
+                "code": "eligibility_required",
+                "target_role": body.target_role,
+                "profile": profile,
+                "message": (
+                    "申请审稿人需至少 1 篇稿件被录用且最高质量分（RQS）≥ 60。"
+                    if body.target_role == "reviewer"
+                    else f"申请资深审稿人需已完成 {applications.SENIOR_REVIEW_COUNT} 份审稿。"
+                ),
+            },
+        )
+    if await applications.pending_application_exists(
+        db, current_user.id, tenant_id, body.target_role
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="该角色的申请正在审核中，请耐心等待"
+        )
+    row = RoleApplication(
+        tenant_id=tenant_id,
+        user_id=current_user.id,
+        target_role=body.target_role,
+        status="pending",
+        statement=body.statement.strip(),
+    )
+    db.add(row)
+    # 先 flush 拿到自增 id：审计 payload 里的 application_id 否则恒为 None。
+    await db.flush()
+    db.add(
+        AuditLog(
+            tenant_id=tenant_id,
+            actor_user_id=current_user.id,
+            action="gamification.role_application.create",
+            target_type="user",
+            target_id=str(current_user.id),
+            payload={"target_role": body.target_role, "application_id": row.id},
+        )
+    )
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        # 并发双击时部分唯一索引 uq_role_applications_pending 兜底。
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="该角色的申请正在审核中，请耐心等待"
+        ) from exc
+    await db.refresh(row)
+    return _application_response(row, current_user.username)
+
+
+@router.get("/admin/applications", response_model=RoleApplicationListResponse)
+async def list_applications(
+    status_filter: str = Query(
+        default=None, alias="status", pattern=r"^(pending|approved|rejected)$"
+    ),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> RoleApplicationListResponse:
+    """管理员审批队列（默认待审在前）。"""
+    tenant_id = require_tenant_id()
+    base = select(RoleApplication).where(RoleApplication.tenant_id == tenant_id)
+    if status_filter is not None:
+        base = base.where(RoleApplication.status == status_filter)
+    rows, meta = await paginate(
+        db,
+        base,
+        page=page,
+        page_size=page_size,
+        order_by=(RoleApplication.created_at.desc(), RoleApplication.id.desc()),
+    )
+    user_ids = list({r.user_id for r in rows})
+    names: dict[int, str] = {}
+    if user_ids:
+        result = await db.execute(select(User.id, User.username).where(User.id.in_(user_ids)))
+        names = {uid: uname for uid, uname in result.all()}
+    return RoleApplicationListResponse(
+        data=[_application_response(r, names.get(r.user_id)) for r in rows],
+        meta=meta,
+    )
+
+
+@router.post("/admin/applications/{application_id}/decision")
+async def decide_application(
+    application_id: int,
+    body: RoleDecisionRequest,
+    current_admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    """批准 / 拒绝。批准 = 授角色 + 通知 + 审计，同一事务。"""
+    tenant_id = require_tenant_id()
+    row = (
+        await db.execute(
+            select(RoleApplication)
+            .where(
+                RoleApplication.id == application_id,
+                RoleApplication.tenant_id == tenant_id,
+            )
+            # 行锁：两位管理员同时点「批准」时，第二个请求必须看到终态，
+            # 否则同一申请会被批准两次（重复通知/重复审计）。
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="申请不存在")
+    if row.status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="该申请已处理（终态不可再改）"
+        )
+    applicant = (
+        await db.execute(select(User).where(User.id == row.user_id, User.tenant_id == tenant_id))
+    ).scalar_one_or_none()
+    if applicant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="申请人不存在或已注销")
+
+    approved = body.decision == "approve"
+    row.status = "approved" if approved else "rejected"
+    row.decision_note = body.note
+    row.decided_by = current_admin.id
+    row.decided_at = utcnow()
+
+    from app.modules.notifications import services as notifications
+
+    role_label = _ROLE_LABELS.get(row.target_role, row.target_role)
+    if approved:
+        from app.api.admin import _get_or_create_role
+
+        role = await _get_or_create_role(db, tenant_id, row.target_role)
+        exists = (
+            await db.execute(
+                select(UserRole).where(
+                    UserRole.user_id == applicant.id,
+                    UserRole.role_id == role.id,
+                    UserRole.tenant_id == tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if exists is None:
+            db.add(UserRole(tenant_id=tenant_id, user_id=applicant.id, role_id=role.id))
+        await notifications.create(
+            db,
+            tenant_id=tenant_id,
+            user_id=applicant.id,
+            type_="gamification.role_application",
+            title=f"申请已通过：{role_label}",
+            body="恭喜！编辑部已批准你的申请，对应工作台已解锁。",
+            related_type="role_application",
+            related_id=str(row.id),
+        )
+    else:
+        await notifications.create(
+            db,
+            tenant_id=tenant_id,
+            user_id=applicant.id,
+            type_="gamification.role_application",
+            title=f"申请未通过：{role_label}",
+            body=(body.note or "本次申请未获通过。欢迎继续投稿与参与社区，未来再次申请。"),
+            related_type="role_application",
+            related_id=str(row.id),
+        )
+
+    db.add(
+        AuditLog(
+            tenant_id=tenant_id,
+            actor_user_id=current_admin.id,
+            action="gamification.role_application.decision",
+            target_type="role_application",
+            target_id=str(row.id),
+            payload={
+                "decision": body.decision,
+                "target_role": row.target_role,
+                "applicant_user_id": applicant.id,
+            },
+        )
+    )
+    await db.commit()
+    await db.refresh(row)
+    return {"id": row.id, "status": row.status}

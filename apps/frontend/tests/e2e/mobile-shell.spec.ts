@@ -100,9 +100,9 @@ test.describe('mobile shell · 已登录', () => {
   test('仪表盘呈移动 2 列大块 + 快捷操作（非桌面 5 列小卡）', async ({ page, consoleErrors }) => {
     void consoleErrors
     await page.goto('/dashboard')
-    // 移动大块标签
+    // 移动大块标签（admin 是编辑部身份，卡片是「待审稿件」而不是「我的推荐」）
     await expect(page.getByText('资源总数')).toBeVisible()
-    await expect(page.getByText('我的推荐')).toBeVisible()
+    await expect(page.getByText('待审稿件')).toBeVisible()
     // 快捷操作（3 列按钮）：与统计块同屏，需限定到快捷操作容器避免歧义
     const quick = page.getByTestId('mobile-quick-actions')
     await expect(quick.getByRole('link', { name: '浏览目录' })).toBeVisible()

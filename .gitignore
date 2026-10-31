@@ -161,3 +161,5 @@ apps/backend/.coverage
 apps/backend/e2e_test*.db
 apps/backend/deploy_demo.db*
 apps/backend/prebuilt-static/assets/
+dist.tar.gz
+.tmp-*.log

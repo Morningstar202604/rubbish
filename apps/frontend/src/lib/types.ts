@@ -39,6 +39,8 @@ export interface UserResponse {
   is_admin: boolean
   is_email_verified: boolean
   created_at: string
+  // 一句话简介（迁移 012；PATCH /users/me 可改）
+  bio?: string | null
   // admin 端点会填入；普通 /auth/* 端点保持空数组
   roles: string[]
   /** 等级体系：XP 与生效等级（1–9） */

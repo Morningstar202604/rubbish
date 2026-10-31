@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router'
 import { getAuthState, useAuthStore } from '@/lib/auth'
+import { useMe } from '@/hooks/api/use-auth'
 import { TwoFactorSection } from '@/components/settings/two-factor-section'
 import { ChangePasswordCard } from '@/components/settings/change-password-card'
+import { BioCard } from '@/components/settings/bio-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
@@ -65,6 +67,13 @@ function ProfileCard() {
   )
 }
 
+function ProfileBioCard() {
+  const { data } = useMe()
+  // key 绑定服务端 bio：保存成功后 query 失效 → bio 变化 → 组件重挂载，
+  // 草稿与服务端状态对齐（BioCard 内部不做 effect 回写）。
+  return <BioCard key={data?.bio ?? 'bio-empty'} initialBio={data?.bio ?? null} />
+}
+
 function SettingsPage() {
   const search = Route.useSearch()
   const navigate = useNavigate()
@@ -87,6 +96,7 @@ function SettingsPage() {
         </TabsList>
         <TabsContent value="profile" className="mt-4 space-y-6">
           <ProfileCard />
+          <ProfileBioCard />
         </TabsContent>
         <TabsContent value="security" className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <TwoFactorSection />

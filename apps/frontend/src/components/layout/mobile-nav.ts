@@ -76,6 +76,7 @@ export const MOBILE_MORE: MobileMoreItem[] = [
   { to: '/about', label: '关于本刊', icon: Building2, group: '期刊' },
   { to: '/settings', label: '账号设置', icon: Settings, group: '设置' },
   { to: '/admin/users', label: '用户管理', icon: Users, adminOnly: true, group: '站点管理' },
+  { to: '/admin/role-applications', label: '角色申请', icon: ClipboardCheck, adminOnly: true, group: '站点管理' },
   { to: '/admin/audit-logs', label: '审计日志', icon: ShieldCheck, adminOnly: true, group: '站点管理' },
   { to: '/admin/settings', label: '期刊设置', icon: Settings, adminOnly: true, group: '站点管理' },
 ]

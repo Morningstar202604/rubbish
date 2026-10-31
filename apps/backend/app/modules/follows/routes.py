@@ -182,7 +182,7 @@ async def list_my_followed_authors(
         base,
         page=page,
         page_size=page_size,
-        order_by=(desc(AuthorFollow.created_at), AuthorFollow.id.asc()),
+        order_by=(desc(AuthorFollow.created_at), AuthorFollow.id.desc()),
     )
     return AuthorFollowListResponse(
         data=[AuthorFollowEntry.model_validate(r) for r in rows],
@@ -319,8 +319,10 @@ async def list_my_subscribed_disciplines(
             DisciplineSubscription.tenant_id == current_user.tenant_id,
         )
         .order_by(
+            # id 决胜（desc）：「最新订阅在前」= 后插入的在前；同批插入
+            # created_at 相同，asc 会让顺序抖动。
             desc(DisciplineSubscription.created_at),
-            DisciplineSubscription.id.asc(),
+            DisciplineSubscription.id.desc(),
         )
     )
     slugs = [row[0] for row in result.all()]

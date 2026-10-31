@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.time import utcnow
@@ -75,4 +75,51 @@ class UserAchievement(Base, TenantScopedMixin):
     )
 
 
-__all__ = ["UserAchievement", "UserXpEvent"]
+class RoleApplication(Base, TenantScopedMixin):
+    """职员角色申请（L5 审稿人 / L6 资深审稿人；L7+ 仅编辑部提拔）。
+
+    状态机 pending → approved / rejected（终态；重申需新开一行）。
+    批准动作由 API 层完成：授角色 + 站内通知 + 审计，同一事务。
+    """
+
+    __tablename__ = "role_applications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # 仅允许 reviewer / senior_reviewer（schema 层 Literal 校验）。
+    target_role: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="pending", server_default="pending"
+    )
+    statement: Mapped[str] = mapped_column(Text, nullable=False)
+    decision_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_role_applications_tenant_status_created",
+            "tenant_id",
+            "status",
+            created_at.desc(),
+        ),
+        # 同一用户同一角色最多一条待审申请：应用层的「先查后写」挡不住
+        # 双击/并发提交，这里用部分唯一索引兜底（终态可并列多条历史）。
+        Index(
+            "uq_role_applications_pending",
+            "tenant_id",
+            "user_id",
+            "target_role",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+            sqlite_where=text("status = 'pending'"),
+        ),
+    )
+
+
+__all__ = ["RoleApplication", "UserAchievement", "UserXpEvent"]

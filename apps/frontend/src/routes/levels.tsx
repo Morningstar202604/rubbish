@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCheckinStatus, useDailyCheckin, useLadder, useQualityRubric } from '@/hooks/api/use-modules'
+import { RoleApplicationsSection } from '@/components/common/role-applications'
 import { useAuth } from '@/hooks/use-auth'
 import { PageHeader } from '@/components/common/page-header'
 import { ErrorState, Loading } from '@/components/common/state'
@@ -141,8 +142,8 @@ function LevelsPage() {
             <strong className="text-foreground">积分轨（L1–L4）</strong>
             由阅读、评论、收藏、投稿等真实行为累积，自动解锁；
             <strong className="text-foreground">职责轨（L5–L9）</strong>
-            由编辑部按审稿质量与编辑工作量授予，不由积分购买。这样读者能预期「做什么会升级」，
-            而审稿与裁决权始终与责任绑定。
+            L5/L6 按下方冻结标准开放申请、编辑部审批，L7 以上由编辑部按贡献直接提拔——
+            两段都不由积分购买，审稿与裁决权始终与责任绑定。
           </p>
           <p className="text-muted-foreground">
             每位用户只看到自己已达到的等级与最近三个待解锁成就：等级是慢慢长出来的，
@@ -153,6 +154,9 @@ function LevelsPage() {
 
       {/* 每日签到与积分获取（登录用户可见签到条；游客看到玩法说明） */}
       <CheckinSection authenticated={isAuthenticated} />
+
+      {/* 职责轨申请通道（L5/L6）：资格画像 + 提交 + 记录 */}
+      <RoleApplicationsSection />
 
       {/* 九级阶梯 */}
       <section>

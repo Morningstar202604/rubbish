@@ -187,6 +187,8 @@ class UserResponse(BaseModel):
     created_at: datetime
     # ORCID iD in canonical hyphenated form, or null when not set.
     orcid: str | None = None
+    # 用户自定义一句话简介（个人中心/评论区展示；迁移 012）。
+    bio: str | None = None
     # 当前用户在本租户内被授予的角色名列表（如 ["reviewer", "editor"]）
     # 默认空列表：未填充时视为"无角色"，向后兼容旧调用点
     roles: list[str] = Field(default_factory=list)
@@ -216,6 +218,7 @@ class UserResponse(BaseModel):
                 "is_email_verified": data.is_email_verified,
                 "created_at": data.created_at,
                 "orcid": data.orcid,
+                "bio": data.bio,
                 "xp": int(getattr(data, "xp", 0) or 0),
                 # roles 不在此填：让默认空列表生效；admin 路径用 _user_with_roles 显式覆盖
             }
@@ -247,6 +250,16 @@ class UserUpdate(BaseModel):
     # unchanged. We validate and canonicalise here so the DB layer
     # never sees a malformed value.
     orcid: str | None = None
+    # 一句话简介：≤200 字；空串按清除处理，None 保持不变。
+    bio: str | None = Field(default=None, max_length=200)
+
+    @field_validator("bio")
+    @classmethod
+    def _clean_bio(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
 
     @field_validator("email")
     @classmethod

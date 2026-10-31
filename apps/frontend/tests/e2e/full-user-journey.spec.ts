@@ -83,6 +83,8 @@ test.describe('全流程用户旅程', () => {
     await expect(page.getByRole('heading', { name: '账号设置' })).toBeVisible()
     // 用户名同时出现在侧边栏用户菜单和设置卡片里，限定到主区域。
     await expect(page.getByRole('main').getByText(user.username)).toBeVisible()
+    // 1.6.0 起设置页分「资料 / 安全」两个标签，2FA 在安全页
+    await page.getByRole('tab', { name: '安全' }).click()
     await expect(page.getByText('两步验证（2FA）')).toBeVisible()
 
     // --- 5) 目录：筛选 → 多选 → 改筛选后选择被清空 ---
@@ -105,6 +107,8 @@ test.describe('全流程用户旅程', () => {
 
     await page.goto('/catalog')
     await expect(page.getByRole('heading', { name: '资源目录' })).toBeVisible()
+    // 桌面筛选默认收起为一行工具栏（1.3.0 起），先展开再输入。
+    await page.getByRole('button', { name: '筛选' }).click()
     // 筛选栏是「输入后按回车」提交（不随每次按键发请求）。
     await page.getByPlaceholder('标题/作者/摘要').fill('Journey Seed')
     await page.getByPlaceholder('标题/作者/摘要').press('Enter')
@@ -148,7 +152,9 @@ test.describe('全流程用户旅程', () => {
     await authorPage
       .getByLabel('摘要', { exact: true })
       .fill('End-to-end journey submission.')
-    // 稿件直链（原「下载链接」）是重点：这条路径以前会因 AnyHttpUrl 直塞 String 列而 500
+    // 稿件直链（原「下载链接」）在「更多信息」折叠区里（1.4.0 起选填项默认收起）
+    await authorPage.getByTestId('toggle-more-fields').click()
+    // 这条路径以前会因 AnyHttpUrl 直塞 String 列而 500
     await authorPage
       .getByLabel('稿件直链（可选）')
       .fill('https://arxiv.org/pdf/2401.00001')
@@ -227,6 +233,7 @@ test.describe('全流程用户旅程', () => {
     await loginViaUi(readerPage, reader)
 
     await readerPage.goto('/catalog')
+    await readerPage.getByRole('button', { name: '筛选' }).click()
     await readerPage.getByPlaceholder('标题/作者/摘要').first().fill(title)
     await readerPage.getByPlaceholder('标题/作者/摘要').first().press('Enter')
     const link = readerPage.getByRole('link', { name: title })

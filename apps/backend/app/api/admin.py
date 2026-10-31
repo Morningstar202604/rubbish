@@ -416,7 +416,8 @@ async def list_audit_logs(
     result = await db.execute(
         select(AuditLog)
         .where(AuditLog.tenant_id == tenant_id)
-        .order_by(desc(AuditLog.created_at))
+        # id 决胜：同秒写入的日志行排序稳定，审计页不抖动。
+        .order_by(desc(AuditLog.created_at), AuditLog.id.desc())
         .limit(limit)
         .offset(offset)
     )

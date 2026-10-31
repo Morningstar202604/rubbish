@@ -28,7 +28,9 @@ test.describe('guest browse', () => {
     await expect(page).toHaveURL(/\/catalog$/)
     // 页面 header
     await expect(page.getByRole('heading', { name: '资源目录' })).toBeVisible()
-    // 筛选 placeholder
+    // 筛选面板默认收起（1.3.0 起的「打开页面先看到一面筛选墙」治理），
+    // 点开后才出现搜索框。
+    await page.getByRole('button', { name: '筛选' }).click()
     await expect(page.getByPlaceholder('标题/作者/摘要')).toBeVisible()
   })
 

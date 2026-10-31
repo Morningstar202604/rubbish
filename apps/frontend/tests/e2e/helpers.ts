@@ -1,4 +1,4 @@
-import type { Page, Request } from '@playwright/test'
+import { expect, type Page, type Request } from '@playwright/test'
 
 // E2E 测试共享的辅助函数。每个测试自己通过 UI 登录，避免依赖
 // sessionStorage 持久化（zustand persist 的 partialize 只存 token，
@@ -61,20 +61,25 @@ export async function loginViaUi(
  * 避免每个 spec 都去点个人中心的两步按钮。
  */
 export async function ensureAuthorReady(page: Page): Promise<void> {
-  await page.evaluate(async () => {
+  const awarded = await page.evaluate(async () => {
     const raw = window.sessionStorage.getItem('rubbish-auth')
-    if (!raw) return
+    if (!raw) return false
     const token = JSON.parse(raw)?.state?.token
-    if (!token) return
-    await fetch('/api/gamification/onboarding/author', {
+    if (!token) return false
+    const res = await fetch('/api/gamification/onboarding/author', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ accept_rules: true }),
-    }).catch(() => {})
+    }).catch(() => null)
+    return res?.ok ?? false
   })
+  // 引导是绕过 UI 直接打 API 的：仪表盘的等级/统计卡把等级当判据，
+  // 而 react-query 里的 profile 仍是引导前的 L1 快照。这里刷新一次让
+  // 缓存失效，否则「我的投稿」这类按身份渲染的卡片不会出现。
+  if (awarded) await page.reload({ waitUntil: 'domcontentloaded' })
 }
 
 export async function logoutViaUi(page: Page): Promise<void> {
@@ -168,15 +173,14 @@ export async function registerAndVerifyViaUi(
   const token = extractVerifyToken(mine.body)
   if (!token) throw new Error(`no token in email body:\n${mine.body}`)
 
-  // verify-email.tsx 会从 URL ?token=... 读取并自动填入 input
+  // 1.5.0 起 verify-email.tsx 见到 ?token= 会立即自动验证并渲染结果卡，
+  // 不再有「验证」按钮可点——旧实现在这里等按钮，会让所有走注册流程的
+  // 用例 60s 超时。这里改为等结果卡：成功卡（前往登录）或失败卡（验证未通过）。
   await page.goto(`/verify-email?token=${token}`)
-  // 等输入框被填充（page load + useState init）
-  await page.waitForLoadState('networkidle')
-  // 验证按钮 + 等成功 toast
-  await page.getByRole('button', { name: '验证' }).click()
-  await page
-    .getByText('邮箱验证成功，请登录')
-    .waitFor({ state: 'visible', timeout: 10_000 })
+  await expect(
+    page.getByRole('button', { name: '前往登录' }).or(page.getByText('验证未通过')),
+  ).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('验证未通过')).toHaveCount(0)
 }
 
 // 等待网络空闲（用于 SPA 跳转后等数据请求完成）

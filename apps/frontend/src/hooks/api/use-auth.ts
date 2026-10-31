@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth'
 import { isTwoFactorRequired } from '@/lib/types'
@@ -12,6 +12,7 @@ import type {
   TwoFactorLoginRequest,
   UserCreate,
   UserLogin,
+  UserResponse,
   VerifyEmailRequest,
 } from '@/lib/types'
 
@@ -126,6 +127,27 @@ export function useChangePassword() {
         old_password: oldPassword,
         new_password: newPassword,
       })
+    },
+  })
+}
+
+// 完整个人资料（含 bio 简介）：设置页与个人中心共用。
+export function useMe(enabled = true) {
+  return useQuery({
+    queryKey: [...AUTH_KEY, 'me', 'profile'],
+    queryFn: async () => (await api.get<UserResponse>('/users/me')).data,
+    enabled,
+    staleTime: 60_000,
+  })
+}
+
+// 一句话简介：PATCH /users/me 的 bio 字段（空串 = 清除）。
+export function useUpdateBio() {
+  const qc = useQueryClient()
+  return useMutation<UserResponse, Error, { bio: string | null }>({
+    mutationFn: async (body) => (await api.patch<UserResponse>('/users/me', body)).data,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: [...AUTH_KEY, 'me'] })
     },
   })
 }

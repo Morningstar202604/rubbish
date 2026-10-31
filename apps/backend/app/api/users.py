@@ -69,6 +69,10 @@ async def update_me(
         current_user.username = payload.username
     if payload.is_active is not None:
         current_user.is_active = payload.is_active
+    # bio：字段出现即写入（schema 已把空串归一为 None = 清除简介）；
+    # 未提供（缺键）时不触碰，与 orcid 的 None-保持不变约定一致。
+    if "bio" in payload.model_fields_set:
+        current_user.bio = payload.bio
     try:
         await db.commit()
     except IntegrityError as exc:

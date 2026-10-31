@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { getAuthState } from '@/lib/auth'
 import { useAuth } from '@/hooks/use-auth'
+import { useMe } from '@/hooks/api/use-auth'
 import {
   useAcceptAuthorRules,
   useAcknowledgeCommunity,
@@ -162,6 +163,7 @@ function BadgeCard({ badge }: { badge: BadgeItem }) {
 function ProfilePage() {
   const { user } = useAuth()
   const { data, isLoading, isError, refetch } = useGamificationProfile()
+  const { data: me } = useMe()
   const ackCommunity = useAcknowledgeCommunity()
   const acceptRules = useAcceptAuthorRules()
 
@@ -192,6 +194,9 @@ function ProfilePage() {
                 <Badge variant="outline">{level.title}</Badge>
               </div>
               <p className="mt-1.5 text-sm text-muted-foreground">{level.description}</p>
+              {me?.bio ? (
+                <p className="mt-1 text-sm italic text-foreground/80">「{me.bio}」</p>
+              ) : null}
               <p className="mt-2 text-xs text-muted-foreground">
                 总积分 <span className="font-semibold tabular-nums text-foreground">{level.xp}</span>
                 {level.next_level_xp != null && (

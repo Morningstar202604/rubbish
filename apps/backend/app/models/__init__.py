@@ -184,6 +184,8 @@ class User(Base, TenantScopedMixin):
     )
     # OpenID Connect ORCID iD linked to this user (optional).
     orcid: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # 用户自定义一句话简介（个人中心展示；迁移 012）。
+    bio: Mapped[str | None] = mapped_column(String(200), nullable=True)
     # Soft-delete timestamp. Set when the user requests account deletion
     # (GDPR right-to-erasure). The row is anonymised in place, and a
     # background job hard-deletes it after the grace window.

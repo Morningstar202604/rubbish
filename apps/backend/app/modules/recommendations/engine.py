@@ -173,7 +173,9 @@ async def _fallback_latest(
             await db.execute(
                 select(Resource)
                 .where(Resource.tenant_id == tenant_id, *public_conditions())
-                .order_by(desc(Resource.created_at), Resource.id.asc())
+                # id 决胜（desc）：「最新优先」= 后创建的在前；同批插入的
+                # 行 created_at 相同，纯时间戳排序不稳定。
+                .order_by(desc(Resource.created_at), Resource.id.desc())
                 .limit(limit)
             )
         )
@@ -230,7 +232,9 @@ async def recommend(
                 # （falls back to _fallback_latest which already filters）。
                 *public_conditions(),
             )
-            .order_by(desc(Resource.created_at))
+            # id 决胜：同一批次插入的行 created_at 可能完全相同，
+            # 纯时间戳排序不稳定（测试中 Latest Paper A/B 顺序抖动）。
+            .order_by(desc(Resource.created_at), Resource.id.desc())
             .limit(_MAX_CANDIDATE_SCAN)
         )
     ).all()

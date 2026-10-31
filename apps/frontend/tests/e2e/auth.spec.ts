@@ -39,11 +39,10 @@ test.describe('auth: register + verify + login + logout', () => {
     const token = mine!.body.match(/token=([A-Za-z0-9._-]+)/)?.[1]
     expect(token).toBeTruthy()
 
-    // 3) 通过 URL 带 token 进入 verify-email 页面（前端会自动填进 input）
+    // 3) 通过 URL 带 token 进入 verify-email 页面：1.5.0 起带 token 即自动验证，
+    //    页面直接渲染结果卡（不再有「验证」按钮）。
     await page.goto(`/verify-email?token=${token}`)
-    await page.waitForLoadState('networkidle')
-    await page.getByRole('button', { name: '验证' }).click()
-    await expect(page.getByText('邮箱验证成功，请登录')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('验证成功', { exact: true })).toBeVisible({ timeout: 20_000 })
 
     // 4) 去登录页登录
     await page.getByRole('button', { name: '前往登录' }).click()

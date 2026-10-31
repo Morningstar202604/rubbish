@@ -20,9 +20,8 @@ test.describe('admin: user management', () => {
     await loginViaUi(page, ADMIN)
     await page.goto('/admin/users')
     await expect(page.getByRole('heading', { name: '用户管理' })).toBeVisible()
-    // admin 自己应该在列表里
-    await expect(page.getByText('admin@e2e.test')).toBeVisible()
-    // 搜索 admin
+    // admin 是 bootstrap 建的最老账号，列表按注册时间倒序分页——
+    // E2E 库累积用户后会掉出第一页，所以直接搜索而不是断言首屏可见。
     await page.getByPlaceholder('搜索用户名或邮箱').fill('admin')
     await expect(page.getByText('admin@e2e.test')).toBeVisible()
     // 搜索不存在的用户
@@ -56,14 +55,14 @@ test.describe('admin: user management', () => {
       .locator('button[data-slot="dropdown-menu-trigger"]')
     await trigger.click()
     // 点 "审稿人" checkbox item(未选中 → 选中)
-    const reviewerItem = adminPage.getByRole('menuitemcheckbox', { name: '审稿人' })
+    const reviewerItem = adminPage.getByRole('menuitemcheckbox', { name: '审稿人', exact: true })
     await reviewerItem.waitFor({ state: 'visible', timeout: 5_000 })
     await reviewerItem.click()
     await expect(adminPage.getByText('已分配 审稿人 角色')).toBeVisible({ timeout: 5_000 })
 
     // 等表格刷新,验证 reviewer badge 出现在该行
     await expect(
-      adminPage.locator('tr', { hasText: target.username }).getByText('审稿人'),
+      adminPage.locator('tr', { hasText: target.username }).getByText('审稿人', { exact: true }),
     ).toBeVisible({ timeout: 5_000 })
 
     // 撤销角色（重新定位 row + trigger，避免表格 rerender 后旧引用失效）
@@ -78,7 +77,7 @@ test.describe('admin: user management', () => {
       .first()
       .locator('button[data-slot="dropdown-menu-trigger"]')
     await trigger2.click()
-    const reviewerItem2 = adminPage.getByRole('menuitemcheckbox', { name: '审稿人' })
+    const reviewerItem2 = adminPage.getByRole('menuitemcheckbox', { name: '审稿人', exact: true })
     await reviewerItem2.waitFor({ state: 'visible', timeout: 5_000 })
     await reviewerItem2.click()
     await expect(adminPage.getByText('已撤销 审稿人 角色')).toBeVisible({ timeout: 5_000 })
@@ -142,6 +141,7 @@ test.describe('admin: user management', () => {
   test('admin cannot disable own account (button disabled for self)', async ({ page }) => {
     await loginViaUi(page, ADMIN)
     await page.goto('/admin/users')
+    await page.getByPlaceholder('搜索用户名或邮箱').fill('admin')
     // admin 自己那行的操作按钮 disabled
     const row = page.locator('tr', { hasText: 'admin@e2e.test' }).first()
     await expect(row.locator('button[data-slot="dropdown-menu-trigger"]')).toBeDisabled()
@@ -169,7 +169,7 @@ test.describe('admin: user management', () => {
       .first()
       .locator('button[data-slot="dropdown-menu-trigger"]')
     await trigger.click()
-    const reviewerItem = page.getByRole('menuitemcheckbox', { name: '审稿人' })
+    const reviewerItem = page.getByRole('menuitemcheckbox', { name: '审稿人', exact: true })
     await reviewerItem.waitFor({ state: 'visible', timeout: 5_000 })
     await reviewerItem.click()
     await expect(page.getByText('已分配 审稿人 角色')).toBeVisible({ timeout: 5_000 })
@@ -191,8 +191,8 @@ test.describe('admin: user management', () => {
     await registerAndVerifyViaUi(page, user)
     await loginViaUi(page, user)
     await page.goto('/admin/audit-logs')
-    // 普通用户被 beforeLoad 挡回 /login
-    await expect(page).toHaveURL(/\/login/)
+    // 已登录但无权 → /403（requireAdminGuard 0.8 起把"未登录"和"越权"分开）
+    await expect(page).toHaveURL(/\/403/)
     await ctx.close()
   })
 })
