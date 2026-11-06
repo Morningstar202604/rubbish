@@ -100,6 +100,42 @@ function splitManuscript(md: string): { main: string; refs: string } {
   return { main: md.slice(0, idx), refs: md.slice(idx + 1) }
 }
 
+/**
+ * 尾部可折叠区块（2.0）：致谢 / 附录 / 补充材料 / 数据与利益冲突声明等
+ * 从正文流里拆出，像参考文献一样默认收起、想展开再展开——主编口径：
+ * 这些内容不与论文主体混排。匹配按 `## 标题` 起始，至下一个 h2 前结束。
+ */
+const BACKMATTER_RE =
+  /^##[ \t]*(致[ \t\u3000]*谢|附[ \t\u3000]*录|补充材料|数据可用性|数据与代码可用性|作者贡献|利益冲突)[^\n]*$/gm
+
+interface BackMatterSection {
+  title: string
+  content: string
+}
+
+function splitBackMatter(main: string): { body: string; back: BackMatterSection[] } {
+  const marks: Array<{ start: number; end: number; title: string }> = []
+  for (const m of main.matchAll(BACKMATTER_RE)) {
+    const nextH2 = main.indexOf('\n## ', m.index + m[0].length)
+    marks.push({
+      start: m.index,
+      end: nextH2 < 0 ? main.length : nextH2 + 1,
+      title: m[0].replace(/^##[ \t]*/, '').trim(),
+    })
+  }
+  if (marks.length === 0) return { body: main, back: [] }
+  const back: BackMatterSection[] = []
+  const parts: string[] = []
+  let cursor = 0
+  for (const mark of marks) {
+    parts.push(main.slice(cursor, mark.start))
+    back.push({ title: mark.title, content: main.slice(mark.start, mark.end).trim() })
+    cursor = mark.end
+  }
+  parts.push(main.slice(cursor))
+  return { body: parts.filter((p) => p.trim()).join('\n\n'), back }
+}
+
 // Word → HTML → Markdown 的转换管线会在插图位置留下
 // `<!-- Start of picture text --> … <!-- End of picture text -->` 这类
 // 注释，Markdown 渲染时被当成正文显示（生产 /reader/133 实锤）。
@@ -347,10 +383,11 @@ export function ManuscriptView({
 
   // 目录与正文/参考文献拆分：纯字符串操作，无需 memo
   const split = cleaned ? splitManuscript(cleaned) : { main: '', refs: '' }
-  const sections = split.main
-    ? splitAbstract(split.main)
+  const backSplit = split.main ? splitBackMatter(split.main) : { body: '', back: [] }
+  const sections = backSplit.body
+    ? splitAbstract(backSplit.body)
     : { before: '', abstract: '', label: '摘要', after: '' }
-  const main = split.main
+  const main = backSplit.body
   const refs = split.refs
   const refEntries = refs ? referenceEntries(refs) : []
   const refCount = refEntries.length
@@ -682,6 +719,22 @@ export function ManuscriptView({
               </div>
             </details>
           )}
+
+          {/* 致谢 / 附录 / 补充材料等尾部区块：默认收起，想展开再展开 */}
+          {backSplit.back.map((sec, i) => (
+            <details
+              key={`${sec.title}-${i}`}
+              className="backmatter-collapse mt-4 rounded-lg border bg-muted/30"
+              data-testid="backmatter-collapse"
+            >
+              <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium">
+                {sec.title} · 点击展开
+              </summary>
+              <div className="border-t px-4 py-3 markdown-body">
+                <ManuscriptMarkdown>{sec.content}</ManuscriptMarkdown>
+              </div>
+            </details>
+          ))}
         </article>
         </div>
       </div>

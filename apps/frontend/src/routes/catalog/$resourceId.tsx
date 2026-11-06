@@ -20,6 +20,7 @@ import {
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/use-auth'
 import { useIsMobile } from '@/hooks/use-is-mobile'
+import QualityRadar from '@/components/charts/quality-radar'
 import {
   useAuthorFollowStatus,
   useClaimResource,
@@ -300,22 +301,16 @@ function CatalogDetailPage() {
               })()}
               {data.quality_breakdown && (
                 <div className="mt-3 space-y-1.5">
-                  {Object.entries(data.quality_breakdown)
-                    .filter(([key]) => key !== 'comment')
-                    .map(([key, dim]) => (
-                    <div key={key} className="flex items-center gap-2 text-xs">
-                      <span className="w-24 shrink-0 text-muted-foreground">{dim.label}</span>
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full bg-primary/70"
-                          style={{ width: `${Math.min(100, (dim.score / Math.max(dim.max, 1)) * 100)}%` }}
-                        />
-                      </div>
-                      <span className="w-14 shrink-0 text-right tabular-nums text-muted-foreground">
-                        {dim.score} / {dim.max}
-                      </span>
-                    </div>
-                  ))}
+                  <QualityRadar
+                    dimensions={Object.entries(data.quality_breakdown)
+                      .filter(([key]) => key !== 'comment')
+                      .map(([key, dim]) => ({
+                        key,
+                        label: dim.label as string,
+                        score: Number(dim.score ?? 0),
+                        max: Number(dim.max ?? 100),
+                      }))}
+                  />
                 </div>
               )}
               <p className="mt-3 text-xs leading-relaxed text-muted-foreground">

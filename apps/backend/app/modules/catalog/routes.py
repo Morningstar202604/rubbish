@@ -86,15 +86,20 @@ async def _can_preview_unpublished(
         return True
     from app.modules.submission.models import Submission
 
-    submitter_id = (
-        await db.execute(
-            select(Submission.submitted_by).where(
-                Submission.resource_id == resource_id,
-                Submission.tenant_id == tenant_id,
+    # 一篇资源可能关联多条投稿（重新投稿/合并链接），不能 scalar_one——
+    # 否则详情页对这些资源直接 500（MultipleResultsFound，线上实锤事故）。
+    # 语义是「作者是任一关联投稿的提交者即可预览」。
+    submitter_ids = set(
+        (
+            await db.execute(
+                select(Submission.submitted_by).where(
+                    Submission.resource_id == resource_id,
+                    Submission.tenant_id == tenant_id,
+                )
             )
-        )
-    ).scalar_one_or_none()
-    return submitter_id is not None and submitter_id == viewer.id
+        ).scalars().all()
+    )
+    return viewer.id in submitter_ids
 
 
 def _conflict_detail(exc: IntegrityError) -> str:
@@ -785,15 +790,9 @@ async def download_resource_file(
         .scalars()
         .first()
     )
-    if submission is None or not submission.file_path:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="This resource has no downloadable file",
-        )
 
     # 下载计数（R 指数的 0.3 权重项）：仅 published 资源计数——刊前预览
-    # 不得污染指标；且只在真正返回内容前自增一次，404/302 预签名跳转
-    # 都不算，避免把外部存储的鉴权失败算成一次下载。
+    # 不得污染指标；且只在真正返回内容前自增一次。
     if is_published:
         await db.execute(
             update(Resource)
@@ -801,6 +800,58 @@ async def download_resource_file(
             .values(download_count=Resource.download_count + 1)
         )
         await db.commit()
+
+    # 2.0 起「原稿 PDF」退役：原 PDF 已按编辑部决议归档清除，下载一律给
+    # 「规范化 Word 下载件」——由在线正文 Markdown 经品牌化 docx 模板
+    # 实时生成（绿色 logo 页眉、楷体书名号、标题层级），与在线阅读所见
+    # 一致。存储里的旧原件不再参与下载。
+    if submission is not None and submission.markdown_path:
+        from fastapi.responses import Response as FastAPIResponse
+
+        from app.core.storage import get_storage
+        from app.modules.submission.docx_template import Meta as DocxMeta, build as build_docx
+
+        try:
+            md_data = await get_storage().load(submission.markdown_path)
+        except FileNotFoundError:
+            md_data = None
+        if md_data is not None:
+            md_text = md_data.decode("utf-8", errors="replace")
+            meta = DocxMeta(
+                title=resource.title,
+                authors=[f"Rubbish 编辑部 · {resource.id} 号稿"]
+                if not resource.authors
+                else list(resource.authors),
+                affiliations=[f"Rubbish 期刊 · 第 {resource.volume or '1'} 卷 第 {resource.issue or '—'} 期"]
+                if not resource.venue
+                else [resource.venue],
+                abstract=resource.abstract or "",
+                keywords=list(resource.keywords or []) + list(resource.tags or []),
+            )
+            try:
+                blob = build_docx(md_text, meta)
+            except Exception:  # noqa: BLE001 — 转换失败回退旧文件下载
+                blob = None
+            if blob is not None:
+                readable = _download_name(resource.title, "docx")
+                return FastAPIResponse(
+                    content=blob,
+                    media_type=(
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    ),
+                    headers={
+                        "Content-Disposition": (
+                            f'attachment; filename="{resource.id}-manuscript.docx"; '
+                            f"filename*=UTF-8''{quote(readable)}"
+                        )
+                    },
+                )
+
+    if submission is None or not submission.file_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="This resource has no downloadable file",
+        )
 
     storage = get_storage()
     url = storage.presigned_url(submission.file_path)

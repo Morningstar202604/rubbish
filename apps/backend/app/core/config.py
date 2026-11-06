@@ -156,6 +156,10 @@ class Settings(BaseSettings):
     # 只有运维显式设置 RUBBISH_EMAIL_OUTBOUND_ENABLED=true 才允许真实发信；
     # 上线前请确认收件人范围、并取得负责人同意后再打开。
     email_outbound_enabled: bool = False
+    # 恭喜邮件独立开关：录用/接收后的作者祝贺邮件不受总闸约束，由主编
+    # 单独授权（2026-11-06 主编指令：发布成功要发恭喜邮件）。其余类型
+    # （验证码/催审/裁决/补审）仍受 email_outbound_enabled 管控。
+    email_congrat_enabled: bool = False
     email_from_address: str = "no-reply@rubbish.local"
     email_from_name: str = "Rubbish"
     email_smtp_host: str = ""
