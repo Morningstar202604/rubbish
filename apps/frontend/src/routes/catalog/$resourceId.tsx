@@ -326,7 +326,7 @@ function CatalogDetailPage() {
               <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                 评分为七维加权（问题价值 / 论证链 / 方法透明度 / 证据强度 / 创新与定位 /
                 学术诚信 / 表达清晰度，按稿件类型另有分档权重，学术诚信 0 分一票否决）；
-                口径冻结在评分规范 v3.0，不随月份变化。
+                口径冻结在评分规范 v4.0（七维加权，学术诚信 0 分一票否决），不随月份变化。
               </p>
             </CardContent>
           </FoldCard>

@@ -31,6 +31,9 @@ from app.api.deps import (
 )
 from app.core import search as fulltext
 from app.core.db import get_db, paginate
+from app.core.logging import get_logger
+
+logger = get_logger("rubbish.catalog")
 from app.core.schemas import PaginationMeta
 from app.core.time import utcnow
 from app.models import AuditLog, Role, User, UserRole
@@ -1756,3 +1759,113 @@ async def admin_overview(
             {"id": rid, "title": title, "reads": int(n or 0)} for rid, title, n in top_rows
         ],
     }
+
+
+class FeedbackIn(BaseModel):
+    """全站问题反馈（2.0 主编要求：每个页面都可提 bug，交主编处理）。"""
+
+    kind: str = Field(default="bug", max_length=20)  # bug / suggestion / appeal_help
+    title: str = Field(min_length=2, max_length=120)
+    body: str = Field(min_length=5, max_length=2000)
+    page_url: str = Field(default="", max_length=300)
+
+
+@router.post("/feedback")
+async def submit_feedback(
+    body: FeedbackIn,
+    viewer: User | None = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_db),
+    tenant_id: int = Depends(require_tenant_id),
+) -> dict[str, object]:
+    """任何读者/作者/审稿人都能提问题，落审计并向主编/编辑推送通知。"""
+    from app.modules.notifications import services as _notify
+
+    entry = AuditLog(
+        tenant_id=tenant_id,
+        actor_user_id=viewer.id if viewer else None,
+        action=f"feedback.{body.kind}",
+        target_type="site",
+        target_id=body.page_url or "unknown",
+        payload={"title": body.title, "body": body.body},
+        created_at=utcnow(),
+    )
+    db.add(entry)
+    # 收件人 = 主编账号（bigbad, id=5）。角色表结构在不同版本间有差异，
+    # 直接锁定主编账号最可靠；反馈本身已落审计，通知失败不影响入库。
+    editors = (
+        await db.execute(select(User.id).where(User.username == "bigbad"))
+    ).scalars().all()
+    for uid in set(editors):
+        try:
+            await _notify.create(
+                db,
+                tenant_id=tenant_id,
+                user_id=uid,
+                type_="site.feedback",
+                title=f"站点反馈：{body.title}",
+                body=f"{body.body}\n\n页面：{body.page_url or '—'}\n提交人：{viewer.username if viewer else '游客'}",
+                related_type="site",
+                related_id=body.page_url or "unknown",
+            )
+        except Exception:  # noqa: BLE001 — 通知失败不影响反馈入库
+            logger.warning("feedback_notify_failed", user_id=uid, exc_info=True)
+    await db.commit()
+    await db.refresh(entry)
+    return {"id": entry.id, "status": "received"}
+
+
+@router.post("/{resource_id}/appeal")
+async def submit_appeal(
+    resource_id: int,
+    body: FeedbackIn,
+    viewer: User | None = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_db),
+    tenant_id: int = Depends(require_tenant_id),
+) -> dict[str, object]:
+    """作者申诉：对评审/决定有异议 → 记录并推送给编辑，由编辑指派审稿人复审。"""
+    from app.modules.notifications import services as _notify
+    from app.modules.submission.models import Submission as _Submission
+
+    if viewer is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Login required")
+    owned = (
+        await db.execute(
+            select(_Submission.id).where(
+                _Submission.resource_id == resource_id,
+                _Submission.submitted_by == viewer.id,
+                _Submission.tenant_id == tenant_id,
+            )
+        )
+    ).scalars().all()
+    entry = AuditLog(
+        tenant_id=tenant_id,
+        actor_user_id=viewer.id,
+        action="submission.appeal",
+        target_type="resource",
+        target_id=str(resource_id),
+        payload={"owned_submissions": list(owned), "title": body.title, "body": body.body},
+        created_at=utcnow(),
+    )
+    db.add(entry)
+    # 收件人 = 主编账号（bigbad, id=5）。角色表结构在不同版本间有差异，
+    # 直接锁定主编账号最可靠；反馈本身已落审计，通知失败不影响入库。
+    editors = (
+        await db.execute(select(User.id).where(User.username == "bigbad"))
+    ).scalars().all()
+    for uid in set(editors):
+        try:
+            await _notify.create(
+                db,
+                tenant_id=tenant_id,
+                user_id=uid,
+                type_="submission.appeal",
+                title=f"作者申诉待处理：资源 #{resource_id}",
+                body=f"{body.title}\n\n{body.body}\n\n申诉人：{viewer.username}（请指派审稿人复审）",
+                related_type="resource",
+                related_id=str(resource_id),
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("appeal_notify_failed", user_id=uid, exc_info=True)
+    await db.commit()
+    await db.refresh(entry)
+    return {"id": entry.id, "status": "received", "review_required": True}

@@ -1,3 +1,4 @@
+import { FeedbackButton } from '@/components/common/feedback-button'
 import { createRootRouteWithContext } from '@tanstack/react-router'
 import { QueryClient } from '@tanstack/react-query'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -57,6 +58,7 @@ function RootLayout() {
   return (
     <>
       {isMobile ? <MobileAppShell /> : <AppShell />}
+      <FeedbackButton />
       <Toaster position="top-right" richColors closeButton />
       {showDevtools && <TanStackRouterDevtools />}
     </>
