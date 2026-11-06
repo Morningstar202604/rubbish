@@ -113,6 +113,19 @@ interface BackMatterSection {
   content: string
 }
 
+/**
+ * 关键词节拆分：`## 关键词` 起至下一个 h2，渲染成与摘要同家族的卡片。
+ */
+function splitKeywords(main: string): { body: string; keywords: string } {
+  const m = /^##[ \t]*(关[ \t\u3000]*键[ \t\u3000]*词|Keywords|KEYWORDS)[^\n]*$/im.exec(main)
+  if (!m) return { body: main, keywords: '' }
+  const nextH2 = main.indexOf('\n## ', m.index + m[0].length)
+  const end = nextH2 < 0 ? main.length : nextH2 + 1
+  const content = main.slice(m.index, end).trim()
+  const body = (main.slice(0, m.index) + main.slice(end)).trim()
+  return { body, keywords: content }
+}
+
 function splitBackMatter(main: string): { body: string; back: BackMatterSection[] } {
   const marks: Array<{ start: number; end: number; title: string }> = []
   for (const m of main.matchAll(BACKMATTER_RE)) {
@@ -384,10 +397,14 @@ export function ManuscriptView({
   // 目录与正文/参考文献拆分：纯字符串操作，无需 memo
   const split = cleaned ? splitManuscript(cleaned) : { main: '', refs: '' }
   const backSplit = split.main ? splitBackMatter(split.main) : { body: '', back: [] }
-  const sections = backSplit.body
-    ? splitAbstract(backSplit.body)
+  // 关键词节单独拆出渲染成卡片：摘要/关键词/正文三段视觉分区（2.0 排版）
+  const kwSplit = backSplit.body
+    ? splitKeywords(backSplit.body)
+    : { body: '', keywords: '' }
+  const sections = kwSplit.body
+    ? splitAbstract(kwSplit.body)
     : { before: '', abstract: '', label: '摘要', after: '' }
-  const main = backSplit.body
+  const main = kwSplit.body
   const refs = split.refs
   const refEntries = refs ? referenceEntries(refs) : []
   const refCount = refEntries.length
@@ -689,6 +706,11 @@ export function ManuscriptView({
                   {`## ${sections.label}\n\n${sections.abstract}`}
                 </ManuscriptMarkdown>
               </section>
+              {kwSplit.keywords && (
+                <section role="region" aria-label="关键词" className="md-keywords">
+                  <ManuscriptMarkdown>{kwSplit.keywords}</ManuscriptMarkdown>
+                </section>
+              )}
               {sections.after && <ManuscriptMarkdown>{sections.after}</ManuscriptMarkdown>}
             </>
           ) : (

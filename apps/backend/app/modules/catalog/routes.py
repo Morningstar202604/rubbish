@@ -784,7 +784,12 @@ async def download_resource_file(
                 select(Submission).where(
                     Submission.resource_id == resource_id,
                     Submission.tenant_id == tenant_id,
-                )
+                    # 2.0：一篇资源可能关联多条投稿（重复投稿/合并链接），
+                    # 必须取有正文的那条且结果确定——空正文路径与无序 first()
+                    # 会让 manuscript/download 命中空投稿而 404（线上 34 实锤）。
+                    Submission.markdown_path.is_not(None),
+                    Submission.markdown_path != "",
+                ).order_by(Submission.id.asc())
             )
         )
         .scalars()
@@ -950,7 +955,12 @@ async def get_resource_manuscript(
                 select(Submission).where(
                     Submission.resource_id == resource_id,
                     Submission.tenant_id == tenant_id,
-                )
+                    # 2.0：一篇资源可能关联多条投稿（重复投稿/合并链接），
+                    # 必须取有正文的那条且结果确定——空正文路径与无序 first()
+                    # 会让 manuscript/download 命中空投稿而 404（线上 34 实锤）。
+                    Submission.markdown_path.is_not(None),
+                    Submission.markdown_path != "",
+                ).order_by(Submission.id.asc())
             )
         )
         .scalars()
@@ -1023,7 +1033,12 @@ async def get_resource_manuscript_jats(
                 select(Submission).where(
                     Submission.resource_id == resource_id,
                     Submission.tenant_id == tenant_id,
-                )
+                    # 2.0：一篇资源可能关联多条投稿（重复投稿/合并链接），
+                    # 必须取有正文的那条且结果确定——空正文路径与无序 first()
+                    # 会让 manuscript/download 命中空投稿而 404（线上 34 实锤）。
+                    Submission.markdown_path.is_not(None),
+                    Submission.markdown_path != "",
+                ).order_by(Submission.id.asc())
             )
         )
         .scalars()
@@ -1110,7 +1125,12 @@ async def export_resource_manuscript(
                 select(Submission).where(
                     Submission.resource_id == resource_id,
                     Submission.tenant_id == tenant_id,
-                )
+                    # 2.0：一篇资源可能关联多条投稿（重复投稿/合并链接），
+                    # 必须取有正文的那条且结果确定——空正文路径与无序 first()
+                    # 会让 manuscript/download 命中空投稿而 404（线上 34 实锤）。
+                    Submission.markdown_path.is_not(None),
+                    Submission.markdown_path != "",
+                ).order_by(Submission.id.asc())
             )
         )
         .scalars()
