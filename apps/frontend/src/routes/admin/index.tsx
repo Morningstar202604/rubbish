@@ -1,4 +1,13 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
+import {
+  Activity,
+  Download,
+  Eye,
+  FileText,
+  Inbox,
+} from 'lucide-react'
+import { api } from '@/lib/api'
 import {
   ArrowRight,
   CalendarDays,
@@ -52,11 +61,96 @@ const CHAIN = [
   { role: '作者', power: '投稿 · 修回 · 认领' },
 ]
 
+interface AdminOverview {
+  online_users: number
+  active_24h: number
+  total_reads: number
+  total_downloads: number
+  published_resources: number
+  pending_submissions: number
+  top_read: Array<{ id: number; title: string; reads: number }>
+}
+
+/** 实时概览（2.0 主编要求）：在线人数 / 阅读 / 下载 / 稿件流水线，30s 自动刷新。 */
+function LiveOverview() {
+  const { data } = useQuery({
+    queryKey: ['admin', 'overview'],
+    queryFn: async () => {
+      const resp = await api.get<AdminOverview>('/catalog/admin/overview')
+      return resp.data
+    },
+    refetchInterval: 30_000,
+    initialData: undefined,
+  })
+  const cards: Array<{ label: string; value: string | number; icon: typeof Activity; accent: string }> = [
+    { label: '当前在线', value: data?.online_users ?? '—', icon: Activity, accent: 'text-emerald-600 dark:text-emerald-400' },
+    { label: '24h 活跃读者', value: data?.active_24h ?? '—', icon: Users, accent: 'text-sky-600 dark:text-sky-400' },
+    { label: '累计阅读', value: data?.total_reads ?? '—', icon: Eye, accent: 'text-primary' },
+    { label: '累计下载', value: data?.total_downloads ?? '—', icon: Download, accent: 'text-amber-600 dark:text-amber-400' },
+    { label: '已刊文章', value: data?.published_resources ?? '—', icon: FileText, accent: 'text-violet-600 dark:text-violet-400' },
+    { label: '待处理稿件', value: data?.pending_submissions ?? '—', icon: Inbox, accent: 'text-red-600 dark:text-red-400' },
+  ]
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <span className="relative inline-flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          </span>
+          实时概览
+          <span className="text-xs font-normal text-muted-foreground">每 30 秒自动刷新</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {cards.map((c) => (
+            <div key={c.label} className="rounded-lg border bg-muted/30 p-3">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <c.icon className={`h-3.5 w-3.5 ${c.accent}`} />
+                {c.label}
+              </div>
+              <p className="mt-1 font-serif text-2xl font-semibold tabular-nums">{c.value}</p>
+            </div>
+          ))}
+        </div>
+        {data?.top_read && data.top_read.length > 0 && (
+          <div>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">阅读榜 Top 10</p>
+            <div className="space-y-1">
+              {data.top_read.map((t, i) => (
+                <Link
+                  key={t.id}
+                  to="/catalog/$resourceId"
+                  params={{ resourceId: String(t.id) }}
+                  className="flex items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-muted/50"
+                >
+                  <span className="min-w-0 truncate">
+                    <span className="mr-2 inline-block w-5 text-right text-xs tabular-nums text-muted-foreground">
+                      {i + 1}
+                    </span>
+                    {t.title}
+                  </span>
+                  <span className="ml-3 shrink-0 tabular-nums text-xs text-muted-foreground">
+                    {t.reads} 次
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 function AdminDashboard() {
   const { user } = useAuth()
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6">
       <PageHeader title="站点总览" description={`欢迎，${user?.username ?? '管理员'}。按工作流找入口。`} />
+
+      <LiveOverview />
 
       <Card>
         <CardHeader className="pb-2">

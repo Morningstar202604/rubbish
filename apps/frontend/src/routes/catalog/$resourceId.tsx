@@ -299,20 +299,30 @@ function CatalogDetailPage() {
                   </div>
                 ) : null
               })()}
-              {data.quality_breakdown && (
-                <div className="mt-3 space-y-1.5">
-                  <QualityRadar
-                    dimensions={Object.entries(data.quality_breakdown)
-                      .filter(([key]) => key !== 'comment')
-                      .map(([key, dim]) => ({
-                        key,
-                        label: dim.label as string,
-                        score: Number(dim.score ?? 0),
-                        max: Number(dim.max ?? 100),
-                      }))}
-                  />
-                </div>
-              )}
+              {(() => {
+                // quality_breakdown 真实结构：{rubric_version, article_type, score, grade,
+                //   breakdown: {dim: {label, score, max_score, ratio, reason}}, comment}
+                // 七维在 breakdown 子对象，max 字段名是 max_score——此前按顶层读，
+                // 全部 undefined → 雷达塌陷为 0 分（图例全红）。
+                const qb = data.quality_breakdown as Record<string, unknown> | null
+                const breakdown = (qb?.breakdown ?? null) as Record<
+                  string,
+                  { label?: string; score?: number; max_score?: number } | undefined
+                > | null
+                const dims = breakdown
+                  ? Object.entries(breakdown).map(([key, dim]) => ({
+                      key,
+                      label: dim?.label ?? key,
+                      score: Number(dim?.score ?? 0),
+                      max: Number(dim?.max_score ?? 100),
+                    }))
+                  : []
+                return dims.length >= 3 ? (
+                  <div className="mt-3 space-y-1.5">
+                    <QualityRadar dimensions={dims} />
+                  </div>
+                ) : null
+              })()}
               <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                 评分为七维加权（问题价值 / 论证链 / 方法透明度 / 证据强度 / 创新与定位 /
                 学术诚信 / 表达清晰度，按稿件类型另有分档权重，学术诚信 0 分一票否决）；

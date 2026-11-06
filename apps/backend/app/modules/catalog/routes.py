@@ -25,6 +25,7 @@ from app.api.deps import (
     ROLE_EDITOR,
     get_current_user_optional,
     require_admin,
+    require_editor,
     require_tenant_id,
     user_has_role,
 )
@@ -1669,3 +1670,89 @@ async def claim_resource(
     )
     await db.commit()
     return {"id": claim.id, "status": claim.status}
+
+
+@router.get("/admin/overview")
+async def admin_overview(
+    _: User = Depends(require_editor),
+    db: AsyncSession = Depends(get_db),
+    tenant_id: int = Depends(require_tenant_id),
+) -> dict[str, object]:
+    """管理端实时概览（2.0 主编要求）：在线人数 / 今日与累计阅读 / 下载 /
+    稿件流水线 / 最热文章。数据全部来自真实阅读记录（ReadingHistory），
+    30 秒轮询刷新由前端负责。"""
+    from datetime import timedelta
+
+    from sqlalchemy import func
+
+    from app.api.deps import require_editor, require_tenant_id  # noqa: F401
+    from app.modules.reader.models import ReadingHistory
+
+    now = utcnow()
+    online_rows = (
+        await db.execute(
+            select(func.count(func.distinct(ReadingHistory.user_id))).where(
+                ReadingHistory.tenant_id == tenant_id,
+                ReadingHistory.viewed_at >= now - timedelta(minutes=5),
+            )
+        )
+    ).scalar_one()
+    today_rows = (
+        await db.execute(
+            select(func.count(func.distinct(ReadingHistory.user_id))).where(
+                ReadingHistory.tenant_id == tenant_id,
+                ReadingHistory.viewed_at >= now - timedelta(hours=24),
+            )
+        )
+    ).scalar_one()
+    total_reads = (
+        await db.execute(
+            select(func.coalesce(func.sum(ReadingHistory.visit_count), 0)).where(
+                ReadingHistory.tenant_id == tenant_id
+            )
+        )
+    ).scalar_one()
+    total_downloads = (
+        await db.execute(
+            select(func.coalesce(func.sum(Resource.download_count), 0)).where(
+                Resource.tenant_id == tenant_id
+            )
+        )
+    ).scalar_one()
+    published = (
+        await db.execute(
+            select(func.count(Resource.id)).where(
+                Resource.tenant_id == tenant_id,
+                Resource.publication_status == "published",
+            )
+        )
+    ).scalar_one()
+    pending = (
+        await db.execute(
+            select(func.count(Submission.id)).where(
+                Submission.tenant_id == tenant_id,
+                Submission.status.in_(("pending", "under_review")),
+            )
+        )
+    ).scalar_one()
+    top_rows = (
+        await db.execute(
+            select(Resource.id, Resource.title, func.sum(ReadingHistory.visit_count))
+            .join(ReadingHistory, ReadingHistory.resource_id == Resource.id)
+            .where(Resource.tenant_id == tenant_id)
+            .group_by(Resource.id, Resource.title)
+            .order_by(func.sum(ReadingHistory.visit_count).desc())
+            .limit(10)
+        )
+    ).all()
+    return {
+        "online_users": int(online_rows or 0),
+        "active_24h": int(today_rows or 0),
+        "total_reads": int(total_reads or 0),
+        "total_downloads": int(total_downloads or 0),
+        "published_resources": int(published or 0),
+        "pending_submissions": int(pending or 0),
+        "top_read": [
+            {"id": rid, "title": title, "reads": int(n or 0)} for rid, title, n in top_rows
+        ],
+    }
