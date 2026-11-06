@@ -16,7 +16,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import desc, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -558,6 +558,101 @@ async def get_issue_plan(db: AsyncSession = Depends(get_db)) -> IssuePlanRespons
     return IssuePlanResponse(volume="1", now=now, entries=entries)
 
 
+ISSUE_SIZE_DEFAULT = 60
+
+
+class IssueRebalanceRequest(BaseModel):
+    """整卷重排：每期固定篇数、按质量顺序逐期发布。"""
+
+    volume: str = "1"
+    issue_size: int = Field(default=ISSUE_SIZE_DEFAULT, ge=1, le=200)
+    dry_run: bool = False
+
+
+@router.post("/issues/rebalance")
+async def rebalance_issues(
+    payload: IssueRebalanceRequest,
+    current_admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    """把已发布资源重排为「每期固定 ``issue_size`` 篇」的顺序刊期（管理员）。
+
+    口径（2026-11 编辑部决议）：
+
+    - 排序键：``quality_score`` 降序（NULL 最后）→ ``id`` 升序，质量高的
+      先进第 1 期；分数与排版格式无关，格式只是入场券。
+    - 期号零填充两位（``01``、``02``…），``pages`` 保留原值不动；DOI 与
+      slug 不变，外部链接不断。
+    - ``dry_run=true`` 只返回分组预览，不写库。
+    """
+    from sqlalchemy import nullslast
+
+    tenant_id = current_admin.tenant_id
+    rows = (
+        (
+            await db.execute(
+                select(Resource)
+                .where(
+                    Resource.tenant_id == tenant_id,
+                    Resource.publication_status == "published",
+                )
+                .order_by(
+                    nullslast(Resource.quality_score.desc()),
+                    Resource.id.asc(),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not rows:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No published resources")
+
+    groups: dict[str, list[int]] = {}
+    assignments: list[dict[str, object]] = []
+    for seq, resource in enumerate(rows, start=1):
+        issue_no = (seq - 1) // payload.issue_size + 1
+        issue_label = f"{issue_no:02d}"
+        if not payload.dry_run:
+            resource.volume = payload.volume
+            resource.issue = issue_label
+        groups.setdefault(issue_label, []).append(resource.id)
+        assignments.append(
+            {
+                "resource_id": resource.id,
+                "score": float(resource.quality_score) if resource.quality_score is not None else None,
+                "volume": payload.volume,
+                "issue": issue_label,
+                "order": seq,
+            }
+        )
+    if not payload.dry_run:
+        db.add(
+            AuditLog(
+                tenant_id=tenant_id,
+                actor_user_id=current_admin.id,
+                action="catalog.issues_rebalanced",
+                target_type="catalog",
+                target_id=f"volume:{payload.volume}",
+                payload={
+                    "issue_size": payload.issue_size,
+                    "total": len(rows),
+                    "issues": {k: len(v) for k, v in sorted(groups.items())},
+                },
+            )
+        )
+        await db.commit()
+    return {
+        "dry_run": payload.dry_run,
+        "volume": payload.volume,
+        "issue_size": payload.issue_size,
+        "total": len(rows),
+        "issues": {k: len(v) for k, v in sorted(groups.items())},
+        "assignments": assignments[:100],
+        "truncated": len(assignments) > 100,
+    }
+
+
 class IssueScheduleRequest(BaseModel):
     publish_at: datetime | None = None
 
@@ -833,6 +928,90 @@ async def get_resource_manuscript(
         headers={
             "X-Content-Type-Options": "nosniff",
             "ETag": etag,
+            "Cache-Control": "private, max-age=300",
+        },
+    )
+
+
+@router.get("/{resource_id}/manuscript.jats")
+async def get_resource_manuscript_jats(
+    resource_id: int,
+    db: AsyncSession = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
+) -> Response:
+    """NISO JATS 1.3 全文 XML（2.0 新增）：机器可读的全文交换格式。
+
+    可见性边界与 /manuscript 完全一致。PubMed Central / Crossref / 馆藏
+    系统都吃 JATS；XML 由纯函数 ``markdown_to_jats`` 生成，well-formed
+    由生成器保证（所有文本节点经 XML 转义）。
+    """
+    from fastapi.responses import Response
+
+    from app.core.storage import get_storage
+    from app.modules.export.jats import JatsMeta, markdown_to_jats
+
+    tenant_id = require_tenant_id()
+    result = await db.execute(
+        select(Resource).where(
+            Resource.id == resource_id,
+            Resource.tenant_id == tenant_id,
+        )
+    )
+    resource = result.scalar_one_or_none()
+    is_published = is_public(resource)
+    if resource is None or (
+        not is_published and not await _can_preview_unpublished(db, viewer, resource_id, tenant_id)
+    ):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+
+    from app.modules.submission.models import Submission
+
+    submission = (
+        (
+            await db.execute(
+                select(Submission).where(
+                    Submission.resource_id == resource_id,
+                    Submission.tenant_id == tenant_id,
+                )
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if submission is None or not submission.markdown_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="This resource has no online manuscript",
+        )
+    try:
+        data = await get_storage().load(submission.markdown_path)
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Stored manuscript is missing"
+        ) from exc
+
+    md_text = data.decode("utf-8", errors="replace")
+    meta = JatsMeta(
+        title=resource.title,
+        authors=list(resource.authors or []),
+        abstract=resource.abstract or "",
+        keywords=list(resource.keywords or []) + list(resource.tags or []),
+        volume=resource.volume or "",
+        issue=resource.issue or "",
+        pages=resource.pages or "",
+        doi=resource.doi or "",
+        year=resource.year,
+        article_id=str(resource.id),
+        language=resource.language or "zh",
+    )
+    xml = markdown_to_jats(md_text, meta)
+    filename = f"{resource.id}-manuscript.jats.xml"
+    return Response(
+        content=xml,
+        media_type="application/xml; charset=utf-8",
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": f'inline; filename="{filename}"',
             "Cache-Control": "private, max-age=300",
         },
     )

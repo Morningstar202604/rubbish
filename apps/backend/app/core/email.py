@@ -136,6 +136,14 @@ class SMTPEmailSender:
         body: str,
         html: str | None = None,
     ) -> None:
+        if not settings.email_outbound_enabled:
+            logger.warning(
+                "email_outbound_blocked",
+                to=to,
+                subject=subject,
+                reason="RUBBISH_EMAIL_OUTBOUND_ENABLED=false",
+            )
+            return
         msg = self._build_message(to, subject, body, html)
         last_error: Exception | None = None
         for attempt in range(self._retries + 1):
@@ -338,6 +346,14 @@ class SmtpPoolEmailSender:
         body: str,
         html: str | None = None,
     ) -> None:
+        if not settings.email_outbound_enabled:
+            logger.warning(
+                "email_outbound_blocked",
+                to=to,
+                subject=subject,
+                reason="RUBBISH_EMAIL_OUTBOUND_ENABLED=false",
+            )
+            return
         last_error: Exception | None = None
         order = self._order(time.monotonic())
         for account in order:
@@ -377,13 +393,30 @@ class SmtpPoolEmailSender:
 
 
 def smtp_configured() -> bool:
-    """True when the operator has supplied enough env for real delivery."""
-    return bool(settings.email_backend == "smtp" and configured_accounts())
+    """True only when real delivery is both configured **and** authorised."""
+    return bool(
+        settings.email_outbound_enabled
+        and settings.email_backend == "smtp"
+        and configured_accounts()
+    )
 
 
 def get_email_sender() -> EmailSender:
-    """Return the configured sender (lazily constructed, test-swappable)."""
+    """Return the configured sender (lazily constructed, test-swappable).
+
+    Hard guard: outbound delivery is OFF unless the operator explicitly
+    enables it. A stray group-mailbox SMTP credential in .env must never
+    turn a development box into a mass-mailer.
+    """
     global _sender
+    if not settings.email_outbound_enabled:
+        if not isinstance(_sender, ConsoleEmailSender):
+            logger.warning(
+                "email_outbound_disabled",
+                reason="RUBBISH_EMAIL_OUTBOUND_ENABLED=false",
+            )
+            _sender = ConsoleEmailSender()
+        return _sender
     if _sender is not None:
         return _sender
 
@@ -445,6 +478,8 @@ async def verify_smtp_connection() -> tuple[bool, str]:
     answers, so a single throttled mailbox does not read as "mail is down".
     Never raises — callers log the result.
     """
+    if not settings.email_outbound_enabled:
+        return False, "外发总闸已关闭（RUBBISH_EMAIL_OUTBOUND_ENABLED=false），不探测 SMTP"
     accounts = configured_accounts()
     if not accounts:
         return False, "SMTP 未配置（email_backend=console 或缺少 host/from）"
